@@ -16,8 +16,12 @@ const PAGES = {
 export default function App() {
   const [page, setPage] = useState('overview')
   const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('theme')
-    return saved ? saved === 'dark' : true // 기본 다크모드
+    try {
+      const saved = localStorage.getItem('theme')
+      return saved ? saved === 'dark' : true // 기본 다크모드
+    } catch {
+      return true
+    }
   })
 
   useEffect(() => {
