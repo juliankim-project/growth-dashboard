@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchAll } from '../lib/supabase'
+import { fetchAll, supabase } from '../lib/supabase'
 
 export function useMarketingData() {
   const [data,    setData]    = useState([])
@@ -7,6 +7,13 @@ export function useMarketingData() {
   const [error,   setError]   = useState(null)
 
   useEffect(() => {
+    // Supabase 연결 없으면 빈 데이터로 종료
+    if (!supabase) {
+      setError('Supabase 환경변수가 설정되지 않았습니다')
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
     setLoading(true)
 
