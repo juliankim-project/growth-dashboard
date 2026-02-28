@@ -75,12 +75,20 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
   })
 
   const [open, setOpen] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_OPEN) || '{}') } catch { return {} }
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_OPEN) || '{}')
+      return Object.keys(saved).length ? saved : { overview: true }
+    } catch { return { overview: true } }
   })
 
   const dragIdx = useRef(null)
   const overIdx = useRef(null)
   const [dragId, setDragId] = useState(null)
+
+  /* nav 변경 시 해당 섹션 자동 오픈 (외부에서 setNav 호출될 때 대응) */
+  useEffect(() => {
+    setOpen(prev => ({ ...prev, [nav.section]: true }))
+  }, [nav.section])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_ORDER, JSON.stringify(sections.map(s => s.id)))

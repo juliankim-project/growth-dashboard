@@ -58,7 +58,8 @@ export default function App() {
         onUpdateSection={cfg.setSectionLabel}
         onUpdateSub={cfg.setSubLabel}
         onAddSub={(sid, label) => {
-          cfg.addCustomSub(sid, label)
+          const id = cfg.addCustomSub(sid, label)
+          setNav({ section: sid, sub: id })
         }}
         onRemoveSub={(sid, sub) => {
           cfg.removeCustomSub(sid, sub)
