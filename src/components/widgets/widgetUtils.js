@@ -78,7 +78,7 @@ export function dailyData(data, metrics) {
       if (m && !m.derived && m.field) map[d][mid] += parseFloat(r[m.field]) || 0
     })
   })
-  return Object.values(map).sort((a, b) => a.label.localeCompare(b.label)).slice(-60)
+  return Object.values(map).sort((a, b) => a.label.localeCompare(b.label))
 }
 
 export const CHART_COLORS = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#EC4899']

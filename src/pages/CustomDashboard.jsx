@@ -224,8 +224,14 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
 }
 
 /* ─── 메인 ─── */
-export default function CustomDashboard({ dark, dashboardKey, initialDashboard, onSaveDashboard, pageTitle }) {
-  const { data, loading } = useMarketingData()
+export default function CustomDashboard({ dark, dashboardKey, initialDashboard, onSaveDashboard, pageTitle, filterByDate }) {
+  const { data: rawData, loading } = useMarketingData()
+
+  /* filterByDate 적용 */
+  const data = useMemo(
+    () => (filterByDate ? filterByDate(rawData) : rawData),
+    [rawData, filterByDate]
+  )
   const [dashboard, setDashboard] = useState(() => initialDashboard || makeDashboard('A'))
   const [editMode,  setEditMode]  = useState(false)
   const [editSlot,  setEditSlot]  = useState(null)  // slotId being edited

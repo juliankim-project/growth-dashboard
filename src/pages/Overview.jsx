@@ -23,11 +23,11 @@ const fmtW = n => {
 const sum = (arr, key) => arr.reduce((s, r) => s + (parseFloat(r[key]) || 0), 0)
 
 const CHANNEL_COLORS = {
-  Meta:         '#4267B2',
-  Google:       '#EA4335',
-  Naver:        '#03C75A',
-  Naver_PL:     '#03C75A',
-  Naver_Brand:  '#00A0B0',
+  Meta:        '#4267B2',
+  Google:      '#EA4335',
+  Naver:       '#03C75A',
+  Naver_PL:    '#03C75A',
+  Naver_Brand: '#00A0B0',
 }
 
 /* ────────────── 커스텀 툴팁 ────────────── */
@@ -51,10 +51,16 @@ function CustomTooltip({ active, payload, label, dark }) {
 }
 
 /* ────────────── 메인 컴포넌트 ────────────── */
-export default function Overview({ dark }) {
-  const { data, loading, error } = useMarketingData()
+export default function Overview({ dark, filterByDate }) {
+  const { data: rawData, loading, error } = useMarketingData()
 
-  /* 날짜별 집계 (최근 30일) */
+  /* filterByDate 적용 */
+  const data = useMemo(
+    () => (filterByDate ? filterByDate(rawData) : rawData),
+    [rawData, filterByDate]
+  )
+
+  /* 날짜별 집계 */
   const { kpis, dailyData, channelData } = useMemo(() => {
     if (!data.length) return { kpis: {}, dailyData: [], channelData: [] }
 
@@ -65,19 +71,18 @@ export default function Overview({ dark }) {
     const totalSignup  = sum(data, '회원가입 (App+Web)')
     const roas         = totalCost > 0 ? (totalRev / totalCost) : 0
 
-    /* 일별 집계 */
+    /* 일별 집계 (filterByDate 이미 적용됐으므로 slice 불필요) */
     const byDate = {}
     data.forEach(r => {
       const d = r['Event Date']?.slice(0, 10)
       if (!d) return
       if (!byDate[d]) byDate[d] = { date: d, cost: 0, revenue: 0, installs: 0 }
-      byDate[d].cost     += parseFloat(r['Cost (Channel)']) || 0
+      byDate[d].cost     += parseFloat(r['Cost (Channel)'])   || 0
       byDate[d].revenue  += parseFloat(r['구매액 (App+Web)']) || 0
-      byDate[d].installs += parseFloat(r['Installs (App)']) || 0
+      byDate[d].installs += parseFloat(r['Installs (App)'])   || 0
     })
     const dailyData = Object.values(byDate)
       .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-30)
       .map(d => ({
         ...d,
         label:   d.date.slice(5),
@@ -90,12 +95,11 @@ export default function Overview({ dark }) {
     data.forEach(r => {
       const ch = r['Channel'] || '기타'
       if (!byChan[ch]) byChan[ch] = { channel: ch, cost: 0, installs: 0, revenue: 0 }
-      byChan[ch].cost     += parseFloat(r['Cost (Channel)']) || 0
-      byChan[ch].installs += parseFloat(r['Installs (App)']) || 0
+      byChan[ch].cost     += parseFloat(r['Cost (Channel)'])   || 0
+      byChan[ch].installs += parseFloat(r['Installs (App)'])   || 0
       byChan[ch].revenue  += parseFloat(r['구매액 (App+Web)']) || 0
     })
-    const channelData = Object.values(byChan)
-      .sort((a, b) => b.cost - a.cost)
+    const channelData = Object.values(byChan).sort((a, b) => b.cost - a.cost)
 
     return {
       kpis: { totalCost, totalInstall, totalConv, totalRev, totalSignup, roas },
@@ -104,8 +108,8 @@ export default function Overview({ dark }) {
     }
   }, [data])
 
-  const tick  = dark ? '#64748B' : '#94A3B8'
-  const grid  = dark ? '#1E2130' : '#F1F5F9'
+  const tick = dark ? '#64748B' : '#94A3B8'
+  const grid = dark ? '#1E2130' : '#F1F5F9'
 
   if (loading) return <Spinner dark={dark} />
   if (error)   return (
@@ -119,12 +123,12 @@ export default function Overview({ dark }) {
 
       {/* KPI 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <KPICard dark={dark} label="총 광고비"    value={fmtW(kpis.totalCost)}    icon={DollarSign}    color="indigo" />
-        <KPICard dark={dark} label="총 매출"      value={fmtW(kpis.totalRev)}     icon={TrendingUp}    color="green"  />
-        <KPICard dark={dark} label="ROAS"         value={kpis.roas?.toFixed(2)+'x'} icon={Target}      color="purple" />
-        <KPICard dark={dark} label="인스톨"       value={fmt(kpis.totalInstall)}  icon={Megaphone}     color="blue"   />
-        <KPICard dark={dark} label="구매 완료"    value={fmt(kpis.totalConv)}     icon={ShoppingCart}  color="orange" />
-        <KPICard dark={dark} label="회원가입"     value={fmt(kpis.totalSignup)}   icon={Users}         color="indigo" />
+        <KPICard dark={dark} label="총 광고비"    value={fmtW(kpis.totalCost)}      icon={DollarSign}   color="indigo" />
+        <KPICard dark={dark} label="총 매출"      value={fmtW(kpis.totalRev)}       icon={TrendingUp}   color="green"  />
+        <KPICard dark={dark} label="ROAS"         value={kpis.roas?.toFixed(2)+'x'} icon={Target}       color="purple" />
+        <KPICard dark={dark} label="인스톨"       value={fmt(kpis.totalInstall)}    icon={Megaphone}    color="blue"   />
+        <KPICard dark={dark} label="구매 완료"    value={fmt(kpis.totalConv)}       icon={ShoppingCart} color="orange" />
+        <KPICard dark={dark} label="회원가입"     value={fmt(kpis.totalSignup)}     icon={Users}        color="indigo" />
       </div>
 
       {/* 차트 영역 */}
@@ -136,7 +140,7 @@ export default function Overview({ dark }) {
           ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
         `}>
           <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
-            일별 광고비 vs 매출 (최근 30일)
+            일별 광고비 vs 매출
           </p>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -206,7 +210,7 @@ export default function Overview({ dark }) {
               </tr>
             </thead>
             <tbody>
-              {channelData.map((ch, i) => {
+              {channelData.map(ch => {
                 const roas = ch.cost > 0 ? (ch.revenue / ch.cost).toFixed(2) : '—'
                 return (
                   <tr key={ch.channel} className={`
@@ -225,18 +229,12 @@ export default function Overview({ dark }) {
                         </span>
                       </div>
                     </td>
-                    <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {fmtW(ch.cost)}
-                    </td>
-                    <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {fmt(ch.installs)}
-                    </td>
+                    <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{fmtW(ch.cost)}</td>
+                    <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{fmt(ch.installs)}</td>
                     <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
                       {fmt(ch.revenue > 0 ? Math.round(ch.revenue / 10000) : 0)}건
                     </td>
-                    <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {fmtW(ch.revenue)}
-                    </td>
+                    <td className={`px-5 py-3 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{fmtW(ch.revenue)}</td>
                     <td className="px-5 py-3">
                       <span className={`
                         text-xs font-bold px-2 py-0.5 rounded-full
@@ -248,6 +246,13 @@ export default function Overview({ dark }) {
                   </tr>
                 )
               })}
+              {channelData.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-xs">
+                    선택한 기간에 데이터가 없습니다
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

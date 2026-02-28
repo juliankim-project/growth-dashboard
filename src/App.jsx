@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar        from './components/Layout/Sidebar'
 import Header         from './components/Layout/Header'
 import { useConfig }  from './store/useConfig'
+import { useDateRange } from './store/useDateRange'
 
 import Overview         from './pages/Overview'
 import Marketing        from './pages/Marketing'
@@ -40,6 +41,7 @@ export default function App() {
     try { return (localStorage.getItem('theme') ?? 'dark') === 'dark' } catch { return true }
   })
   const cfg = useConfig()
+  const { dateRange, setPreset, setCustomRange, filterByDate } = useDateRange()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -79,12 +81,13 @@ export default function App() {
           dark={dark}
           initialDashboard={cfg.getDashboard(nav.section, nav.sub)}
           onSaveDashboard={d => cfg.saveDashboard(nav.section, nav.sub, d)}
+          filterByDate={filterByDate}
         />
       )
     } else {
       const Comp = BUILTIN_MAP[key]
       PageContent = Comp
-        ? <Comp dark={dark} nav={nav}/>
+        ? <Comp dark={dark} nav={nav} filterByDate={filterByDate}/>
         : <ComingSoon dark={dark} nav={nav}/>
     }
   }
@@ -100,7 +103,14 @@ export default function App() {
         getCustomSubs={cfg.getCustomSubs}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header nav={nav} dark={dark} config={cfg.config}/>
+        <Header
+          nav={nav}
+          dark={dark}
+          config={cfg.config}
+          dateRange={dateRange}
+          setPreset={setPreset}
+          setCustomRange={setCustomRange}
+        />
         <main className="flex-1 overflow-y-auto">{PageContent}</main>
       </div>
     </div>

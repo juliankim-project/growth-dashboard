@@ -16,7 +16,6 @@ const fmtW = n => {
 }
 const fmt = n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString()
 const sum = (arr, key) => arr.reduce((s, r) => s + (parseFloat(r[key]) || 0), 0)
-const pct = (a, b) => b ? ((a / b) * 100).toFixed(1) + '%' : '—'
 
 function CustomTooltip({ active, payload, label, dark }) {
   if (!active || !payload?.length) return null
@@ -42,15 +41,15 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
   const [sort, setSort] = useState({ key: 'cost', dir: -1 })
 
   const COLS = [
-    { key: groupKey,               label: groupKey === 'Campaign' ? '캠페인' : groupKey === 'Ad Group' ? '광고그룹' : '크리에이티브' },
-    { key: 'cost',                 label: '광고비' },
-    { key: 'impressions',          label: '노출' },
-    { key: 'clicks',               label: '클릭' },
-    { key: 'installs',             label: '인스톨' },
-    { key: 'conversions',          label: '구매' },
-    { key: 'revenue',              label: '매출' },
-    { key: 'roas',                 label: 'ROAS' },
-    { key: 'ctr',                  label: 'CTR' },
+    { key: groupKey,      label: groupKey === 'Campaign' ? '캠페인' : groupKey === 'Ad Group' ? '광고그룹' : '크리에이티브' },
+    { key: 'cost',        label: '광고비' },
+    { key: 'impressions', label: '노출' },
+    { key: 'clicks',      label: '클릭' },
+    { key: 'installs',    label: '인스톨' },
+    { key: 'conversions', label: '구매' },
+    { key: 'revenue',     label: '매출' },
+    { key: 'roas',        label: 'ROAS' },
+    { key: 'ctr',         label: 'CTR' },
   ]
 
   const grouped = useMemo(() => {
@@ -58,12 +57,12 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
     rows.forEach(r => {
       const k = r[groupKey] || '(없음)'
       if (!map[k]) map[k] = { name: k, cost: 0, impressions: 0, clicks: 0, installs: 0, conversions: 0, revenue: 0 }
-      map[k].cost        += parseFloat(r['Cost (Channel)']) || 0
+      map[k].cost        += parseFloat(r['Cost (Channel)'])        || 0
       map[k].impressions += parseFloat(r['Impressions (Channel)']) || 0
-      map[k].clicks      += parseFloat(r['Clicks (Channel)']) || 0
-      map[k].installs    += parseFloat(r['Installs (App)']) || 0
-      map[k].conversions += parseFloat(r['구매 완료 (App+Web)']) || 0
-      map[k].revenue     += parseFloat(r['구매액 (App+Web)']) || 0
+      map[k].clicks      += parseFloat(r['Clicks (Channel)'])      || 0
+      map[k].installs    += parseFloat(r['Installs (App)'])        || 0
+      map[k].conversions += parseFloat(r['구매 완료 (App+Web)'])    || 0
+      map[k].revenue     += parseFloat(r['구매액 (App+Web)'])       || 0
     })
     return Object.values(map).map(r => ({
       ...r,
@@ -108,7 +107,7 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row, i) => (
+            {sorted.map(row => (
               <tr
                 key={row.name}
                 className={`
@@ -144,7 +143,11 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-xs">데이터 없음</td></tr>
+              <tr>
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-xs">
+                  선택한 기간에 데이터가 없습니다
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -154,8 +157,14 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
 }
 
 /* ────────── 메인 ────────── */
-export default function Marketing({ dark }) {
-  const { data, loading, error } = useMarketingData()
+export default function Marketing({ dark, filterByDate }) {
+  const { data: rawData, loading, error } = useMarketingData()
+
+  /* filterByDate 적용 */
+  const data = useMemo(
+    () => (filterByDate ? filterByDate(rawData) : rawData),
+    [rawData, filterByDate]
+  )
 
   /* 채널 목록 */
   const channels = useMemo(() =>
@@ -172,12 +181,12 @@ export default function Marketing({ dark }) {
   }, [channels])
 
   /* 필터링 */
-  const chanData  = useMemo(() => data.filter(r => r['Channel'] === selChannel), [data, selChannel])
-  const campData  = useMemo(() => selCampaign
-    ? chanData.filter(r => r['Campaign'] === selCampaign) : chanData
+  const chanData = useMemo(() => data.filter(r => r['Channel'] === selChannel), [data, selChannel])
+  const campData = useMemo(() =>
+    selCampaign ? chanData.filter(r => r['Campaign'] === selCampaign) : chanData
   , [chanData, selCampaign])
-  const agData    = useMemo(() => selAdgroup
-    ? campData.filter(r => r['Ad Group'] === selAdgroup) : campData
+  const agData   = useMemo(() =>
+    selAdgroup ? campData.filter(r => r['Ad Group'] === selAdgroup) : campData
   , [campData, selAdgroup])
 
   /* 채널 KPI */
@@ -188,7 +197,7 @@ export default function Marketing({ dark }) {
     revenue: sum(chanData, '구매액 (App+Web)'),
   }), [chanData])
 
-  /* 일별 트렌드 (선택 채널) */
+  /* 일별 트렌드 (선택 채널, filterByDate 적용됐으므로 slice 불필요) */
   const trendData = useMemo(() => {
     const byDate = {}
     chanData.forEach(r => {
@@ -198,7 +207,7 @@ export default function Marketing({ dark }) {
       byDate[d].cost     += parseFloat(r['Cost (Channel)']) || 0
       byDate[d].installs += parseFloat(r['Installs (App)']) || 0
     })
-    return Object.values(byDate).sort((a, b) => a.label.localeCompare(b.label)).slice(-30)
+    return Object.values(byDate).sort((a, b) => a.label.localeCompare(b.label))
   }, [chanData])
 
   const tick = dark ? '#64748B' : '#94A3B8'
@@ -232,6 +241,11 @@ export default function Marketing({ dark }) {
             {ch}
           </button>
         ))}
+        {channels.length === 0 && (
+          <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+            선택한 기간에 데이터가 없습니다
+          </p>
+        )}
       </div>
 
       {/* 브레드크럼 드릴다운 */}
@@ -259,10 +273,10 @@ export default function Marketing({ dark }) {
       {/* 채널 KPI 칩 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: '광고비',   value: fmtW(chanKpi.cost) },
-          { label: '인스톨',   value: fmt(chanKpi.install) },
-          { label: '구매',     value: fmt(chanKpi.conv) },
-          { label: 'ROAS',     value: chanKpi.cost > 0 ? (chanKpi.revenue / chanKpi.cost).toFixed(2) + 'x' : '—' },
+          { label: '광고비', value: fmtW(chanKpi.cost) },
+          { label: '인스톨', value: fmt(chanKpi.install) },
+          { label: '구매',   value: fmt(chanKpi.conv) },
+          { label: 'ROAS',   value: chanKpi.cost > 0 ? (chanKpi.revenue / chanKpi.cost).toFixed(2) + 'x' : '—' },
         ].map(k => (
           <div key={k.label} className={`
             rounded-xl px-4 py-3 border
@@ -275,7 +289,7 @@ export default function Marketing({ dark }) {
       </div>
 
       {/* 트렌드 차트 (overview 레벨만) */}
-      {drillLevel === 'overview' && (
+      {drillLevel === 'overview' && trendData.length > 0 && (
         <div className={`rounded-xl p-5 border ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
           <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
             일별 트렌드 — {selChannel}
@@ -288,8 +302,8 @@ export default function Marketing({ dark }) {
                 tickFormatter={v => fmtW(v)} width={48} />
               <Tooltip content={<CustomTooltip dark={dark} />} />
               <Legend wrapperStyle={{ fontSize: 11, color: tick }} />
-              <Line type="monotone" dataKey="cost"     name="광고비"   stroke="#6366F1" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="installs" name="인스톨"   stroke="#10B981" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="cost"     name="광고비" stroke="#6366F1" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="installs" name="인스톨" stroke="#10B981" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
