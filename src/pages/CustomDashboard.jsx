@@ -4,7 +4,13 @@ import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
 } from '../store/useConfig'
-import { useTableData } from '../hooks/useTableData'
+import { useTableData }    from '../hooks/useTableData'
+import Spinner             from '../components/UI/Spinner'
+import KPIWidget           from '../components/widgets/KPIWidget'
+import TimeSeriesWidget    from '../components/widgets/TimeSeriesWidget'
+import BarWidget           from '../components/widgets/BarWidget'
+import DonutWidget         from '../components/widgets/DonutWidget'
+import TableWidget         from '../components/widgets/TableWidget'
 
 /* ── fieldMap 적용: 커스텀 컬럼명 → 표준 필드명으로 복사 ── */
 function applyFieldMap(rows, fieldMap) {
@@ -20,12 +26,6 @@ function applyFieldMap(rows, fieldMap) {
     return mapped
   })
 }
-import Spinner             from '../components/UI/Spinner'
-import KPIWidget           from '../components/widgets/KPIWidget'
-import TimeSeriesWidget    from '../components/widgets/TimeSeriesWidget'
-import BarWidget           from '../components/widgets/BarWidget'
-import DonutWidget         from '../components/widgets/DonutWidget'
-import TableWidget         from '../components/widgets/TableWidget'
 
 const WIDGET_MAP = {
   kpi: KPIWidget, timeseries: TimeSeriesWidget,
