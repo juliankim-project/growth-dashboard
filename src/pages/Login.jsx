@@ -14,7 +14,15 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
     setError('')
     const { error } = await onSignInWithMagicLink(email.trim())
     if (error) {
-      setError(error.message)
+      // Supabase 에러 메시지 한국어로 변환
+      const msg = error.message || ''
+      if (msg.includes('Signups not allowed') || msg.includes('not allowed')) {
+        setError('등록되지 않은 이메일입니다. 관리자에게 문의하세요.')
+      } else if (msg.includes('rate limit') || msg.includes('too many')) {
+        setError('잠시 후 다시 시도해주세요. (요청 횟수 초과)')
+      } else {
+        setError('오류가 발생했습니다. 다시 시도해주세요.')
+      }
       setLoading(false)
     } else {
       setSent(true)
