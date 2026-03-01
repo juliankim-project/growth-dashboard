@@ -626,7 +626,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   if (loading) return <Spinner dark={dark}/>
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
       {/* ── L3 탭 바 ── */}
       <L3TabBar
