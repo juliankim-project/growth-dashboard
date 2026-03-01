@@ -119,7 +119,7 @@ export default function App() {
   const [dark, setDark] = useState(() => {
     try { return (localStorage.getItem('theme') ?? 'dark') === 'dark' } catch { return true }
   })
-  const { session, loading, user, signInWithGoogle, signInWithEmail, signOut } = useAuth()
+  const { session, loading, user, signInWithMagicLink, signOut } = useAuth()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -137,8 +137,7 @@ export default function App() {
   if (!session) return (
     <Login
       dark={dark}
-      onSignInWithGoogle={signInWithGoogle}
-      onSignInWithEmail={signInWithEmail}
+      onSignInWithMagicLink={signInWithMagicLink}
     />
   )
 

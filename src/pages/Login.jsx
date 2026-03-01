@@ -1,44 +1,28 @@
 import { useState } from 'react'
-import { Eye, EyeOff, LogIn, BarChart2 } from 'lucide-react'
+import { Mail, BarChart2, ArrowRight, CheckCircle2 } from 'lucide-react'
 
-/* Google 아이콘 SVG */
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-      <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
-    </svg>
-  )
-}
+export default function Login({ onSignInWithMagicLink, dark }) {
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent,    setSent]    = useState(false)
+  const [error,   setError]   = useState('')
 
-export default function Login({ onSignInWithGoogle, onSignInWithEmail, dark }) {
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw,   setShowPw]   = useState(false)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
-  const [mode,     setMode]     = useState('google') // 'google' | 'email'
-
-  const handleEmailLogin = async e => {
+  const handleSubmit = async e => {
     e.preventDefault()
-    if (!email || !password) return
+    if (!email.trim()) return
     setLoading(true)
     setError('')
-    const { error } = await onSignInWithEmail(email, password)
-    if (error) setError(error.message)
-    setLoading(false)
+    const { error } = await onSignInWithMagicLink(email.trim())
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    } else {
+      setSent(true)
+      setLoading(false)
+    }
   }
 
-  const handleGoogleLogin = async () => {
-    setLoading(true)
-    setError('')
-    const { error } = await onSignInWithGoogle()
-    if (error) { setError(error.message); setLoading(false) }
-  }
-
-  const inp = `w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-colors
+  const inp = `w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors
     ${dark
       ? 'bg-[#13151C] border-[#252836] text-white placeholder:text-slate-600 focus:border-indigo-500'
       : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 focus:border-indigo-400'}`
@@ -63,72 +47,78 @@ export default function Login({ onSignInWithGoogle, onSignInWithEmail, dark }) {
         {/* 카드 */}
         <div className={`rounded-2xl border p-6 shadow-xl ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
 
-          {/* 에러 */}
-          {error && (
-            <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-              {error}
-            </div>
-          )}
-
-          {/* Google 로그인 */}
-          <button
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold transition-all
-              ${dark
-                ? 'bg-[#13151C] border-[#252836] text-white hover:border-indigo-500/40 hover:bg-[#0F1117]'
-                : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:shadow-sm'}
-              disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            <GoogleIcon />
-            Google 계정으로 로그인
-          </button>
-
-          {/* 구분선 */}
-          <div className="flex items-center gap-3 my-4">
-            <div className={`flex-1 h-px ${dark ? 'bg-[#252836]' : 'bg-slate-100'}`} />
-            <span className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>또는</span>
-            <div className={`flex-1 h-px ${dark ? 'bg-[#252836]' : 'bg-slate-100'}`} />
-          </div>
-
-          {/* 이메일/비밀번호 */}
-          <form onSubmit={handleEmailLogin} className="flex flex-col gap-3">
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="이메일"
-              autoComplete="email"
-              className={inp}
-            />
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="비밀번호"
-                autoComplete="current-password"
-                className={`${inp} pr-10`}
-              />
+          {sent ? (
+            /* ── 전송 완료 상태 ── */
+            <div className="flex flex-col items-center text-center gap-3 py-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircle2 size={24} className="text-emerald-500" />
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>
+                  이메일을 확인해주세요
+                </p>
+                <p className={`text-xs mt-1.5 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span className="font-medium text-indigo-400">{email}</span>으로<br/>
+                  로그인 링크를 보냈어요.<br/>
+                  링크를 클릭하면 바로 접속됩니다.
+                </p>
+              </div>
               <button
-                type="button"
-                onClick={() => setShowPw(v => !v)}
-                className={`absolute right-3 top-1/2 -translate-y-1/2 ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-300 hover:text-slate-500'}`}
+                onClick={() => { setSent(false); setEmail('') }}
+                className={`text-xs mt-2 ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'} transition-colors`}
               >
-                {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
+                다른 이메일로 시도
               </button>
             </div>
-            <button
-              type="submit"
-              disabled={loading || !email || !password}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading
-                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                : <LogIn size={15} />}
-              이메일로 로그인
-            </button>
-          </form>
+          ) : (
+            /* ── 이메일 입력 폼 ── */
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div>
+                <p className={`text-sm font-semibold mb-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
+                  로그인
+                </p>
+                <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  이메일 주소를 입력하면 로그인 링크를 보내드려요
+                </p>
+              </div>
+
+              {/* 에러 */}
+              {error && (
+                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                  {error}
+                </div>
+              )}
+
+              <div className="relative">
+                <Mail size={15} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${dark ? 'text-slate-500' : 'text-slate-300'}`} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="이메일 주소"
+                  autoComplete="email"
+                  autoFocus
+                  className={`${inp} pl-10`}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !email.trim()}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading
+                  ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  : (
+                    <>
+                      로그인 링크 보내기
+                      <ArrowRight size={15} />
+                    </>
+                  )
+                }
+              </button>
+            </form>
+          )}
         </div>
 
         <p className={`text-center text-xs mt-4 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>

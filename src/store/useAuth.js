@@ -18,7 +18,7 @@ export function useAuth() {
       setLoading(false)
     })
 
-    /* 세션 변경 구독 (로그인/아웃) */
+    /* 세션 변경 구독 (로그인/아웃/매직링크 콜백) */
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setLoading(false)
@@ -27,16 +27,16 @@ export function useAuth() {
     return () => subscription.unsubscribe()
   }, [])
 
-  /** Google OAuth 로그인 */
-  const signInWithGoogle = () =>
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
+  /**
+   * 매직링크 발송
+   * - 등록된 이메일이면 로그인 링크 전송
+   * - Supabase 설정에서 신규가입 비활성화 시 초대된 유저만 가능
+   */
+  const signInWithMagicLink = (email) =>
+    supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
     })
-
-  /** 이메일 + 비밀번호 로그인 */
-  const signInWithEmail = (email, password) =>
-    supabase.auth.signInWithPassword({ email, password })
 
   /** 로그아웃 */
   const signOut = () => supabase.auth.signOut()
@@ -45,8 +45,7 @@ export function useAuth() {
     session,
     loading,
     user: session?.user ?? null,
-    signInWithGoogle,
-    signInWithEmail,
+    signInWithMagicLink,
     signOut,
   }
 }
