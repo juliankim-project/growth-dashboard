@@ -3,6 +3,9 @@ import Sidebar        from './components/Layout/Sidebar'
 import Header         from './components/Layout/Header'
 import { useConfig }  from './store/useConfig'
 import { useDateRange } from './store/useDateRange'
+import { useAuth }    from './store/useAuth'
+import Login          from './pages/Login'
+import Spinner        from './components/UI/Spinner'
 
 import Overview         from './pages/Overview'
 import Marketing        from './pages/Marketing'
@@ -35,21 +38,13 @@ const BUILTIN_MAP = {
   'settings.team':         SettingsTeam,
 }
 
-export default function App() {
-  const [nav,  setNav]  = useState({ section: 'overview', sub: 'dashboard' })
-  const [dark, setDark] = useState(() => {
-    try { return (localStorage.getItem('theme') ?? 'dark') === 'dark' } catch { return true }
-  })
+/* ────────────── 대시보드 메인 ────────────── */
+function Dashboard({ dark, setDark, user, signOut }) {
+  const [nav, setNav] = useState({ section: 'overview', sub: 'dashboard' })
   const cfg = useConfig()
   const { dateRange, setPreset, setCustomRange, filterByDate } = useDateRange()
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-    localStorage.setItem('theme', dark ? 'dark' : 'light')
-  }, [dark])
-
   const key = `${nav.section}.${nav.sub}`
-
   let PageContent = null
 
   if (key === 'settings.tabs') {
@@ -110,9 +105,43 @@ export default function App() {
           dateRange={dateRange}
           setPreset={setPreset}
           setCustomRange={setCustomRange}
+          user={user}
+          onSignOut={signOut}
         />
         <main className="flex-1 overflow-y-auto">{PageContent}</main>
       </div>
     </div>
   )
+}
+
+/* ────────────── 루트 ────────────── */
+export default function App() {
+  const [dark, setDark] = useState(() => {
+    try { return (localStorage.getItem('theme') ?? 'dark') === 'dark' } catch { return true }
+  })
+  const { session, loading, user, signInWithGoogle, signInWithEmail, signOut } = useAuth()
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  }, [dark])
+
+  /* 세션 확인 중 */
+  if (loading) return (
+    <div className={`min-h-screen flex items-center justify-center ${dark ? 'bg-[#0F1117]' : 'bg-[#F4F6FA]'}`}>
+      <Spinner dark={dark} />
+    </div>
+  )
+
+  /* 미인증 → 로그인 페이지 */
+  if (!session) return (
+    <Login
+      dark={dark}
+      onSignInWithGoogle={signInWithGoogle}
+      onSignInWithEmail={signInWithEmail}
+    />
+  )
+
+  /* 인증됨 → 대시보드 */
+  return <Dashboard dark={dark} setDark={setDark} user={user} signOut={signOut} />
 }

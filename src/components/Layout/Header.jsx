@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Search, CalendarDays, ChevronDown } from 'lucide-react'
+import { Bell, Search, CalendarDays, ChevronDown, LogOut, User } from 'lucide-react'
 import { DEFAULT_SECTIONS } from './Sidebar'
 import { DATE_PRESETS } from '../../store/useDateRange'
 
@@ -158,9 +158,84 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
 }
 
 /* ──────────────────────────────────────────
+   유저 아바타 + 로그아웃 드롭다운
+─────────────────────────────────────────── */
+function UserMenu({ user, onSignOut, dark }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = e => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  /* 이메일 첫 글자 또는 Google 아바타 */
+  const email    = user?.email || ''
+  const initial  = email.charAt(0).toUpperCase() || 'G'
+  const avatar   = user?.user_metadata?.avatar_url   // Google OAuth 시 있음
+  const name     = user?.user_metadata?.full_name || email
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 rounded-full focus:outline-none"
+      >
+        {avatar
+          ? <img src={avatar} alt={name} className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/30" />
+          : (
+            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-indigo-500/30">
+              {initial}
+            </div>
+          )
+        }
+      </button>
+
+      {open && (
+        <div className={`
+          absolute right-0 top-[calc(100%+8px)] z-[100] w-56 rounded-xl border shadow-2xl overflow-hidden
+          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}
+        `}>
+          {/* 유저 정보 */}
+          <div className={`px-4 py-3 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+            <div className="flex items-center gap-2.5">
+              {avatar
+                ? <img src={avatar} alt={name} className="w-8 h-8 rounded-full object-cover" />
+                : <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">{initial}</div>
+              }
+              <div className="min-w-0">
+                <p className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{name}</p>
+                <p className={`text-[10px] truncate ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 로그아웃 */}
+          <div className="p-1.5">
+            <button
+              onClick={() => { onSignOut(); setOpen(false) }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors
+                ${dark
+                  ? 'text-slate-400 hover:bg-red-500/10 hover:text-red-400'
+                  : 'text-slate-600 hover:bg-red-50 hover:text-red-500'}`}
+            >
+              <LogOut size={13} />
+              로그아웃
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────
    Header 메인
 ─────────────────────────────────────────── */
-export default function Header({ nav, dark, config, dateRange, setPreset, setCustomRange }) {
+export default function Header({ nav, dark, config, dateRange, setPreset, setCustomRange, user, onSignOut }) {
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric'
   })
@@ -226,9 +301,14 @@ export default function Header({ nav, dark, config, dateRange, setPreset, setCus
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
         </button>
 
-        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold">
-          G
-        </div>
+        {user
+          ? <UserMenu user={user} onSignOut={onSignOut} dark={dark} />
+          : (
+            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+              G
+            </div>
+          )
+        }
       </div>
     </header>
   )
