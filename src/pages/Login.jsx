@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Mail, BarChart2, ArrowRight, CheckCircle2 } from 'lucide-react'
 
-export default function Login({ onSignInWithMagicLink, dark }) {
+export default function Login({ onSignInWithMagicLink, dark, accessError }) {
   const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
   const [sent,    setSent]    = useState(false)
@@ -82,7 +82,14 @@ export default function Login({ onSignInWithMagicLink, dark }) {
                 </p>
               </div>
 
-              {/* 에러 */}
+              {/* 접근 권한 없음 에러 (외부에서 전달) */}
+              {accessError && (
+                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                  🚫 {accessError}
+                </div>
+              )}
+
+              {/* 일반 에러 */}
               {error && (
                 <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
                   {error}

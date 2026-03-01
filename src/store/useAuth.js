@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function useAuth() {
-  const [session, setSession] = useState(undefined)  // undefined = 아직 확인 중
-  const [loading, setLoading] = useState(true)
+  const [session,     setSession]     = useState(undefined)
+  const [loading,     setLoading]     = useState(true)
+  const [accessError, setAccessError] = useState('')   // 권한 없는 이메일
 
   useEffect(() => {
     if (!supabase) {
@@ -12,26 +13,56 @@ export function useAuth() {
       return
     }
 
-    /* 현재 세션 확인 */
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
+      if (session) {
+        checkAllowed(session)
+      } else {
+        setSession(null)
+        setLoading(false)
+      }
     })
 
-    /* 세션 변경 구독 (로그인/아웃/매직링크 콜백) */
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setLoading(false)
+      if (session) {
+        checkAllowed(session)
+      } else {
+        setSession(null)
+        setLoading(false)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   /**
-   * 매직링크 발송
-   * - 등록된 이메일이면 로그인 링크 전송
-   * - Supabase 설정에서 신규가입 비활성화 시 초대된 유저만 가능
+   * 로그인 후 allowed_users 테이블에서 이메일 확인
+   * 없으면 즉시 로그아웃
    */
+  async function checkAllowed(session) {
+    try {
+      const { data, error } = await supabase
+        .from('allowed_users')
+        .select('email')
+        .eq('email', session.user.email)
+        .maybeSingle()
+
+      if (error || !data) {
+        // 허용 목록에 없음 → 로그아웃
+        await supabase.auth.signOut()
+        setAccessError(`${session.user.email} 은(는) 접근 권한이 없습니다. 관리자에게 문의하세요.`)
+        setSession(null)
+      } else {
+        setAccessError('')
+        setSession(session)
+      }
+    } catch {
+      await supabase.auth.signOut()
+      setSession(null)
+    }
+    setLoading(false)
+  }
+
+  /** 매직링크 발송 */
   const signInWithMagicLink = (email) =>
     supabase.auth.signInWithOtp({
       email,
@@ -44,6 +75,7 @@ export function useAuth() {
   return {
     session,
     loading,
+    accessError,
     user: session?.user ?? null,
     signInWithMagicLink,
     signOut,
