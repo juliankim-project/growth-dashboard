@@ -148,14 +148,20 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
           const isDragging = dragId === sec.id
 
           /* 커스텀 라벨 적용 */
-          const secLabel    = getSectionLabel?.(sec.id) || sec.label
-          const customSubs  = getCustomSubs?.(sec.id) || []
-          const allSubs     = [...sec.subs, ...customSubs.map(cs => ({
-            id: cs.id,
-            label: getSubLabel?.(sec.id, cs.id) || cs.label,
-            icon: 'LayoutTemplate',
-            isCustom: true,
-          }))]
+          const secLabel       = getSectionLabel?.(sec.id) || sec.label
+          const customSubs     = getCustomSubs?.(sec.id) || []
+          const hiddenBuiltins = config.deletedBuiltinSubs?.[sec.id] || []
+          const allSubs        = [
+            ...sec.subs
+              .filter(s => !hiddenBuiltins.includes(s.id))
+              .map(s => ({ ...s, label: getSubLabel?.(sec.id, s.id) || s.label })),
+            ...customSubs.map(cs => ({
+              id: cs.id,
+              label: getSubLabel?.(sec.id, cs.id) || cs.label,
+              icon: 'LayoutTemplate',
+              isCustom: true,
+            })),
+          ]
 
           return (
             <div key={sec.id}

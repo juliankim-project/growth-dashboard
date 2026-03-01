@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react'
 
-const STORAGE_KEY = 'growth_config_v3'   // v3: L3 tab 지원
+const STORAGE_KEY = 'growth_config_v4'   // v4: 빌트인 숨기기 + 서브 데이터소스
 
 /* ──────────────────────────────────────────
    기본 설정
 ─────────────────────────────────────────── */
 export const DEFAULT_CONFIG = {
-  sectionLabels: {},   // { 'marketing': '퍼포먼스' }
-  subLabels:     {},   // { 'marketing.performance': '매체별 분석' }
-  customSubs:    {},   // { 'marketing': [{id, label}] }
-  dashboards:    {},   // { 'section.sub.tabId': { template, widgets } }
-  l3tabs:        {},   // { 'section.sub': [{id, label}] }
+  sectionLabels:      {},  // { 'marketing': '퍼포먼스' }
+  subLabels:          {},  // { 'marketing.performance': '매체별 분석' }
+  customSubs:         {},  // { 'marketing': [{id, label}] }
+  dashboards:         {},  // { 'section.sub.tabId': { template, widgets } }
+  l3tabs:             {},  // { 'section.sub': [{id, label}] }
+  deletedBuiltinSubs: {},  // { 'overview': ['dashboard'], 'product': ['funnel'] }
+  subDataSources:     {},  // { 'section.sub': { table, fieldMap: { metricId: 'colName' } } }
 }
 
 /* ──────────────────────────────────────────
@@ -140,7 +142,7 @@ export function makeDashboard(templateId = 'A') {
     }
     widgets[slot.id] = { type, config: cfg }
   })
-  return { template: templateId, widgets, dataSource: { table: 'marketing_perf' } }
+  return { template: templateId, widgets }
 }
 
 /* ──────────────────────────────────────────
@@ -166,6 +168,37 @@ export function useConfig() {
   const setSubLabel = (sectionId, subId, label) =>
     persist({ ...config, subLabels: { ...config.subLabels, [`${sectionId}.${subId}`]: label } })
 
+  /* ── 빌트인 서브탭 숨기기 / 복원 ── */
+  const hideBuiltinSub = (sectionId, subId) => {
+    const cur = config.deletedBuiltinSubs[sectionId] || []
+    if (cur.includes(subId)) return
+    persist({
+      ...config,
+      deletedBuiltinSubs: { ...config.deletedBuiltinSubs, [sectionId]: [...cur, subId] },
+    })
+  }
+
+  const showBuiltinSub = (sectionId, subId) => {
+    const cur = config.deletedBuiltinSubs[sectionId] || []
+    persist({
+      ...config,
+      deletedBuiltinSubs: { ...config.deletedBuiltinSubs, [sectionId]: cur.filter(id => id !== subId) },
+    })
+  }
+
+  const isBuiltinSubHidden = (sectionId, subId) =>
+    (config.deletedBuiltinSubs[sectionId] || []).includes(subId)
+
+  /* ── L2 서브 데이터 소스 ── */
+  const getSubDataSource = (sectionId, subId) =>
+    config.subDataSources[`${sectionId}.${subId}`] || { table: 'marketing_perf', fieldMap: {} }
+
+  const setSubDataSource = (sectionId, subId, dataSource) =>
+    persist({
+      ...config,
+      subDataSources: { ...config.subDataSources, [`${sectionId}.${subId}`]: dataSource },
+    })
+
   /* ── L2 커스텀 서브탭 ── */
   const addCustomSub = (sectionId, label) => {
     const id  = `cx_${Date.now()}`
@@ -178,19 +211,21 @@ export function useConfig() {
   }
 
   const removeCustomSub = (sectionId, subId) => {
-    const cur  = config.customSubs[sectionId] || []
-    // L3 탭 및 대시보드도 정리
-    const l3Key = `${sectionId}.${subId}`
+    const cur    = config.customSubs[sectionId] || []
+    const l3Key  = `${sectionId}.${subId}`
     const l3tabs = config.l3tabs[l3Key] || []
-    const dash = { ...config.dashboards }
+    const dash   = { ...config.dashboards }
     l3tabs.forEach(t => { delete dash[`${l3Key}.${t.id}`] })
     const l3 = { ...config.l3tabs }
     delete l3[l3Key]
+    const ds = { ...config.subDataSources }
+    delete ds[l3Key]
     persist({
       ...config,
-      customSubs: { ...config.customSubs, [sectionId]: cur.filter(s => s.id !== subId) },
+      customSubs:     { ...config.customSubs, [sectionId]: cur.filter(s => s.id !== subId) },
       dashboards: dash,
       l3tabs: l3,
+      subDataSources: ds,
     })
   }
 
@@ -256,6 +291,8 @@ export function useConfig() {
     getSectionLabel, getSubLabel, getCustomSubs, getDashboard, saveDashboard,
     setSectionLabel, setSubLabel,
     addCustomSub, removeCustomSub,
+    hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
+    getSubDataSource, setSubDataSource,
     getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   }
 }

@@ -4,7 +4,22 @@ import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
 } from '../store/useConfig'
-import { useTableData }    from '../hooks/useTableData'
+import { useTableData } from '../hooks/useTableData'
+
+/* ── fieldMap 적용: 커스텀 컬럼명 → 표준 필드명으로 복사 ── */
+function applyFieldMap(rows, fieldMap) {
+  if (!fieldMap || Object.keys(fieldMap).length === 0) return rows
+  return rows.map(row => {
+    const mapped = { ...row }
+    Object.entries(fieldMap).forEach(([metricId, customCol]) => {
+      const m = METRICS.find(x => x.id === metricId)
+      if (m && m.field && customCol && customCol !== m.field) {
+        mapped[m.field] = row[customCol] ?? row[m.field]
+      }
+    })
+    return mapped
+  })
+}
 import Spinner             from '../components/UI/Spinner'
 import KPIWidget           from '../components/widgets/KPIWidget'
 import TimeSeriesWidget    from '../components/widgets/TimeSeriesWidget'
@@ -495,6 +510,9 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
               ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
               <Database size={10}/>
               <span className="font-mono">{currentTable}</span>
+              <span className={`text-[9px] ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+                (탭설정에서 변경)
+              </span>
             </span>
           )}
         </div>
@@ -549,7 +567,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
      saveDashboard:(dashboard, tabId) => void,
    }
 ══════════════════════════════════════════ */
-export default function CustomDashboard({ dark, filterByDate, tabsConfig }) {
+export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
   const tabs = tabsConfig?.tabs || []
 
   /* 활성 탭 */
@@ -571,13 +589,17 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig }) {
     setSaved(false)
   }, [activeTab?.id])
 
-  /* 데이터 소스 테이블 (dashboard.dataSource 변경 시 자동 재조회) */
-  const tableName = dashboard.dataSource?.table ?? 'marketing_perf'
+  /* 데이터 소스: L2 subDataSource.table 우선, 없으면 dashboard.dataSource, 기본값 marketing_perf */
+  const tableName = subDataSource?.table
+    || dashboard.dataSource?.table
+    || 'marketing_perf'
+  const fieldMap  = subDataSource?.fieldMap || {}
+
   const { data: rawData, loading, error } = useTableData(tableName)
-  const data = useMemo(
-    () => (filterByDate ? filterByDate(rawData) : rawData),
-    [rawData, filterByDate]
-  )
+  const data = useMemo(() => {
+    const filtered  = filterByDate ? filterByDate(rawData) : rawData
+    return applyFieldMap(filtered, fieldMap)
+  }, [rawData, filterByDate, fieldMap])
 
   /* 탭 추가 — 자동 이동 없음 */
   const handleAddTab = (label) => {

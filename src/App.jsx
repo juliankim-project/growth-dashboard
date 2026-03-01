@@ -7,27 +7,23 @@ import { useAuth }    from './store/useAuth'
 import Login          from './pages/Login'
 import Spinner        from './components/UI/Spinner'
 
-import Overview       from './pages/Overview'
-import Product        from './pages/Product'
-import ProductFunnel  from './pages/product/Funnel'
-import ProductEvents  from './pages/product/Events'
+/* 항상 고정 UI (DataStudio / Settings) */
 import DataUpload     from './pages/DataStudio'
 import DataTables     from './pages/datastudio/Tables'
 import DataHistory    from './pages/datastudio/History'
 import SettingsGeneral from './pages/settings/General'
 import TabSettings    from './pages/settings/TabSettings'
 import SettingsTeam   from './pages/settings/Team'
-import CustomDashboard from './pages/CustomDashboard'
-import ComingSoon     from './pages/ComingSoon'
 
-/* ────────────────────────────────────────────
-   빌트인 페이지 맵 (그 외는 CustomDashboard)
-──────────────────────────────────────────── */
-const BUILTIN_MAP = {
-  'overview.dashboard':  Overview,
-  'product.overview':    Product,
-  'product.funnel':      ProductFunnel,
-  'product.events':      ProductEvents,
+/* 커스텀 대시보드 (Overview · Marketing · Product · 커스텀 서브탭 전부) */
+import CustomDashboard from './pages/CustomDashboard'
+import ComingSoon      from './pages/ComingSoon'
+
+/* ──────────────────────────────────────────────
+   항상 고정 UI 로 렌더할 키 목록
+   나머지는 전부 CustomDashboard (완전 커스텀 가능)
+────────────────────────────────────────────── */
+const FIXED_MAP = {
   'datastudio.upload':   DataUpload,
   'datastudio.tables':   DataTables,
   'datastudio.history':  DataHistory,
@@ -35,15 +31,7 @@ const BUILTIN_MAP = {
   'settings.team':       SettingsTeam,
 }
 
-/**
- * marketing 섹션 하위 페이지 + 모든 커스텀 서브탭은
- * CustomDashboard (L3 탭) 으로 렌더링
- */
-const CUSTOM_TAB_KEYS = new Set([
-  'marketing.performance',
-  'marketing.goals',
-  'marketing.reports',
-])
+import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
 
 /* ────────────── 대시보드 메인 ────────────── */
 function Dashboard({ dark, setDark, user, signOut }) {
@@ -52,6 +40,22 @@ function Dashboard({ dark, setDark, user, signOut }) {
   const { dateRange, setPreset, setCustomRange, filterByDate } = useDateRange()
 
   const key = `${nav.section}.${nav.sub}`
+
+  /* ── nav 가드: 숨겨진 빌트인 탭에 있으면 같은 섹션 첫 번째 보이는 탭으로 이동 ── */
+  useEffect(() => {
+    const sec = DEFAULT_SECTIONS.find(s => s.id === nav.section)
+    if (!sec) return
+    const hiddenBuiltins = cfg.config.deletedBuiltinSubs?.[nav.section] || []
+    const isBuiltinSub   = sec.subs.some(s => s.id === nav.sub)
+    const isHidden       = isBuiltinSub && hiddenBuiltins.includes(nav.sub)
+    if (!isHidden) return
+
+    // 숨겨지지 않은 첫 번째 서브탭으로 이동
+    const visibleBuiltin = sec.subs.find(s => !hiddenBuiltins.includes(s.id))
+    const customSubs     = cfg.getCustomSubs(nav.section)
+    const fallbackSub    = visibleBuiltin?.id ?? customSubs[0]?.id ?? 'dashboard'
+    setNav({ section: nav.section, sub: fallbackSub })
+  }, [nav, cfg.config.deletedBuiltinSubs])
 
   /* ── tabsConfig 생성 헬퍼 ── */
   const makeTabsConfig = (section, sub) => ({
@@ -79,32 +83,35 @@ function Dashboard({ dark, setDark, user, signOut }) {
           if (nav.section === sid && nav.sub === sub)
             setNav({ section: sid, sub: 'dashboard' })
         }}
+        onHideBuiltinSub={(sid, sub) => {
+          cfg.hideBuiltinSub(sid, sub)
+          // nav 가드 useEffect 가 자동으로 처리
+        }}
+        onShowBuiltinSub={cfg.showBuiltinSub}
         getL3Tabs={cfg.getL3Tabs}
         addL3Tab={cfg.addL3Tab}
         removeL3Tab={cfg.removeL3Tab}
         renameL3Tab={cfg.renameL3Tab}
+        getSubDataSource={cfg.getSubDataSource}
+        setSubDataSource={cfg.setSubDataSource}
       />
     )
+  } else if (FIXED_MAP[key]) {
+    /* DataStudio · Settings 고정 UI */
+    const Comp = FIXED_MAP[key]
+    PageContent = <Comp dark={dark} nav={nav} filterByDate={filterByDate}/>
   } else {
-    const customSubs = cfg.getCustomSubs(nav.section)
-    const isCustom   = customSubs.some(s => s.id === nav.sub)
-
-    if (isCustom || CUSTOM_TAB_KEYS.has(key)) {
-      /* marketing 페이지 + 커스텀 서브탭 → L3 탭 지원 CustomDashboard */
-      PageContent = (
-        <CustomDashboard
-          key={key}
-          dark={dark}
-          filterByDate={filterByDate}
-          tabsConfig={makeTabsConfig(nav.section, nav.sub)}
-        />
-      )
-    } else {
-      const Comp = BUILTIN_MAP[key]
-      PageContent = Comp
-        ? <Comp dark={dark} nav={nav} filterByDate={filterByDate}/>
-        : <ComingSoon dark={dark} nav={nav}/>
-    }
+    /* Overview · Marketing · Product · 커스텀 서브탭 → 모두 CustomDashboard */
+    const subDataSource = cfg.getSubDataSource(nav.section, nav.sub)
+    PageContent = (
+      <CustomDashboard
+        key={key}
+        dark={dark}
+        filterByDate={filterByDate}
+        tabsConfig={makeTabsConfig(nav.section, nav.sub)}
+        subDataSource={subDataSource}
+      />
+    )
   }
 
   return (
