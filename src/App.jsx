@@ -7,36 +7,43 @@ import { useAuth }    from './store/useAuth'
 import Login          from './pages/Login'
 import Spinner        from './components/UI/Spinner'
 
-import Overview         from './pages/Overview'
-import Marketing        from './pages/Marketing'
-import MarketingGoals   from './pages/marketing/Goals'
-import MarketingReports from './pages/marketing/Reports'
-import Product          from './pages/Product'
-import ProductFunnel    from './pages/product/Funnel'
-import ProductEvents    from './pages/product/Events'
-import DataUpload       from './pages/DataStudio'
-import DataTables       from './pages/datastudio/Tables'
-import DataHistory      from './pages/datastudio/History'
-import SettingsGeneral  from './pages/settings/General'
-import TabSettings      from './pages/settings/TabSettings'
-import SettingsTeam     from './pages/settings/Team'
-import CustomDashboard  from './pages/CustomDashboard'
-import ComingSoon       from './pages/ComingSoon'
+import Overview       from './pages/Overview'
+import Product        from './pages/Product'
+import ProductFunnel  from './pages/product/Funnel'
+import ProductEvents  from './pages/product/Events'
+import DataUpload     from './pages/DataStudio'
+import DataTables     from './pages/datastudio/Tables'
+import DataHistory    from './pages/datastudio/History'
+import SettingsGeneral from './pages/settings/General'
+import TabSettings    from './pages/settings/TabSettings'
+import SettingsTeam   from './pages/settings/Team'
+import CustomDashboard from './pages/CustomDashboard'
+import ComingSoon     from './pages/ComingSoon'
 
+/* ────────────────────────────────────────────
+   빌트인 페이지 맵 (그 외는 CustomDashboard)
+──────────────────────────────────────────── */
 const BUILTIN_MAP = {
-  'overview.dashboard':    Overview,
-  'marketing.performance': Marketing,
-  'marketing.goals':       MarketingGoals,
-  'marketing.reports':     MarketingReports,
-  'product.overview':      Product,
-  'product.funnel':        ProductFunnel,
-  'product.events':        ProductEvents,
-  'datastudio.upload':     DataUpload,
-  'datastudio.tables':     DataTables,
-  'datastudio.history':    DataHistory,
-  'settings.general':      SettingsGeneral,
-  'settings.team':         SettingsTeam,
+  'overview.dashboard':  Overview,
+  'product.overview':    Product,
+  'product.funnel':      ProductFunnel,
+  'product.events':      ProductEvents,
+  'datastudio.upload':   DataUpload,
+  'datastudio.tables':   DataTables,
+  'datastudio.history':  DataHistory,
+  'settings.general':    SettingsGeneral,
+  'settings.team':       SettingsTeam,
 }
+
+/**
+ * marketing 섹션 하위 페이지 + 모든 커스텀 서브탭은
+ * CustomDashboard (L3 탭) 으로 렌더링
+ */
+const CUSTOM_TAB_KEYS = new Set([
+  'marketing.performance',
+  'marketing.goals',
+  'marketing.reports',
+])
 
 /* ────────────── 대시보드 메인 ────────────── */
 function Dashboard({ dark, setDark, user, signOut }) {
@@ -45,6 +52,18 @@ function Dashboard({ dark, setDark, user, signOut }) {
   const { dateRange, setPreset, setCustomRange, filterByDate } = useDateRange()
 
   const key = `${nav.section}.${nav.sub}`
+
+  /* ── tabsConfig 생성 헬퍼 ── */
+  const makeTabsConfig = (section, sub) => ({
+    tabs:         cfg.getL3Tabs(section, sub),
+    addTab:       (label) => cfg.addL3Tab(section, sub, label),
+    removeTab:    (tabId) => cfg.removeL3Tab(section, sub, tabId),
+    renameTab:    (tabId, label) => cfg.renameL3Tab(section, sub, tabId, label),
+    getDashboard: (tabId) => cfg.getDashboard(section, sub, tabId),
+    saveDashboard:(dashboard, tabId) => cfg.saveDashboard(section, sub, dashboard, tabId),
+  })
+
+  /* ── 페이지 결정 ── */
   let PageContent = null
 
   if (key === 'settings.tabs') {
@@ -54,29 +73,30 @@ function Dashboard({ dark, setDark, user, signOut }) {
         config={cfg.config}
         onUpdateSection={cfg.setSectionLabel}
         onUpdateSub={cfg.setSubLabel}
-        onAddSub={(sid, label) => {
-          const id = cfg.addCustomSub(sid, label)
-          setNav({ section: sid, sub: id })
-        }}
+        onAddSub={(sid, label) => cfg.addCustomSub(sid, label)}
         onRemoveSub={(sid, sub) => {
           cfg.removeCustomSub(sid, sub)
           if (nav.section === sid && nav.sub === sub)
             setNav({ section: sid, sub: 'dashboard' })
         }}
+        getL3Tabs={cfg.getL3Tabs}
+        addL3Tab={cfg.addL3Tab}
+        removeL3Tab={cfg.removeL3Tab}
+        renameL3Tab={cfg.renameL3Tab}
       />
     )
   } else {
     const customSubs = cfg.getCustomSubs(nav.section)
     const isCustom   = customSubs.some(s => s.id === nav.sub)
 
-    if (isCustom) {
+    if (isCustom || CUSTOM_TAB_KEYS.has(key)) {
+      /* marketing 페이지 + 커스텀 서브탭 → L3 탭 지원 CustomDashboard */
       PageContent = (
         <CustomDashboard
           key={key}
           dark={dark}
-          initialDashboard={cfg.getDashboard(nav.section, nav.sub)}
-          onSaveDashboard={d => cfg.saveDashboard(nav.section, nav.sub, d)}
           filterByDate={filterByDate}
+          tabsConfig={makeTabsConfig(nav.section, nav.sub)}
         />
       )
     } else {
@@ -108,7 +128,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
           user={user}
           onSignOut={signOut}
         />
-        <main className="flex-1 overflow-y-auto">{PageContent}</main>
+        <main className="flex-1 overflow-hidden">{PageContent}</main>
       </div>
     </div>
   )
@@ -126,22 +146,15 @@ export default function App() {
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
 
-  /* 세션 확인 중 */
   if (loading) return (
     <div className={`min-h-screen flex items-center justify-center ${dark ? 'bg-[#0F1117]' : 'bg-[#F4F6FA]'}`}>
       <Spinner dark={dark} />
     </div>
   )
 
-  /* 미인증 → 로그인 페이지 */
   if (!session) return (
-    <Login
-      dark={dark}
-      onSignInWithMagicLink={signInWithMagicLink}
-      accessError={accessError}
-    />
+    <Login dark={dark} onSignInWithMagicLink={signInWithMagicLink} accessError={accessError}/>
   )
 
-  /* 인증됨 → 대시보드 */
   return <Dashboard dark={dark} setDark={setDark} user={user} signOut={signOut} />
 }

@@ -1,15 +1,16 @@
 import { useState, useCallback } from 'react'
 
-const STORAGE_KEY = 'growth_config_v2'
+const STORAGE_KEY = 'growth_config_v3'   // v3: L3 tab 지원
 
 /* ──────────────────────────────────────────
-   기본 설정 (변경 전 초기값)
+   기본 설정
 ─────────────────────────────────────────── */
 export const DEFAULT_CONFIG = {
   sectionLabels: {},   // { 'marketing': '퍼포먼스' }
   subLabels:     {},   // { 'marketing.performance': '매체별 분석' }
   customSubs:    {},   // { 'marketing': [{id, label}] }
-  dashboards:    {},   // { 'marketing.my_tab': { template, widgets } }
+  dashboards:    {},   // { 'section.sub.tabId': { template, widgets } }
+  l3tabs:        {},   // { 'section.sub': [{id, label}] }
 }
 
 /* ──────────────────────────────────────────
@@ -17,8 +18,7 @@ export const DEFAULT_CONFIG = {
 ─────────────────────────────────────────── */
 export const TEMPLATES = {
   A: {
-    id: 'A',
-    name: 'Template A',
+    id: 'A', name: 'Template A',
     desc: 'KPI 4개 · 시계열 · 바차트 + 테이블',
     preview: '▦▦▦▦ / ────── / ▬▬ ▤▤',
     slots: [
@@ -32,8 +32,7 @@ export const TEMPLATES = {
     ],
   },
   B: {
-    id: 'B',
-    name: 'Template B',
+    id: 'B', name: 'Template B',
     desc: 'KPI 3개 · 도넛 · 시계열',
     preview: '▦▦▦◎ / ────────',
     slots: [
@@ -46,8 +45,7 @@ export const TEMPLATES = {
     ],
   },
   C: {
-    id: 'C',
-    name: 'Template C',
+    id: 'C', name: 'Template C',
     desc: 'KPI 4개 · 시계열 + 도넛 · 테이블',
     preview: '▦▦▦▦ / ──◎ / ▤▤▤',
     slots: [
@@ -61,8 +59,7 @@ export const TEMPLATES = {
     ],
   },
   D: {
-    id: 'D',
-    name: 'Template D',
+    id: 'D', name: 'Template D',
     desc: '미니멀 — KPI 6개 · 시계열',
     preview: '▦▦▦ / ▦▦▦ / ──────',
     slots: [
@@ -80,13 +77,13 @@ export const TEMPLATES = {
 }
 
 /* ──────────────────────────────────────────
-   위젯 타입 정의
+   위젯 타입
 ─────────────────────────────────────────── */
 export const WIDGET_TYPES = [
-  { id:'kpi',        label:'KPI 카드',    icon:'💳' },
-  { id:'timeseries', label:'시계열 차트', icon:'📈' },
-  { id:'bar',        label:'바 차트',     icon:'📊' },
-  { id:'donut',      label:'도넛 차트',   icon:'🍩' },
+  { id:'kpi',        label:'KPI 카드',      icon:'💳' },
+  { id:'timeseries', label:'시계열 차트',   icon:'📈' },
+  { id:'bar',        label:'바 차트',       icon:'📊' },
+  { id:'donut',      label:'도넛 차트',     icon:'🍩' },
   { id:'table',      label:'데이터 테이블', icon:'📋' },
 ]
 
@@ -94,23 +91,24 @@ export const WIDGET_TYPES = [
    지표 목록
 ─────────────────────────────────────────── */
 export const METRICS = [
-  { id:'cost',     label:'광고비',    field:'Cost (Channel)',       fmt:'currency' },
-  { id:'revenue',  label:'매출',      field:'구매액 (App+Web)',      fmt:'currency' },
-  { id:'roas',     label:'ROAS',      field:null,                  fmt:'roas',    derived:true },
-  { id:'installs', label:'인스톨',    field:'Installs (App)',       fmt:'number' },
-  { id:'conv',     label:'구매',      field:'구매 완료 (App+Web)',   fmt:'number' },
-  { id:'signup',   label:'회원가입',  field:'회원가입 (App+Web)',    fmt:'number' },
-  { id:'impr',     label:'노출',      field:'Impressions (Channel)', fmt:'number' },
-  { id:'clicks',   label:'클릭',      field:'Clicks (Channel)',     fmt:'number' },
-  { id:'ctr',      label:'CTR',       field:null,                  fmt:'pct',     derived:true },
-  { id:'cpc',      label:'CPC',       field:'CPC (Channel)',        fmt:'currency' },
+  { id:'cost',     label:'광고비',   field:'Cost (Channel)',        fmt:'currency' },
+  { id:'revenue',  label:'매출',     field:'구매액 (App+Web)',       fmt:'currency' },
+  { id:'roas',     label:'ROAS',     field:null,                   fmt:'roas',    derived:true },
+  { id:'installs', label:'인스톨',   field:'Installs (App)',        fmt:'number' },
+  { id:'conv',     label:'구매',     field:'구매 완료 (App+Web)',    fmt:'number' },
+  { id:'signup',   label:'회원가입', field:'회원가입 (App+Web)',     fmt:'number' },
+  { id:'impr',     label:'노출',     field:'Impressions (Channel)', fmt:'number' },
+  { id:'clicks',   label:'클릭',     field:'Clicks (Channel)',      fmt:'number' },
+  { id:'ctr',      label:'CTR',      field:null,                   fmt:'pct',     derived:true },
+  { id:'cpc',      label:'CPC',      field:'CPC (Channel)',         fmt:'currency' },
 ]
 
+/* GROUP_BY: channel은 DB 컬럼명 그대로 소문자 사용 */
 export const GROUP_BY = [
-  { id:'Channel',    label:'채널' },
-  { id:'Campaign',   label:'캠페인' },
-  { id:'Ad Group',   label:'광고그룹' },
-  { id:'Ad Creative',label:'크리에이티브' },
+  { id:'channel',     label:'채널'        },
+  { id:'Campaign',    label:'캠페인'      },
+  { id:'Ad Group',    label:'광고그룹'    },
+  { id:'Ad Creative', label:'크리에이티브' },
 ]
 
 /* ──────────────────────────────────────────
@@ -119,9 +117,9 @@ export const GROUP_BY = [
 export const DEFAULT_WIDGET_CONFIG = {
   kpi:        { metric:'cost',    label:'' },
   timeseries: { metrics:['cost','revenue'], title:'일별 트렌드' },
-  bar:        { metric:'cost',    groupBy:'Channel', title:'채널별 성과' },
-  donut:      { metric:'cost',    groupBy:'Channel', title:'구성 비율' },
-  table:      { metrics:['cost','installs','conv','revenue'], groupBy:'Channel', title:'성과 테이블' },
+  bar:        { metric:'cost',    groupBy:'channel', title:'채널별 성과' },
+  donut:      { metric:'cost',    groupBy:'channel', title:'구성 비율' },
+  table:      { metrics:['cost','installs','conv','revenue'], groupBy:'channel', title:'성과 테이블' },
 }
 
 /* ──────────────────────────────────────────
@@ -134,7 +132,7 @@ export function makeDashboard(templateId = 'A') {
   let kpiIdx = 0
   tpl.slots.forEach(slot => {
     const type = slot.defaultType
-    let cfg = { ...DEFAULT_WIDGET_CONFIG[type] }
+    const cfg  = { ...DEFAULT_WIDGET_CONFIG[type] }
     if (type === 'kpi') {
       cfg.metric = KPI_METRICS[kpiIdx % KPI_METRICS.length]
       cfg.label  = METRICS.find(m => m.id === cfg.metric)?.label || ''
@@ -142,7 +140,7 @@ export function makeDashboard(templateId = 'A') {
     }
     widgets[slot.id] = { type, config: cfg }
   })
-  return { template: templateId, widgets }
+  return { template: templateId, widgets, dataSource: { table: 'marketing_perf' } }
 }
 
 /* ──────────────────────────────────────────
@@ -161,54 +159,103 @@ export function useConfig() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   }, [])
 
-  /* 섹션 라벨 변경 */
+  /* ── L1/L2 라벨 ── */
   const setSectionLabel = (id, label) =>
     persist({ ...config, sectionLabels: { ...config.sectionLabels, [id]: label } })
 
-  /* 서브 라벨 변경 */
   const setSubLabel = (sectionId, subId, label) =>
     persist({ ...config, subLabels: { ...config.subLabels, [`${sectionId}.${subId}`]: label } })
 
-  /* 커스텀 서브탭 추가 */
+  /* ── L2 커스텀 서브탭 ── */
   const addCustomSub = (sectionId, label) => {
     const id  = `cx_${Date.now()}`
     const cur = config.customSubs[sectionId] || []
-    const dashboard = makeDashboard('A')
     persist({
       ...config,
       customSubs: { ...config.customSubs, [sectionId]: [...cur, { id, label }] },
-      dashboards: { ...config.dashboards, [`${sectionId}.${id}`]: dashboard },
     })
     return id
   }
 
-  /* 커스텀 서브탭 삭제 */
   const removeCustomSub = (sectionId, subId) => {
     const cur  = config.customSubs[sectionId] || []
+    // L3 탭 및 대시보드도 정리
+    const l3Key = `${sectionId}.${subId}`
+    const l3tabs = config.l3tabs[l3Key] || []
     const dash = { ...config.dashboards }
-    delete dash[`${sectionId}.${subId}`]
+    l3tabs.forEach(t => { delete dash[`${l3Key}.${t.id}`] })
+    const l3 = { ...config.l3tabs }
+    delete l3[l3Key]
     persist({
       ...config,
       customSubs: { ...config.customSubs, [sectionId]: cur.filter(s => s.id !== subId) },
       dashboards: dash,
+      l3tabs: l3,
     })
   }
 
-  /* 대시보드 저장 */
-  const saveDashboard = (sectionId, subId, dashboard) =>
-    persist({ ...config, dashboards: { ...config.dashboards, [`${sectionId}.${subId}`]: dashboard } })
+  /* ── L3 탭 ── */
+  const getL3Tabs = (sid, sub) =>
+    config.l3tabs[`${sid}.${sub}`] || []
 
-  /* 라벨 getter */
-  const getSectionLabel = id => config.sectionLabels[id] || null
-  const getSubLabel     = (sid, sub) => config.subLabels[`${sid}.${sub}`] || null
-  const getCustomSubs   = sid => config.customSubs[sid] || []
-  const getDashboard    = (sid, sub) => config.dashboards[`${sid}.${sub}`] || null
+  const addL3Tab = (sid, sub, label) => {
+    const id    = `t3_${Date.now()}`
+    const l3Key = `${sid}.${sub}`
+    const cur   = config.l3tabs[l3Key] || []
+    const dash  = makeDashboard('A')
+    persist({
+      ...config,
+      l3tabs:     { ...config.l3tabs,     [l3Key]:           [...cur, { id, label }] },
+      dashboards: { ...config.dashboards, [`${l3Key}.${id}`]: dash                  },
+    })
+    return id
+  }
+
+  const removeL3Tab = (sid, sub, tabId) => {
+    const l3Key = `${sid}.${sub}`
+    const cur   = config.l3tabs[l3Key] || []
+    const dash  = { ...config.dashboards }
+    delete dash[`${l3Key}.${tabId}`]
+    persist({
+      ...config,
+      l3tabs:     { ...config.l3tabs, [l3Key]: cur.filter(t => t.id !== tabId) },
+      dashboards: dash,
+    })
+  }
+
+  const renameL3Tab = (sid, sub, tabId, label) => {
+    const l3Key = `${sid}.${sub}`
+    const cur   = config.l3tabs[l3Key] || []
+    persist({
+      ...config,
+      l3tabs: {
+        ...config.l3tabs,
+        [l3Key]: cur.map(t => t.id === tabId ? { ...t, label } : t),
+      },
+    })
+  }
+
+  /* ── 대시보드 (L3 tabId 지원) ── */
+  const getDashboard = (sid, sub, tabId = null) => {
+    const key = tabId ? `${sid}.${sub}.${tabId}` : `${sid}.${sub}`
+    return config.dashboards[key] || null
+  }
+
+  const saveDashboard = (sid, sub, dashboard, tabId = null) => {
+    const key = tabId ? `${sid}.${sub}.${tabId}` : `${sid}.${sub}`
+    persist({ ...config, dashboards: { ...config.dashboards, [key]: dashboard } })
+  }
+
+  /* ── getter ── */
+  const getSectionLabel = id       => config.sectionLabels[id]              || null
+  const getSubLabel     = (sid, s) => config.subLabels[`${sid}.${s}`]       || null
+  const getCustomSubs   = sid      => config.customSubs[sid]                || []
 
   return {
     config,
-    getSectionLabel, getSubLabel, getCustomSubs, getDashboard,
+    getSectionLabel, getSubLabel, getCustomSubs, getDashboard, saveDashboard,
     setSectionLabel, setSubLabel,
     addCustomSub, removeCustomSub,
-    saveDashboard,
+    getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   }
 }
