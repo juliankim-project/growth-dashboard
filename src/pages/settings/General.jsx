@@ -23,7 +23,7 @@ export default function General({ dark }) {
   const label = `block text-xs font-semibold mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`
 
   return (
-    <div className="p-6 max-w-lg flex flex-col gap-5">
+    <div className="p-6 max-w-lg flex flex-col gap-5 h-full overflow-y-auto">
       <div>
         <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>일반 설정</h2>
         <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>프로젝트 기본 설정</p>

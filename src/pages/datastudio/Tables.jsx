@@ -40,7 +40,7 @@ export default function Tables({ dark }) {
   if (loading) return <Spinner dark={dark} />
 
   return (
-    <div className="p-6 flex flex-col gap-4">
+    <div className="p-6 flex flex-col gap-4 h-full overflow-y-auto">
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>테이블 관리</h2>

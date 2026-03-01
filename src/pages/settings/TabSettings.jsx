@@ -484,7 +484,7 @@ export default function TabSettings({
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }))
 
   return (
-    <div className="p-6 flex flex-col gap-4 max-w-2xl overflow-y-auto">
+    <div className="p-6 flex flex-col gap-4 max-w-2xl h-full overflow-y-auto">
       {/* 헤더 */}
       <div>
         <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>탭 설정</h2>

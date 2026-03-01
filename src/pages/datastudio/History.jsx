@@ -18,7 +18,7 @@ export default function History({ dark }) {
   const td = `px-4 py-3 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   return (
-    <div className="p-6 flex flex-col gap-5">
+    <div className="p-6 flex flex-col gap-5 h-full overflow-y-auto">
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>업로드 기록</h2>
