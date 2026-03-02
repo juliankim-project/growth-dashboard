@@ -313,7 +313,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, minHeight: slot.type === 'kpi' ? 120 : 220 }}
+      style={{ ...style, minHeight: slot.type === 'kpi' ? 88 : 210 }}
       className={`${slot.span} relative`}
     >
       {editMode && (
@@ -534,7 +534,9 @@ const SPAN_OPTS = [
   { value: 'col-span-1', label: '1열',  cols: 1 },
   { value: 'col-span-2', label: '2열',  cols: 2 },
   { value: 'col-span-3', label: '3열',  cols: 3 },
-  { value: 'col-span-4', label: '전체', cols: 4 },
+  { value: 'col-span-4', label: '4열',  cols: 4 },
+  { value: 'col-span-5', label: '5열',  cols: 5 },
+  { value: 'col-span-6', label: '전체', cols: 6 },
 ]
 
 const WIDGET_META = {
@@ -573,7 +575,7 @@ function normalizeDashboard(d) {
 function AddWidgetModal({ dark, onAdd, onClose }) {
   const [step,   setStep]   = useState(1)   // 1:타입 2:크기 3:설정
   const [type,   setType]   = useState('kpi')
-  const [span,   setSpan]   = useState('col-span-2')
+  const [span,   setSpan]   = useState('col-span-1')
   const [config, setConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
@@ -671,9 +673,9 @@ function AddWidgetModal({ dark, onAdd, onClose }) {
                 {SPAN_OPTS.map(opt => (
                   <button key={opt.value} onClick={() => { setSpan(opt.value); setStep(3) }}
                     className={S.spanCard(span === opt.value)}>
-                    <div className="w-full grid grid-cols-4 gap-0.5 mb-1">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className={`h-3 rounded-sm transition-colors ${
+                    <div className="w-full grid grid-cols-6 gap-0.5 mb-1">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className={`h-2.5 rounded-sm transition-colors ${
                           i < opt.cols
                             ? 'bg-indigo-500'
                             : dark ? 'bg-[#252836]' : 'bg-slate-100'}`}/>
@@ -891,7 +893,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
   const editingSlot = editSlot ? slots.find(s => s.id === editSlot) : null
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* 툴바 */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
@@ -960,7 +962,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={slots.map(s => s.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-6 gap-3">
               {slots.map(slot => (
                 <SortableCard
                   key={slot.id}
@@ -976,7 +978,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
               {/* 편집모드: 인라인 추가 버튼 */}
               {editMode && (
                 <div onClick={() => setShowAdd(true)}
-                  className={`col-span-1 min-h-[120px] rounded-xl border-2 border-dashed cursor-pointer
+                  className={`col-span-1 min-h-[88px] rounded-xl border-2 border-dashed cursor-pointer
                     flex flex-col items-center justify-center gap-2 transition-colors select-none
                     ${dark
                       ? 'border-[#252836] text-slate-600 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
@@ -992,7 +994,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
           <DragOverlay>
             {activeSlot && (
               <div className={`${activeSlot.span} rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl`}
-                style={{ minHeight: activeSlot.type === 'kpi' ? 120 : 220 }}>
+                style={{ minHeight: activeSlot.type === 'kpi' ? 88 : 210 }}>
                 {renderWidget(activeSlot.type, data, activeSlot.config, dark)}
               </div>
             )}

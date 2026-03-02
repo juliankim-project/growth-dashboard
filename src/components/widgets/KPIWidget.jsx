@@ -31,22 +31,20 @@ export default function KPIWidget({ data, config, dark }) {
 
   return (
     <div className={`
-      rounded-xl p-5 border flex flex-col gap-3 h-full
+      rounded-xl px-4 py-3 border flex flex-col gap-1.5 h-full
       transition-all hover:shadow-md hover:-translate-y-0.5
       ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
     `}>
-      <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-[10px] font-bold uppercase tracking-widest truncate ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
           {title}
         </span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${colorCls}`}>
+        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs shrink-0 ${colorCls}`}>
           {ICON_MAP[metric] || '📊'}
         </div>
       </div>
-      <div>
-        <div className={`text-2xl font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
-          {display}
-        </div>
+      <div className={`text-lg font-bold leading-tight ${dark ? 'text-white' : 'text-slate-800'}`}>
+        {display}
       </div>
     </div>
   )
