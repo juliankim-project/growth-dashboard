@@ -313,7 +313,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, minHeight: slot.type === 'kpi' ? 88 : 210 }}
+      style={{ ...style, ...(slot.type !== 'kpi' && { minHeight: 210 }) }}
       className={`${slot.span} relative`}
     >
       {editMode && (
@@ -994,7 +994,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
           <DragOverlay>
             {activeSlot && (
               <div className={`${activeSlot.span} rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl`}
-                style={{ minHeight: activeSlot.type === 'kpi' ? 88 : 210 }}>
+                style={{ ...(activeSlot.type !== 'kpi' && { minHeight: 210 }) }}>
                 {renderWidget(activeSlot.type, data, activeSlot.config, dark)}
               </div>
             )}

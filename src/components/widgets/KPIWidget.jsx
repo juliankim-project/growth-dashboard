@@ -31,7 +31,7 @@ export default function KPIWidget({ data, config, dark }) {
 
   return (
     <div className={`
-      rounded-xl px-4 py-3 border flex flex-col gap-1.5 h-full
+      rounded-xl px-4 py-3 border flex flex-col gap-1.5
       transition-all hover:shadow-md hover:-translate-y-0.5
       ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
     `}>
