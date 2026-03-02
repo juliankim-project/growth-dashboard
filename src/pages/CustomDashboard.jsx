@@ -297,16 +297,18 @@ function WidgetEditor({ slotId, widget, dark, onSave, onClose }) {
 ══════════════════════════════════════════ */
 /* 1px 행 기반 masonry: rowSpan = ceil((height + gap) / (1 + gap)) */
 const MGAP = 12  // gap-3
+const COLS  = 6  // grid-cols-6
 
-function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, dark }) {
+function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, dark, gridRef }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
   } = useSortable({ id: slot.id, disabled: !editMode })
 
   /* ── masonry 높이 측정 ── */
-  const innerRef  = useRef(null)
-  const [rowSpan, setRowSpan] = useState(20)
+  const innerRef = useRef(null)
+  const [rowSpan,  setRowSpan]  = useState(20)
+  const [resizing, setResizing] = useState(false)
 
   useEffect(() => {
     const el = innerRef.current
@@ -321,66 +323,91 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
     return () => ro.disconnect()
   }, [slot.type, slot.config, data])
 
+  /* ── 오른쪽 드래그 리사이즈 ── */
+  const handleResizeStart = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const grid = gridRef?.current
+    if (!grid) return
+
+    const startX    = e.clientX
+    const startCols = parseInt(slot.span.replace('col-span-', '')) || 1
+    const colUnit   = (grid.getBoundingClientRect().width + MGAP) / COLS
+
+    setResizing(true)
+
+    const onMove = (ev) => {
+      const dx      = ev.clientX - startX
+      const delta   = Math.round(dx / colUnit)
+      const newCols = Math.max(1, Math.min(COLS, startCols + delta))
+      onSpanChange(slot.id, `col-span-${newCols}`)
+    }
+    const onUp = () => {
+      setResizing(false)
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup',   onUp)
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup',   onUp)
+  }
+
   const meta = WIDGET_META[slot.type] || WIDGET_META.kpi
 
   const dndStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity:  isDragging ? 0 : 1,
-    gridRow:  `span ${rowSpan}`,
+    opacity: isDragging ? 0 : 1,
+    gridRow: `span ${rowSpan}`,
   }
 
   return (
     <div ref={setNodeRef} style={dndStyle} className={`${slot.span} relative`}>
-      {/* 내용 측정용 wrapper */}
       <div ref={innerRef}>
         {editMode && (
           <>
-            {/* 드래그 핸들 */}
+            {/* 드래그 이동 핸들 (상단 중앙) */}
             <div
               {...attributes}
               {...listeners}
-              className={`absolute top-2 left-1/2 -translate-x-1/2 z-20
-                flex items-center gap-1 px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
+              className={`absolute top-1.5 left-1/2 -translate-x-1/2 z-20
+                flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
                 ${dark
                   ? 'bg-[#0F1117]/90 text-slate-500 hover:text-slate-300 border border-[#252836]'
                   : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}
             >
-              <GripVertical size={12}/>
+              <GripVertical size={11}/>
             </div>
 
             {/* 삭제 버튼 */}
             <button
               onClick={() => onDelete(slot.id)}
-              className="absolute -top-2.5 -right-2.5 z-20 w-6 h-6 rounded-full
+              className="absolute -top-2 -right-2 z-20 w-5 h-5 rounded-full
                 bg-red-500 hover:bg-red-600 text-white shadow-lg
-                flex items-center justify-center text-sm leading-none font-bold
+                flex items-center justify-center text-xs leading-none font-bold
                 transition-transform hover:scale-110">
               ×
             </button>
 
-            {/* 크기 버튼 */}
-            <div className="absolute top-2 left-2 z-20 flex gap-0.5">
-              {SPAN_OPTS.map(opt => (
-                <button key={opt.value} onClick={() => onSpanChange(slot.id, opt.value)}
-                  title={opt.label}
-                  className={`w-5 h-5 rounded text-[9px] font-bold transition-colors
-                    ${slot.span === opt.value
-                      ? 'bg-indigo-500 text-white'
-                      : dark
-                        ? 'bg-[#0F1117]/80 text-slate-400 hover:bg-indigo-500/20 hover:text-indigo-300'
-                        : 'bg-white/90 text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 shadow'}`}>
-                  {opt.cols}
-                </button>
-              ))}
-            </div>
+            {/* 오른쪽 리사이즈 핸들 */}
+            <div
+              onPointerDown={handleResizeStart}
+              title="드래그해서 너비 조절"
+              className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-[5px] z-20
+                w-2.5 h-10 rounded-full cursor-col-resize select-none
+                transition-colors
+                ${resizing
+                  ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40'
+                  : dark
+                    ? 'bg-[#252836] hover:bg-indigo-500'
+                    : 'bg-slate-200 hover:bg-indigo-500'}`}
+            />
 
             {/* 편집 버튼 */}
             <button
               onClick={() => onEdit(slot.id)}
-              className="absolute bottom-2 right-2 z-20 flex items-center gap-1
-                px-2.5 py-1 bg-indigo-600 text-white text-[10px] rounded-lg shadow-lg hover:bg-indigo-700">
-              <Settings2 size={10}/> {meta.icon} 편집
+              className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1
+                px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
+              <Settings2 size={9}/> 편집
             </button>
           </>
         )}
@@ -852,6 +879,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
   const [editSlot,   setEditSlot]   = useState(null)   // 편집 모달 대상 slotId
   const [showAdd,    setShowAdd]    = useState(false)
   const [activeId,   setActiveId]   = useState(null)   // 드래그 중인 slotId
+  const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
 
   // 탭 전환 시 초기화
   useEffect(() => {
@@ -981,7 +1009,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={slots.map(s => s.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-6 gap-3" style={{ gridAutoRows: '1px' }}>
+            <div ref={gridRef} className="grid grid-cols-6 gap-3" style={{ gridAutoRows: '1px' }}>
               {slots.map(slot => (
                 <SortableCard
                   key={slot.id}
@@ -992,6 +1020,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
                   onSpanChange={handleSpanChange}
                   data={data}
                   dark={dark}
+                  gridRef={gridRef}
                 />
               ))}
               {/* 편집모드: 인라인 추가 버튼 */}
