@@ -529,10 +529,29 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
    - 호버 ×: 탭 삭제
    - + 탭 추가 버튼 (추가 후 자동 이동 없음)
 ══════════════════════════════════════════ */
-function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark, rightSlot }) {
+function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot }) {
   const [addingTab, setAddingTab] = useState(false)
   const [newLabel,  setNewLabel]  = useState('')
   const [renaming,  setRenaming]  = useState(null) // { id, value }
+
+  /* ── 탭 가로 드래그 순서 변경 ── */
+  const tabDragFrom = useRef(null)
+  const tabDragTo   = useRef(null)
+  const [draggingTabId, setDraggingTabId] = useState(null)
+
+  const onTabDragStart = (e, idx, tabId) => {
+    tabDragFrom.current = idx; setDraggingTabId(tabId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const onTabDragEnter = (e, idx) => { tabDragTo.current = idx; e.preventDefault() }
+  const onTabDragOver  = e => e.preventDefault()
+  const onTabDragEnd   = () => {
+    const from = tabDragFrom.current, to = tabDragTo.current
+    if (from !== null && to !== null && from !== to) {
+      onReorder?.(from, to)
+    }
+    tabDragFrom.current = null; tabDragTo.current = null; setDraggingTabId(null)
+  }
 
   const commitAdd = () => {
     if (!newLabel.trim()) { setAddingTab(false); return }
@@ -554,8 +573,15 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark, r
       {/* 탭 목록 (스크롤 가능) */}
       <div className="flex items-center gap-0.5 px-5 pt-3 overflow-x-auto flex-1 min-w-0">
 
-      {tabs.map(tab => (
-        <div key={tab.id} className="relative group shrink-0">
+      {tabs.map((tab, tabIdx) => (
+        <div key={tab.id}
+          draggable
+          onDragStart={e => onTabDragStart(e, tabIdx, tab.id)}
+          onDragEnter={e => onTabDragEnter(e, tabIdx)}
+          onDragOver={onTabDragOver}
+          onDragEnd={onTabDragEnd}
+          className={`relative group shrink-0 transition-opacity ${draggingTabId === tab.id ? 'opacity-30' : ''}`}
+        >
           {renaming?.id === tab.id ? (
             <input
               autoFocus
@@ -574,9 +600,9 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark, r
             <button
               onClick={() => onSelect(tab.id)}
               onDoubleClick={() => setRenaming({ id: tab.id, value: tab.label })}
-              title="더블클릭으로 이름 변경"
+              title="더블클릭으로 이름 변경 · 드래그로 순서 변경"
               className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium
-                transition-colors whitespace-nowrap
+                transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
                 ${activeId === tab.id
                   ? dark
                     ? 'border-indigo-500 text-white bg-[#1A1D27]'
@@ -1199,6 +1225,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         onAdd={handleAddTab}
         onRemove={handleRemoveTab}
         onRename={(tabId, label) => tabsConfig?.renameTab(tabId, label)}
+        onReorder={(from, to) => tabsConfig?.reorderTabs?.(from, to)}
         dark={dark}
         rightSlot={activeTab ? (
           editMode ? (

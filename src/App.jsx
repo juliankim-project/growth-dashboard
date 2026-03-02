@@ -84,10 +84,11 @@ function Dashboard({ dark, setDark, user, signOut }) {
   /* ── tabsConfig 생성 헬퍼 (l3sub 지원) ── */
   const makeTabsConfig = (section, sub, l3sub = null) => ({
     tabs:         cfg.getL3Tabs(section, sub, l3sub),
-    addTab:       (label)         => cfg.addL3Tab(section, sub, label, l3sub),
-    removeTab:    (tabId)         => cfg.removeL3Tab(section, sub, tabId, l3sub),
-    renameTab:    (tabId, label)  => cfg.renameL3Tab(section, sub, tabId, label, l3sub),
-    getDashboard: (tabId)         => cfg.getDashboard(section, sub, tabId, l3sub),
+    addTab:       (label)            => cfg.addL3Tab(section, sub, label, l3sub),
+    removeTab:    (tabId)            => cfg.removeL3Tab(section, sub, tabId, l3sub),
+    renameTab:    (tabId, label)     => cfg.renameL3Tab(section, sub, tabId, label, l3sub),
+    reorderTabs:  (fromIdx, toIdx)   => cfg.reorderL3Tabs(section, sub, fromIdx, toIdx, l3sub),
+    getDashboard: (tabId)            => cfg.getDashboard(section, sub, tabId, l3sub),
     saveDashboard:(dashboard, tabId) => cfg.saveDashboard(section, sub, dashboard, tabId, l3sub),
   })
 
@@ -152,6 +153,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         getSubLabel={cfg.getSubLabel}
         getCustomSubs={cfg.getCustomSubs}
         getL3Subs={cfg.getL3Subs}
+        reorderL3Subs={cfg.reorderL3Subs}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header

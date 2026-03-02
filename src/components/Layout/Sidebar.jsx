@@ -56,11 +56,12 @@ const Icon = ({ name, size=16, className='' }) => {
   const C = ICONS[name]; return C ? <C size={size} className={className}/> : null
 }
 
-const STORAGE_ORDER = 'sidebar_order_v2'
-const STORAGE_OPEN  = 'sidebar_open_v2'
+const STORAGE_ORDER     = 'sidebar_order_v2'
+const STORAGE_OPEN      = 'sidebar_open_v2'
+const STORAGE_SUB_ORDER = 'sidebar_sub_order_v1'
 
 /* ─────────── 메인 컴포넌트 ─────────── */
-export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs, getL3Subs }) {
+export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs, getL3Subs, reorderL3Subs }) {
 
   const [sections, setSections] = useState(() => {
     try {
@@ -81,14 +82,33 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
     } catch { return { overview: true } }
   })
 
+  /* L2 서브 커스텀 순서 (섹션별, localStorage) */
+  const [subOrders, setSubOrders] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_SUB_ORDER) || '{}') } catch { return {} }
+  })
+
   /* L2 서브별 L3 서서브 열림 상태 */
   const [l3Open, setL3Open] = useState({})
 
+  /* ── L1 섹션 드래그 refs ── */
   const dragIdx = useRef(null)
   const overIdx = useRef(null)
   const [dragId, setDragId] = useState(null)
 
-  /* nav 변경 시 해당 섹션 자동 오픈 (외부에서 setNav 호출될 때 대응) */
+  /* ── L2 서브 드래그 refs ── */
+  const subDragSec  = useRef(null)
+  const subDragFrom = useRef(null)
+  const subDragTo   = useRef(null)
+  const [subDragId, setSubDragId] = useState(null)
+
+  /* ── L3 서서브 드래그 refs ── */
+  const l3DragSec  = useRef(null)
+  const l3DragSub  = useRef(null)
+  const l3DragFrom = useRef(null)
+  const l3DragTo   = useRef(null)
+  const [l3DragId, setL3DragId] = useState(null)
+
+  /* nav 변경 시 해당 섹션 자동 오픈 */
   useEffect(() => {
     setOpen(prev => ({ ...prev, [nav.section]: true }))
   }, [nav.section])
@@ -107,6 +127,9 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
   useEffect(() => {
     localStorage.setItem(STORAGE_OPEN, JSON.stringify(open))
   }, [open])
+  useEffect(() => {
+    localStorage.setItem(STORAGE_SUB_ORDER, JSON.stringify(subOrders))
+  }, [subOrders])
 
   const toggleSection = (sec) => {
     const isOpen = !!open[sec.id]
@@ -131,12 +154,15 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
     setL3Open(prev => ({ ...prev, [key]: !wasOpen }))
     setOpen(prev => ({ ...prev, [sectionId]: true }))
     if (!wasOpen) {
-      // 열릴 때 첫 번째 L3 서서브로 이동
       setNav({ section: sectionId, sub: subId, l3sub: l3subs[0].id })
     }
   }
 
-  const onDragStart = (e, idx) => { dragIdx.current = idx; setDragId(sections[idx].id); e.dataTransfer.effectAllowed = 'move' }
+  /* ── L1 섹션 드래그 핸들러 ── */
+  const onDragStart = (e, idx) => {
+    dragIdx.current = idx; setDragId(sections[idx].id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
   const onDragEnter = (e, idx) => { overIdx.current = idx; e.preventDefault() }
   const onDragOver  = e => e.preventDefault()
   const onDragEnd   = () => {
@@ -146,6 +172,52 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
       setSections(next)
     }
     dragIdx.current = null; overIdx.current = null; setDragId(null)
+  }
+
+  /* ── L2 서브 드래그 핸들러 ── */
+  const onSubDragStart = (e, secId, subIdx, subId) => {
+    e.stopPropagation()
+    subDragSec.current = secId; subDragFrom.current = subIdx; setSubDragId(subId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const onSubDragEnter = (e, subIdx) => {
+    e.stopPropagation(); e.preventDefault()
+    subDragTo.current = subIdx
+  }
+  const onSubDragOver  = e => { e.stopPropagation(); e.preventDefault() }
+  const onSubDragEnd   = (e, secId, orderedSubs) => {
+    e.stopPropagation()
+    const from = subDragFrom.current, to = subDragTo.current
+    if (from !== null && to !== null && from !== to && subDragSec.current === secId) {
+      const newOrder = orderedSubs.map(s => s.id)
+      const [item] = newOrder.splice(from, 1)
+      newOrder.splice(to, 0, item)
+      setSubOrders(prev => ({ ...prev, [secId]: newOrder }))
+    }
+    subDragSec.current = null; subDragFrom.current = null; subDragTo.current = null; setSubDragId(null)
+  }
+
+  /* ── L3 서서브 드래그 핸들러 ── */
+  const onL3DragStart = (e, secId, subId, l3Idx, l3Id) => {
+    e.stopPropagation()
+    l3DragSec.current = secId; l3DragSub.current = subId
+    l3DragFrom.current = l3Idx; setL3DragId(l3Id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const onL3DragEnter = (e, l3Idx) => {
+    e.stopPropagation(); e.preventDefault()
+    l3DragTo.current = l3Idx
+  }
+  const onL3DragOver  = e => { e.stopPropagation(); e.preventDefault() }
+  const onL3DragEnd   = e => {
+    e.stopPropagation()
+    const from = l3DragFrom.current, to = l3DragTo.current
+    const sec = l3DragSec.current, sub = l3DragSub.current
+    if (from !== null && to !== null && from !== to && sec && sub) {
+      reorderL3Subs?.(sec, sub, from, to)
+    }
+    l3DragSec.current = null; l3DragSub.current = null
+    l3DragFrom.current = null; l3DragTo.current = null; setL3DragId(null)
   }
 
   const t = dark
@@ -171,8 +243,8 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
         </p>
 
         {sections.map((sec, idx) => {
-          const isOpen    = !!open[sec.id]
-          const isActive  = nav.section === sec.id
+          const isOpen     = !!open[sec.id]
+          const isActive   = nav.section === sec.id
           const isDragging = dragId === sec.id
 
           /* 커스텀 라벨 적용 */
@@ -190,6 +262,15 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
               isCustom: true,
             })),
           ]
+
+          /* L2 서브 순서 적용 */
+          const savedSubOrder = subOrders[sec.id] || []
+          const orderedSubs   = savedSubOrder.length
+            ? [
+                ...savedSubOrder.map(id => allSubs.find(s => s.id === id)).filter(Boolean),
+                ...allSubs.filter(s => !savedSubOrder.includes(s.id)),
+              ]
+            : allSubs
 
           return (
             <div key={sec.id}
@@ -216,27 +297,37 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
 
               {/* 서브메뉴 */}
               {isOpen && (
-                <div className="pl-6 pr-1 pb-1.5 flex flex-col gap-0.5">
-                  {allSubs.map(sub => {
-                    const subLabel   = getSubLabel?.(sec.id, sub.id) || sub.label
-                    const l3subs     = getL3Subs?.(sec.id, sub.id) || []
-                    const hasL3Subs  = l3subs.length > 0
-                    const l3key      = `${sec.id}.${sub.id}`
-                    const l3IsOpen   = !!l3Open[l3key]
-                    // L3 서서브가 있으면 그 중 하나가 active일 때 L2는 semi-active
+                <div className="pl-4 pr-1 pb-1.5 flex flex-col gap-0.5">
+                  {orderedSubs.map((sub, subIdx) => {
+                    const subLabel    = getSubLabel?.(sec.id, sub.id) || sub.label
+                    const l3subs      = getL3Subs?.(sec.id, sub.id) || []
+                    const hasL3Subs   = l3subs.length > 0
+                    const l3key       = `${sec.id}.${sub.id}`
+                    const l3IsOpen    = !!l3Open[l3key]
                     const l3subActive = isActive && nav.sub === sub.id && nav.l3sub && l3subs.some(s => s.id === nav.l3sub)
                     const subActive   = isActive && nav.sub === sub.id && !nav.l3sub
                     const anyActive   = subActive || l3subActive
+                    const isSubDragging = subDragId === sub.id
 
                     return (
-                      <div key={sub.id}>
+                      <div key={sub.id}
+                        draggable
+                        onDragStart={e => onSubDragStart(e, sec.id, subIdx, sub.id)}
+                        onDragEnter={e => onSubDragEnter(e, subIdx)}
+                        onDragOver={onSubDragOver}
+                        onDragEnd={e => onSubDragEnd(e, sec.id, orderedSubs)}
+                        className={`rounded-lg transition-all ${isSubDragging ? 'opacity-30' : ''}`}
+                      >
                         <button
                           onClick={() => handleSubClick(sec.id, sub.id)}
-                          className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all duration-150 text-left
+                          className={`w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-all duration-150 text-left group
                             ${subActive ? 'bg-indigo-600 text-white'
                               : l3subActive ? dark ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-50 text-indigo-700'
                               : `${t.text} ${t.hover}`}`}
                         >
+                          <GripVertical size={10}
+                            className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity
+                              ${subActive ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
                           <Icon name={sub.icon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
                           <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1`}>{subLabel}</span>
                           {sub.isCustom && !anyActive && (
@@ -252,18 +343,31 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
 
                         {/* L3 서서브 목록 */}
                         {hasL3Subs && l3IsOpen && (
-                          <div className="pl-5 pr-1 pb-0.5 flex flex-col gap-0.5">
-                            {l3subs.map(ls => {
-                              const l3Active = isActive && nav.sub === sub.id && nav.l3sub === ls.id
+                          <div className="pl-6 pr-1 pb-0.5 flex flex-col gap-0.5">
+                            {l3subs.map((ls, l3Idx) => {
+                              const l3Active    = isActive && nav.sub === sub.id && nav.l3sub === ls.id
+                              const isL3Dragging = l3DragId === ls.id
                               return (
-                                <button key={ls.id}
-                                  onClick={() => goTo(sec.id, sub.id, ls.id)}
-                                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left
-                                    ${l3Active ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
+                                <div key={ls.id}
+                                  draggable
+                                  onDragStart={e => onL3DragStart(e, sec.id, sub.id, l3Idx, ls.id)}
+                                  onDragEnter={e => onL3DragEnter(e, l3Idx)}
+                                  onDragOver={onL3DragOver}
+                                  onDragEnd={onL3DragEnd}
+                                  className={`rounded-lg transition-all ${isL3Dragging ? 'opacity-30' : ''}`}
                                 >
-                                  <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
-                                  <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
-                                </button>
+                                  <button
+                                    onClick={() => goTo(sec.id, sub.id, ls.id)}
+                                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left group
+                                      ${l3Active ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
+                                  >
+                                    <GripVertical size={9}
+                                      className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity
+                                        ${l3Active ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                                    <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
+                                    <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
+                                  </button>
+                                </div>
                               )
                             })}
                           </div>

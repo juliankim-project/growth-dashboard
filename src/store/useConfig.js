@@ -298,6 +298,15 @@ export function useConfig() {
     })
   }
 
+  const reorderL3Subs = (sid, sub, fromIdx, toIdx) => {
+    const key = `${sid}.${sub}`
+    const cur = [...(config.l3subs[key] || [])]
+    if (fromIdx < 0 || toIdx < 0 || fromIdx >= cur.length || toIdx >= cur.length) return
+    const [item] = cur.splice(fromIdx, 1)
+    cur.splice(toIdx, 0, item)
+    persist({ ...config, l3subs: { ...config.l3subs, [key]: cur } })
+  }
+
   /* ── L4 탭 (구 L3 탭, l3sub 선택 지원) ── */
   /* tabsScope: l3sub 있으면 'sid.sub.l3sub', 없으면 'sid.sub' */
   const _tabsScope = (sid, sub, l3sub) => l3sub ? `${sid}.${sub}.${l3sub}` : `${sid}.${sub}`
@@ -342,6 +351,15 @@ export function useConfig() {
     })
   }
 
+  const reorderL3Tabs = (sid, sub, fromIdx, toIdx, l3sub = null) => {
+    const scope = _tabsScope(sid, sub, l3sub)
+    const cur   = [...(config.l3tabs[scope] || [])]
+    if (fromIdx < 0 || toIdx < 0 || fromIdx >= cur.length || toIdx >= cur.length) return
+    const [item] = cur.splice(fromIdx, 1)
+    cur.splice(toIdx, 0, item)
+    persist({ ...config, l3tabs: { ...config.l3tabs, [scope]: cur } })
+  }
+
   /* ── 대시보드 (l3sub + tabId 지원) ── */
   const getDashboard = (sid, sub, tabId = null, l3sub = null) => {
     const base = _tabsScope(sid, sub, l3sub)
@@ -367,7 +385,7 @@ export function useConfig() {
     addCustomSub, removeCustomSub,
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
     getSubDataSource, setSubDataSource,
-    getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
-    getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
+    getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, reorderL3Subs,
+    getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, reorderL3Tabs,
   }
 }
