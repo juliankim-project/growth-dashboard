@@ -299,20 +299,24 @@ function WidgetEditor({ slotId, widget, dark, onSave, onClose }) {
 const MGAP = 12  // gap-3
 const COLS  = 6  // grid-cols-6
 
-function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, dark, gridRef }) {
+function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsChange, data, dark, gridRef }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
   } = useSortable({ id: slot.id, disabled: !editMode })
 
-  /* ── masonry 높이 측정 ── */
+  /* ── refs: dnd-kit + outerRef 동시 연결 ── */
   const innerRef = useRef(null)
+  const outerRef = useRef(null)
+  const setRefs  = useCallback((el) => { outerRef.current = el; setNodeRef(el) }, [setNodeRef])
+
+  /* ── masonry 높이 자동 측정 (rowsOverride 없을 때만) ── */
   const [rowSpan,  setRowSpan]  = useState(20)
   const [resizing, setResizing] = useState(false)
 
   useEffect(() => {
     const el = innerRef.current
-    if (!el) return
+    if (!el || slot.rowsOverride) return
     const calc = () => {
       const h = el.getBoundingClientRect().height
       if (h > 0) setRowSpan(Math.ceil((h + MGAP) / (1 + MGAP)))
@@ -321,9 +325,34 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
     const ro = new ResizeObserver(calc)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [slot.type, slot.config, data])
+  }, [slot.type, slot.config, data, slot.rowsOverride])
 
-  /* ── 오른쪽 드래그 리사이즈 ── */
+  /* 수동 높이 설정 시 rowsOverride 우선 사용 */
+  const effectiveRows = slot.rowsOverride ?? rowSpan
+
+  /* ── 스냅용: 이웃 카드의 row/col 스팬 수집 ── */
+  const neighborRowSpans = useCallback(() => {
+    const grid = gridRef?.current
+    if (!grid) return []
+    return [...grid.children]
+      .filter(c => c !== outerRef.current)
+      .map(c => parseInt(c.style.gridRow?.replace('span ', '') || '0'))
+      .filter(r => r > 0)
+  }, [gridRef])
+
+  const neighborColSpans = useCallback(() => {
+    const grid = gridRef?.current
+    if (!grid) return []
+    return [...grid.children]
+      .filter(c => c !== outerRef.current)
+      .map(c => {
+        const cls = [...c.classList].find(x => x.startsWith('col-span-'))
+        return cls ? parseInt(cls.replace('col-span-', '')) : 0
+      })
+      .filter(c => c > 0)
+  }, [gridRef])
+
+  /* ── 오른쪽 드래그 리사이즈 (가로 + 이웃 스냅) ── */
   const handleResizeStart = (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -333,14 +362,13 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
     const startX    = e.clientX
     const startCols = parseInt(slot.span.replace('col-span-', '')) || 1
     const colUnit   = (grid.getBoundingClientRect().width + MGAP) / COLS
-
     setResizing(true)
 
     const onMove = (ev) => {
-      const dx      = ev.clientX - startX
-      const delta   = Math.round(dx / colUnit)
-      const newCols = Math.max(1, Math.min(COLS, startCols + delta))
-      onSpanChange(slot.id, `col-span-${newCols}`)
+      const rawCols = Math.max(1, Math.min(COLS, startCols + Math.round((ev.clientX - startX) / colUnit)))
+      // 이웃 카드 너비에 자석 스냅 (같은 열 수면 즉시 흡착)
+      const snap = neighborColSpans().find(n => n === rawCols)
+      onSpanChange(slot.id, `col-span-${snap ?? rawCols}`)
     }
     const onUp = () => {
       setResizing(false)
@@ -351,18 +379,46 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
     document.addEventListener('pointerup',   onUp)
   }
 
-  const meta = WIDGET_META[slot.type] || WIDGET_META.kpi
+  /* ── 아래쪽 드래그 리사이즈 (세로 + 이웃 스냅) ── */
+  const handleBottomResizeStart = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const startY    = e.clientY
+    const startRows = effectiveRows
+    setResizing(true)
+
+    const onMove = (ev) => {
+      const rawRows = Math.max(10, startRows + Math.round((ev.clientY - startY) / (1 + MGAP)))
+      // 이웃 카드 높이에 자석 스냅 (±12 row 이내면 흡착)
+      const SNAP_DIST = 12
+      const snap = neighborRowSpans().find(n => Math.abs(rawRows - n) <= SNAP_DIST)
+      onRowsChange(slot.id, snap ?? rawRows)
+    }
+    const onUp = () => {
+      setResizing(false)
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup',   onUp)
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup',   onUp)
+  }
 
   const dndStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
-    gridRow: `span ${rowSpan}`,
+    gridRow: `span ${effectiveRows}`,
   }
 
+  /* rowsOverride 있으면 내부 div에 고정 높이 적용 */
+  const innerStyle = slot.rowsOverride
+    ? { height: `${slot.rowsOverride * (1 + MGAP) - MGAP}px`, overflow: 'hidden' }
+    : undefined
+
   return (
-    <div ref={setNodeRef} style={dndStyle} className={`${slot.span} relative`}>
-      <div ref={innerRef}>
+    <div ref={setRefs} style={dndStyle} className={`${slot.span} relative`}>
+      <div ref={innerRef} style={innerStyle}>
         {editMode && (
           <>
             {/* 드래그 이동 핸들 (상단 중앙) */}
@@ -388,13 +444,26 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, da
               ×
             </button>
 
-            {/* 오른쪽 리사이즈 핸들 */}
+            {/* 오른쪽 리사이즈 핸들 (가로) */}
             <div
               onPointerDown={handleResizeStart}
               title="드래그해서 너비 조절"
               className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-[5px] z-20
-                w-2.5 h-10 rounded-full cursor-col-resize select-none
-                transition-colors
+                w-2.5 h-10 rounded-full cursor-col-resize select-none transition-colors
+                ${resizing
+                  ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40'
+                  : dark
+                    ? 'bg-[#252836] hover:bg-indigo-500'
+                    : 'bg-slate-200 hover:bg-indigo-500'}`}
+            />
+
+            {/* 아래쪽 리사이즈 핸들 (세로) — 더블클릭으로 자동 높이 초기화 */}
+            <div
+              onPointerDown={handleBottomResizeStart}
+              onDoubleClick={(e) => { e.stopPropagation(); onRowsChange(slot.id, null) }}
+              title="드래그해서 높이 조절 · 더블클릭으로 자동"
+              className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[5px] z-20
+                h-2.5 w-10 rounded-full cursor-row-resize select-none transition-colors
                 ${resizing
                   ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40'
                   : dark
@@ -913,6 +982,10 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
     setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, span } : s) })
   }
 
+  const handleRowsChange = (id, rows) => {
+    setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, rowsOverride: rows ?? undefined } : s) })
+  }
+
   const handleWidgetSave = (slotId, widget) => {
     setDashboard({ ...norm, slots: slots.map(s => s.id === slotId ? { ...s, ...widget } : s) })
     setEditSlot(null)
@@ -1018,6 +1091,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
                   onEdit={setEditSlot}
                   onDelete={handleDeleteSlot}
                   onSpanChange={handleSpanChange}
+                  onRowsChange={handleRowsChange}
                   data={data}
                   dark={dark}
                   gridRef={gridRef}
