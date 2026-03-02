@@ -35,11 +35,13 @@ import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
 
 /* ────────────── 대시보드 메인 ────────────── */
 function Dashboard({ dark, setDark, user, signOut }) {
-  const [nav, setNav] = useState({ section: 'overview', sub: 'dashboard' })
+  const [nav, setNav] = useState({ section: 'overview', sub: 'dashboard', l3sub: null })
   const cfg = useConfig()
   const { dateRange, setPreset, setCustomRange, filterByDate } = useDateRange()
 
-  const key = `${nav.section}.${nav.sub}`
+  const key = nav.l3sub
+    ? `${nav.section}.${nav.sub}.${nav.l3sub}`
+    : `${nav.section}.${nav.sub}`
 
   /* ── nav 가드: 숨겨진 빌트인 탭에 있으면 같은 섹션 첫 번째 보이는 탭으로 이동 ── */
   useEffect(() => {
@@ -54,17 +56,39 @@ function Dashboard({ dark, setDark, user, signOut }) {
     const visibleBuiltin = sec.subs.find(s => !hiddenBuiltins.includes(s.id))
     const customSubs     = cfg.getCustomSubs(nav.section)
     const fallbackSub    = visibleBuiltin?.id ?? customSubs[0]?.id ?? 'dashboard'
-    setNav({ section: nav.section, sub: fallbackSub })
+    setNav({ section: nav.section, sub: fallbackSub, l3sub: null })
   }, [nav, cfg.config.deletedBuiltinSubs])
 
-  /* ── tabsConfig 생성 헬퍼 ── */
-  const makeTabsConfig = (section, sub) => ({
-    tabs:         cfg.getL3Tabs(section, sub),
-    addTab:       (label) => cfg.addL3Tab(section, sub, label),
-    removeTab:    (tabId) => cfg.removeL3Tab(section, sub, tabId),
-    renameTab:    (tabId, label) => cfg.renameL3Tab(section, sub, tabId, label),
-    getDashboard: (tabId) => cfg.getDashboard(section, sub, tabId),
-    saveDashboard:(dashboard, tabId) => cfg.saveDashboard(section, sub, dashboard, tabId),
+  /* ── nav 가드: L3 서서브 자동 선택 / 유효성 검사 ── */
+  useEffect(() => {
+    const currentKey = `${nav.section}.${nav.sub}`
+    // 고정 페이지는 l3sub 불필요
+    if (FIXED_MAP[currentKey]) return
+    if (nav.section === 'settings') return
+
+    const l3subs = cfg.config.l3subs?.[currentKey] || []
+
+    if (nav.l3sub) {
+      // 현재 l3sub 유효성 확인
+      if (!l3subs.find(s => s.id === nav.l3sub)) {
+        setNav(prev => ({ ...prev, l3sub: null }))
+      }
+    } else {
+      // l3sub 없을 때: l3subs가 있으면 첫 번째로 자동 이동
+      if (l3subs.length > 0) {
+        setNav(prev => ({ ...prev, l3sub: l3subs[0].id }))
+      }
+    }
+  }, [nav.section, nav.sub, nav.l3sub, cfg.config.l3subs])
+
+  /* ── tabsConfig 생성 헬퍼 (l3sub 지원) ── */
+  const makeTabsConfig = (section, sub, l3sub = null) => ({
+    tabs:         cfg.getL3Tabs(section, sub, l3sub),
+    addTab:       (label)         => cfg.addL3Tab(section, sub, label, l3sub),
+    removeTab:    (tabId)         => cfg.removeL3Tab(section, sub, tabId, l3sub),
+    renameTab:    (tabId, label)  => cfg.renameL3Tab(section, sub, tabId, label, l3sub),
+    getDashboard: (tabId)         => cfg.getDashboard(section, sub, tabId, l3sub),
+    saveDashboard:(dashboard, tabId) => cfg.saveDashboard(section, sub, dashboard, tabId, l3sub),
   })
 
   /* ── 페이지 결정 ── */
@@ -81,13 +105,17 @@ function Dashboard({ dark, setDark, user, signOut }) {
         onRemoveSub={(sid, sub) => {
           cfg.removeCustomSub(sid, sub)
           if (nav.section === sid && nav.sub === sub)
-            setNav({ section: sid, sub: 'dashboard' })
+            setNav({ section: sid, sub: 'dashboard', l3sub: null })
         }}
         onHideBuiltinSub={(sid, sub) => {
           cfg.hideBuiltinSub(sid, sub)
           // nav 가드 useEffect 가 자동으로 처리
         }}
         onShowBuiltinSub={cfg.showBuiltinSub}
+        getL3Subs={cfg.getL3Subs}
+        addL3Sub={cfg.addL3Sub}
+        removeL3Sub={cfg.removeL3Sub}
+        renameL3Sub={cfg.renameL3Sub}
         getL3Tabs={cfg.getL3Tabs}
         addL3Tab={cfg.addL3Tab}
         removeL3Tab={cfg.removeL3Tab}
@@ -108,7 +136,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         key={key}
         dark={dark}
         filterByDate={filterByDate}
-        tabsConfig={makeTabsConfig(nav.section, nav.sub)}
+        tabsConfig={makeTabsConfig(nav.section, nav.sub, nav.l3sub)}
         subDataSource={subDataSource}
       />
     )
@@ -123,6 +151,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         getSectionLabel={cfg.getSectionLabel}
         getSubLabel={cfg.getSubLabel}
         getCustomSubs={cfg.getCustomSubs}
+        getL3Subs={cfg.getL3Subs}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header

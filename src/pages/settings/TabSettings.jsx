@@ -170,24 +170,24 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
 }
 
 /* ─────────────────────────────────────────
-   L3 탭 칩 목록
+   L4 탭 칩 목록 (구 L3TabsRow, l3subId 지원 추가)
 ───────────────────────────────────────── */
-function L3TabsRow({ sectionId, subId, getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, dark }) {
-  const tabs = getL3Tabs(sectionId, subId)
+function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, dark }) {
+  const tabs = getL3Tabs(sectionId, subId, l3subId)
   const [adding,   setAdding]   = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [renaming, setRenaming] = useState(null)
 
   const commitAdd = () => {
     if (!newLabel.trim()) { setAdding(false); return }
-    addL3Tab(sectionId, subId, newLabel.trim())
+    addL3Tab(sectionId, subId, newLabel.trim(), l3subId)
     setNewLabel('')
     setAdding(false)
   }
 
   const commitRename = () => {
     if (!renaming) return
-    renameL3Tab(sectionId, subId, renaming.id, renaming.value.trim() || renaming.prev)
+    renameL3Tab(sectionId, subId, renaming.id, renaming.value.trim() || renaming.prev, l3subId)
     setRenaming(null)
   }
 
@@ -224,7 +224,7 @@ function L3TabsRow({ sectionId, subId, getL3Tabs, addL3Tab, removeL3Tab, renameL
             </span>
           )}
           <button
-            onClick={() => { if (confirm(`"${tab.label}" 탭을 삭제할까요?`)) removeL3Tab(sectionId, subId, tab.id) }}
+            onClick={() => { if (confirm(`"${tab.label}" 탭을 삭제할까요?`)) removeL3Tab(sectionId, subId, tab.id, l3subId) }}
             className="opacity-0 group-hover/chip:opacity-100 ml-0.5 text-[9px]
               leading-none hover:text-red-400 transition-opacity"
             title="탭 삭제"
@@ -275,22 +275,153 @@ function L3TabsRow({ sectionId, subId, getL3Tabs, addL3Tab, removeL3Tab, renameL
 }
 
 /* ─────────────────────────────────────────
+   L3 서서브 관리 (새 레벨)
+───────────────────────────────────────── */
+function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, dark }) {
+  const l3subs = getL3Subs(sectionId, subId)
+  const [openSubs,  setOpenSubs]  = useState({})
+  const [adding,    setAdding]    = useState(false)
+  const [newLabel,  setNewLabel]  = useState('')
+
+  const commitAdd = () => {
+    if (!newLabel.trim()) { setAdding(false); return }
+    addL3Sub(sectionId, subId, newLabel.trim())
+    setNewLabel('')
+    setAdding(false)
+  }
+
+  const toggleSub = (id) => setOpenSubs(prev => ({ ...prev, [id]: !prev[id] }))
+
+  const chipBorder = dark ? 'border-[#252836]' : 'border-slate-200'
+
+  return (
+    <div className={`ml-10 mr-3 mb-1 px-3 py-2 rounded-lg
+      ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
+
+      {/* 헤더 */}
+      <div className={`flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-widest
+        ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+        <Layers size={10} className="text-emerald-400"/> 중위탭 서서브 (L3)
+      </div>
+
+      {/* L3 서서브 목록 */}
+      {l3subs.map(ls => (
+        <div key={ls.id} className={`rounded-lg mb-1 border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+          {/* 서서브 헤더 행 */}
+          <div className="flex items-center gap-1.5 px-2 py-1.5 group/ls">
+            <button
+              onClick={() => toggleSub(ls.id)}
+              className={`shrink-0 transition-colors ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}
+            >
+              {openSubs[ls.id] ? <ChevronDown size={10}/> : <ChevronRight size={10}/>}
+            </button>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500`}/>
+            <EditableLabel
+              value={ls.label}
+              placeholder={ls.label}
+              dark={dark}
+              size="sm"
+              onSave={label => renameL3Sub(sectionId, subId, ls.id, label)}
+            />
+            <div className="ml-auto flex items-center gap-1">
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full
+                ${dark ? 'bg-[#252836] text-slate-600' : 'bg-slate-100 text-slate-400'}`}>
+                L4 · {getL3Tabs(sectionId, subId, ls.id).length}
+              </span>
+              <button
+                onClick={() => { if (confirm(`"${ls.label}" 서서브를 삭제할까요?\n해당 서서브의 탭과 대시보드가 모두 삭제됩니다.`)) removeL3Sub(sectionId, subId, ls.id) }}
+                className="opacity-0 group-hover/ls:opacity-100 p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-opacity"
+              >
+                <Trash2 size={10}/>
+              </button>
+            </div>
+          </div>
+
+          {/* L4 탭 영역 */}
+          {openSubs[ls.id] && (
+            <div className={`mx-2 mb-2 px-2 py-1.5 rounded-lg
+              ${dark ? 'bg-[#0F1117] border border-[#1E2130]' : 'bg-white border border-slate-100'}`}>
+              <div className={`flex items-center gap-1 mb-1 text-[9px] font-bold uppercase tracking-widest
+                ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+                <Layers size={9} className="text-violet-400"/> 하위탭 (L4)
+              </div>
+              <L3TabsRow
+                sectionId={sectionId}
+                subId={subId}
+                l3subId={ls.id}
+                getL3Tabs={getL3Tabs}
+                addL3Tab={addL3Tab}
+                removeL3Tab={removeL3Tab}
+                renameL3Tab={renameL3Tab}
+                dark={dark}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* 추가 버튼 */}
+      {adding ? (
+        <div className="flex items-center gap-1.5 mt-1">
+          <input
+            autoFocus
+            value={newLabel}
+            onChange={e => setNewLabel(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter')  commitAdd()
+              if (e.key === 'Escape') { setAdding(false); setNewLabel('') }
+            }}
+            placeholder="서서브 이름"
+            className={`text-[10px] px-2 py-0.5 rounded-lg border outline-none w-28
+              ${dark
+                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-600'
+                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-300'}`}
+          />
+          <button onClick={commitAdd}
+            className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">확인</button>
+          <button onClick={() => { setAdding(false); setNewLabel('') }}
+            className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400'}`}>취소</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg border border-dashed transition-colors mt-1
+            ${dark
+              ? 'border-[#2A2E42] text-slate-500 hover:text-emerald-400 hover:border-emerald-500/50'
+              : 'border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-300'}`}
+        >
+          <Plus size={8}/> 서서브 추가
+        </button>
+      )}
+
+      {l3subs.length === 0 && !adding && (
+        <p className={`text-[10px] italic mt-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+          서서브 없음
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────
    L2 서브탭 행 (빌트인 + 커스텀 공통)
 ───────────────────────────────────────── */
 function SubRow({
   sectionId, sub, isCustom, isHidden,
   config, dark,
   onUpdateSub, onRemoveSub, onHideBuiltinSub, onShowBuiltinSub,
+  getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
 }) {
   const [open,    setOpen]    = useState(false)
   const [showDS,  setShowDS]  = useState(false)
 
-  const key       = `${sectionId}.${sub.id}`
-  const label     = config.subLabels[key] || sub.label
-  const l3Count   = getL3Tabs(sectionId, sub.id).length
-  const ds        = getSubDataSource(sectionId, sub.id)
+  const key         = `${sectionId}.${sub.id}`
+  const label       = config.subLabels[key] || sub.label
+  const l3SubsCount = getL3Subs(sectionId, sub.id).length
+  const l3Count     = getL3Tabs(sectionId, sub.id).length
+  const ds          = getSubDataSource(sectionId, sub.id)
   const hasCustomDS = ds.table !== 'marketing_data' || Object.keys(ds.fieldMap || {}).length > 0
 
   if (isHidden) {
@@ -351,13 +482,21 @@ function SubRow({
             <Database size={9}/> {hasCustomDS ? '소스 설정됨' : '소스'}
           </button>
 
-          {/* L3 탭 수 배지 */}
+          {/* L3 서서브 수 배지 */}
           <span className={`text-[9px] px-1.5 py-0.5 rounded-full
-            ${l3Count > 0
-              ? dark ? 'bg-indigo-500/15 text-indigo-400' : 'bg-indigo-50 text-indigo-500'
+            ${l3SubsCount > 0
+              ? dark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
               : dark ? 'bg-[#252836] text-slate-600' : 'bg-slate-100 text-slate-400'}`}>
-            L3 · {l3Count}
+            L3 · {l3SubsCount}
           </span>
+
+          {/* L4 탭 수 배지 (직접 탭) */}
+          {l3Count > 0 && (
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full
+              ${dark ? 'bg-indigo-500/15 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
+              L4 · {l3Count}
+            </span>
+          )}
 
           {/* 커스텀 배지 */}
           {isCustom && (
@@ -397,24 +536,43 @@ function SubRow({
         />
       )}
 
-      {/* L3 탭 영역 */}
+      {/* L3 서서브 + L4 탭 영역 */}
       {open && (
-        <div className={`ml-10 mr-3 mb-2 px-3 py-2 rounded-lg
-          ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
-          <div className={`flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-widest
-            ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
-            <Layers size={10}/> 하위탭 (L3)
-          </div>
-          <L3TabsRow
+        <>
+          {/* L3 서서브 관리 */}
+          <L3SubsManager
             sectionId={sectionId}
             subId={sub.id}
+            getL3Subs={getL3Subs}
+            addL3Sub={addL3Sub}
+            removeL3Sub={removeL3Sub}
+            renameL3Sub={renameL3Sub}
             getL3Tabs={getL3Tabs}
             addL3Tab={addL3Tab}
             removeL3Tab={removeL3Tab}
             renameL3Tab={renameL3Tab}
             dark={dark}
           />
-        </div>
+
+          {/* 기본 직접 하위탭 (L3 없이 직접 연결된 L4) */}
+          <div className={`ml-10 mr-3 mb-2 px-3 py-2 rounded-lg
+            ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
+            <div className={`flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-widest
+              ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+              <Layers size={10} className="text-violet-400"/> 기본 하위탭 (L4, 서서브 없을 때)
+            </div>
+            <L3TabsRow
+              sectionId={sectionId}
+              subId={sub.id}
+              l3subId={null}
+              getL3Tabs={getL3Tabs}
+              addL3Tab={addL3Tab}
+              removeL3Tab={removeL3Tab}
+              renameL3Tab={renameL3Tab}
+              dark={dark}
+            />
+          </div>
+        </>
       )}
     </div>
   )
@@ -471,6 +629,7 @@ export default function TabSettings({
   onUpdateSection, onUpdateSub,
   onAddSub, onRemoveSub,
   onHideBuiltinSub, onShowBuiltinSub,
+  getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
 }) {
@@ -489,7 +648,7 @@ export default function TabSettings({
       <div>
         <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>탭 설정</h2>
         <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-          L1(메인탭) → L2(중위탭) → L3(하위탭) 3단계 구조를 관리합니다.
+          L1(메인탭) → L2(상위탭) → L3(중위탭/서서브) → L4(하위탭) 4단계 구조를 관리합니다.
           빌트인 탭은 <EyeOff size={10} className="inline"/> 숨기기 / <Eye size={10} className="inline"/> 복원 가능하고,
           커스텀 탭은 <Trash2 size={10} className="inline"/> 으로 완전 삭제할 수 있어요.
         </p>
@@ -503,12 +662,16 @@ export default function TabSettings({
           <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L1 · 메인탭 (사이드바 섹션)</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <LayoutTemplate size={10} className="text-emerald-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L2 · 중위탭 (사이드바 서브)</span>
+          <LayoutTemplate size={10} className="text-sky-400"/>
+          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L2 · 상위탭 (사이드바 서브)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Layers size={10} className="text-emerald-400"/>
+          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L3 · 중위탭 (사이드바 서서브)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Layers size={10} className="text-violet-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L3 · 하위탭 (페이지 내 탭)</span>
+          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L4 · 하위탭 (페이지 내 탭)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Database size={10} className="text-amber-400"/>
@@ -594,7 +757,7 @@ export default function TabSettings({
               <div className="px-2 py-2 flex flex-col gap-0.5">
                 <p className={`flex items-center gap-1.5 px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest
                   ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
-                  <LayoutTemplate size={10} className="text-emerald-400"/> 중위탭 (L2)
+                  <LayoutTemplate size={10} className="text-sky-400"/> 상위탭 (L2)
                 </p>
 
                 {allSubs.map(sub => (
@@ -610,6 +773,10 @@ export default function TabSettings({
                     onRemoveSub={onRemoveSub}
                     onHideBuiltinSub={onHideBuiltinSub}
                     onShowBuiltinSub={onShowBuiltinSub}
+                    getL3Subs={getL3Subs}
+                    addL3Sub={addL3Sub}
+                    removeL3Sub={removeL3Sub}
+                    renameL3Sub={renameL3Sub}
                     getL3Tabs={getL3Tabs}
                     addL3Tab={addL3Tab}
                     removeL3Tab={removeL3Tab}

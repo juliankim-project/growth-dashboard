@@ -9,8 +9,9 @@ export const DEFAULT_CONFIG = {
   sectionLabels:      {},  // { 'marketing': '퍼포먼스' }
   subLabels:          {},  // { 'marketing.performance': '매체별 분석' }
   customSubs:         {},  // { 'marketing': [{id, label}] }
-  dashboards:         {},  // { 'section.sub.tabId': { template, widgets } }
-  l3tabs:             {},  // { 'section.sub': [{id, label}] }
+  dashboards:         {},  // { 'section.sub[.l3sub].tabId': { template, widgets } }
+  l3tabs:             {},  // { 'section.sub[.l3sub]': [{id, label}] }
+  l3subs:             {},  // { 'section.sub': [{id, label}] }  ← 새 L3 사이드바 서서브
   deletedBuiltinSubs: {},  // { 'overview': ['dashboard'], 'product': ['funnel'] }
   subDataSources:     {},  // { 'section.sub': { table, fieldMap: { metricId: 'colName' } } }
 }
@@ -225,71 +226,132 @@ export function useConfig() {
   const removeCustomSub = (sectionId, subId) => {
     const cur    = config.customSubs[sectionId] || []
     const l3Key  = `${sectionId}.${subId}`
-    const l3tabs = config.l3tabs[l3Key] || []
     const dash   = { ...config.dashboards }
-    l3tabs.forEach(t => { delete dash[`${l3Key}.${t.id}`] })
-    const l3 = { ...config.l3tabs }
-    delete l3[l3Key]
+    const l3t    = { ...config.l3tabs }
+    const l3s    = { ...config.l3subs }
+
+    // cascade: L3 subs → L4 tabs → dashboards
+    const subL3Subs = l3s[l3Key] || []
+    subL3Subs.forEach(ls => {
+      const tabsKey = `${l3Key}.${ls.id}`
+      const tabs = l3t[tabsKey] || []
+      tabs.forEach(t => { delete dash[`${tabsKey}.${t.id}`] })
+      delete l3t[tabsKey]
+    })
+    delete l3s[l3Key]
+
+    // cascade: direct L4 tabs (backward compat)
+    const directTabs = l3t[l3Key] || []
+    directTabs.forEach(t => { delete dash[`${l3Key}.${t.id}`] })
+    delete l3t[l3Key]
+
     const ds = { ...config.subDataSources }
     delete ds[l3Key]
     persist({
       ...config,
       customSubs:     { ...config.customSubs, [sectionId]: cur.filter(s => s.id !== subId) },
-      dashboards: dash,
-      l3tabs: l3,
+      dashboards:     dash,
+      l3tabs:         l3t,
+      l3subs:         l3s,
       subDataSources: ds,
     })
   }
 
-  /* ── L3 탭 ── */
-  const getL3Tabs = (sid, sub) =>
-    config.l3tabs[`${sid}.${sub}`] || []
+  /* ── L3 사이드바 서서브 (새 레벨) ── */
+  const getL3Subs = (sid, sub) =>
+    config.l3subs[`${sid}.${sub}`] || []
 
-  const addL3Tab = (sid, sub, label) => {
-    const id    = `t3_${Date.now()}`
-    const l3Key = `${sid}.${sub}`
-    const cur   = config.l3tabs[l3Key] || []
-    const dash  = makeDashboard('A')
+  const addL3Sub = (sid, sub, label) => {
+    const id  = `ls_${Date.now()}`
+    const key = `${sid}.${sub}`
+    const cur = config.l3subs[key] || []
     persist({
       ...config,
-      l3tabs:     { ...config.l3tabs,     [l3Key]:           [...cur, { id, label }] },
-      dashboards: { ...config.dashboards, [`${l3Key}.${id}`]: dash                  },
+      l3subs: { ...config.l3subs, [key]: [...cur, { id, label }] },
     })
     return id
   }
 
-  const removeL3Tab = (sid, sub, tabId) => {
-    const l3Key = `${sid}.${sub}`
-    const cur   = config.l3tabs[l3Key] || []
-    const dash  = { ...config.dashboards }
-    delete dash[`${l3Key}.${tabId}`]
+  const removeL3Sub = (sid, sub, l3subId) => {
+    const key     = `${sid}.${sub}`
+    const cur     = config.l3subs[key] || []
+    const tabsKey = `${key}.${l3subId}`
+    const tabs    = config.l3tabs[tabsKey] || []
+    const dash    = { ...config.dashboards }
+    tabs.forEach(t => { delete dash[`${tabsKey}.${t.id}`] })
+    const l3t = { ...config.l3tabs }
+    delete l3t[tabsKey]
     persist({
       ...config,
-      l3tabs:     { ...config.l3tabs, [l3Key]: cur.filter(t => t.id !== tabId) },
+      l3subs:     { ...config.l3subs, [key]: cur.filter(s => s.id !== l3subId) },
+      l3tabs:     l3t,
       dashboards: dash,
     })
   }
 
-  const renameL3Tab = (sid, sub, tabId, label) => {
-    const l3Key = `${sid}.${sub}`
-    const cur   = config.l3tabs[l3Key] || []
+  const renameL3Sub = (sid, sub, l3subId, label) => {
+    const key = `${sid}.${sub}`
+    const cur = config.l3subs[key] || []
+    persist({
+      ...config,
+      l3subs: { ...config.l3subs, [key]: cur.map(s => s.id === l3subId ? { ...s, label } : s) },
+    })
+  }
+
+  /* ── L4 탭 (구 L3 탭, l3sub 선택 지원) ── */
+  /* tabsScope: l3sub 있으면 'sid.sub.l3sub', 없으면 'sid.sub' */
+  const _tabsScope = (sid, sub, l3sub) => l3sub ? `${sid}.${sub}.${l3sub}` : `${sid}.${sub}`
+
+  const getL3Tabs = (sid, sub, l3sub = null) =>
+    config.l3tabs[_tabsScope(sid, sub, l3sub)] || []
+
+  const addL3Tab = (sid, sub, label, l3sub = null) => {
+    const id    = `t3_${Date.now()}`
+    const scope = _tabsScope(sid, sub, l3sub)
+    const cur   = config.l3tabs[scope] || []
+    const dash  = makeDashboard('A')
+    persist({
+      ...config,
+      l3tabs:     { ...config.l3tabs,     [scope]:           [...cur, { id, label }] },
+      dashboards: { ...config.dashboards, [`${scope}.${id}`]: dash                   },
+    })
+    return id
+  }
+
+  const removeL3Tab = (sid, sub, tabId, l3sub = null) => {
+    const scope = _tabsScope(sid, sub, l3sub)
+    const cur   = config.l3tabs[scope] || []
+    const dash  = { ...config.dashboards }
+    delete dash[`${scope}.${tabId}`]
+    persist({
+      ...config,
+      l3tabs:     { ...config.l3tabs, [scope]: cur.filter(t => t.id !== tabId) },
+      dashboards: dash,
+    })
+  }
+
+  const renameL3Tab = (sid, sub, tabId, label, l3sub = null) => {
+    const scope = _tabsScope(sid, sub, l3sub)
+    const cur   = config.l3tabs[scope] || []
     persist({
       ...config,
       l3tabs: {
         ...config.l3tabs,
-        [l3Key]: cur.map(t => t.id === tabId ? { ...t, label } : t),
+        [scope]: cur.map(t => t.id === tabId ? { ...t, label } : t),
       },
     })
   }
 
-  /* ── 대시보드 (L3 tabId 지원) ── */
-  const getDashboard = (sid, sub, tabId = null) => {
-    const key = tabId ? `${sid}.${sub}.${tabId}` : `${sid}.${sub}`
+  /* ── 대시보드 (l3sub + tabId 지원) ── */
+  const getDashboard = (sid, sub, tabId = null, l3sub = null) => {
+    const base = _tabsScope(sid, sub, l3sub)
+    const key  = tabId ? `${base}.${tabId}` : base
     return config.dashboards[key] || null
   }
 
-  const saveDashboard = (sid, sub, dashboard, tabId = null) => {
-    const key = tabId ? `${sid}.${sub}.${tabId}` : `${sid}.${sub}`
+  const saveDashboard = (sid, sub, dashboard, tabId = null, l3sub = null) => {
+    const base = _tabsScope(sid, sub, l3sub)
+    const key  = tabId ? `${base}.${tabId}` : base
     persist({ ...config, dashboards: { ...config.dashboards, [key]: dashboard } })
   }
 
@@ -305,6 +367,7 @@ export function useConfig() {
     addCustomSub, removeCustomSub,
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
     getSubDataSource, setSubDataSource,
+    getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
     getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   }
 }

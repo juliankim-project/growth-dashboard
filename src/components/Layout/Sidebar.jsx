@@ -60,7 +60,7 @@ const STORAGE_ORDER = 'sidebar_order_v2'
 const STORAGE_OPEN  = 'sidebar_open_v2'
 
 /* ─────────── 메인 컴포넌트 ─────────── */
-export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs }) {
+export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs, getL3Subs }) {
 
   const [sections, setSections] = useState(() => {
     try {
@@ -81,6 +81,9 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
     } catch { return { overview: true } }
   })
 
+  /* L2 서브별 L3 서서브 열림 상태 */
+  const [l3Open, setL3Open] = useState({})
+
   const dragIdx = useRef(null)
   const overIdx = useRef(null)
   const [dragId, setDragId] = useState(null)
@@ -89,6 +92,14 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
   useEffect(() => {
     setOpen(prev => ({ ...prev, [nav.section]: true }))
   }, [nav.section])
+
+  /* nav.l3sub 변경 시 해당 L2 서브의 L3 패널 자동 오픈 */
+  useEffect(() => {
+    if (nav.l3sub) {
+      const key = `${nav.section}.${nav.sub}`
+      setL3Open(prev => ({ ...prev, [key]: true }))
+    }
+  }, [nav.section, nav.sub, nav.l3sub])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_ORDER, JSON.stringify(sections.map(s => s.id)))
@@ -100,12 +111,29 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
   const toggleSection = (sec) => {
     const isOpen = !!open[sec.id]
     setOpen(prev => ({ ...prev, [sec.id]: !isOpen }))
-    if (!isOpen) setNav({ section: sec.id, sub: sec.subs[0].id })
+    if (!isOpen) setNav({ section: sec.id, sub: sec.subs[0].id, l3sub: null })
   }
 
-  const goTo = (sectionId, subId) => {
-    setNav({ section: sectionId, sub: subId })
+  const goTo = (sectionId, subId, l3subId = null) => {
+    setNav({ section: sectionId, sub: subId, l3sub: l3subId })
     setOpen(prev => ({ ...prev, [sectionId]: true }))
+  }
+
+  /* L2 서브 클릭: L3 서서브가 있으면 토글/자동선택, 없으면 직접 이동 */
+  const handleSubClick = (sectionId, subId) => {
+    const l3subs = getL3Subs?.(sectionId, subId) || []
+    if (l3subs.length === 0) {
+      goTo(sectionId, subId, null)
+      return
+    }
+    const key = `${sectionId}.${subId}`
+    const wasOpen = !!l3Open[key]
+    setL3Open(prev => ({ ...prev, [key]: !wasOpen }))
+    setOpen(prev => ({ ...prev, [sectionId]: true }))
+    if (!wasOpen) {
+      // 열릴 때 첫 번째 L3 서서브로 이동
+      setNav({ section: sectionId, sub: subId, l3sub: l3subs[0].id })
+    }
   }
 
   const onDragStart = (e, idx) => { dragIdx.current = idx; setDragId(sections[idx].id); e.dataTransfer.effectAllowed = 'move' }
@@ -190,20 +218,57 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
               {isOpen && (
                 <div className="pl-6 pr-1 pb-1.5 flex flex-col gap-0.5">
                   {allSubs.map(sub => {
-                    const subLabel  = getSubLabel?.(sec.id, sub.id) || sub.label
-                    const subActive = isActive && nav.sub === sub.id
+                    const subLabel   = getSubLabel?.(sec.id, sub.id) || sub.label
+                    const l3subs     = getL3Subs?.(sec.id, sub.id) || []
+                    const hasL3Subs  = l3subs.length > 0
+                    const l3key      = `${sec.id}.${sub.id}`
+                    const l3IsOpen   = !!l3Open[l3key]
+                    // L3 서서브가 있으면 그 중 하나가 active일 때 L2는 semi-active
+                    const l3subActive = isActive && nav.sub === sub.id && nav.l3sub && l3subs.some(s => s.id === nav.l3sub)
+                    const subActive   = isActive && nav.sub === sub.id && !nav.l3sub
+                    const anyActive   = subActive || l3subActive
+
                     return (
-                      <button key={sub.id}
-                        onClick={() => goTo(sec.id, sub.id)}
-                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all duration-150 text-left
-                          ${subActive ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
-                      >
-                        <Icon name={sub.icon} size={12} className={subActive ? 'text-white' : 'opacity-60'}/>
-                        <span className={`${subActive ? 'font-semibold' : 'font-medium'} flex-1`}>{subLabel}</span>
-                        {sub.isCustom && !subActive && (
-                          <span className={`text-[8px] px-1 py-0.5 rounded ${dark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-400'}`}>커스텀</span>
+                      <div key={sub.id}>
+                        <button
+                          onClick={() => handleSubClick(sec.id, sub.id)}
+                          className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all duration-150 text-left
+                            ${subActive ? 'bg-indigo-600 text-white'
+                              : l3subActive ? dark ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-50 text-indigo-700'
+                              : `${t.text} ${t.hover}`}`}
+                        >
+                          <Icon name={sub.icon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
+                          <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1`}>{subLabel}</span>
+                          {sub.isCustom && !anyActive && (
+                            <span className={`text-[8px] px-1 py-0.5 rounded ${dark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-400'}`}>커스텀</span>
+                          )}
+                          {hasL3Subs && (
+                            <ChevronDown size={10}
+                              className={`shrink-0 transition-transform duration-200 ${l3IsOpen ? '' : '-rotate-90'}
+                                ${anyActive ? (subActive ? 'text-white/70' : 'text-indigo-400') : dark ? 'text-slate-600' : 'text-slate-300'}`}
+                            />
+                          )}
+                        </button>
+
+                        {/* L3 서서브 목록 */}
+                        {hasL3Subs && l3IsOpen && (
+                          <div className="pl-5 pr-1 pb-0.5 flex flex-col gap-0.5">
+                            {l3subs.map(ls => {
+                              const l3Active = isActive && nav.sub === sub.id && nav.l3sub === ls.id
+                              return (
+                                <button key={ls.id}
+                                  onClick={() => goTo(sec.id, sub.id, ls.id)}
+                                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left
+                                    ${l3Active ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
+                                >
+                                  <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
+                                  <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
                         )}
-                      </button>
+                      </div>
                     )
                   })}
                 </div>
