@@ -116,8 +116,8 @@ export default function DataStudio({ dark }) {
     setUploading(true)
     setProgress(0)
     try {
-      /* COL_MAP 기준으로 CSV → DB 컬럼명 변환 후 삽입 */
-      const rows = parsed.rows.map(row => {
+      /* COL_MAP 기준으로 CSV → DB 컬럼명 변환 */
+      const rawRows = parsed.rows.map(row => {
         const obj = {}
         matchedCols.forEach(csvCol => {
           const dbCol = COL_MAP[csvCol]
@@ -127,17 +127,26 @@ export default function DataStudio({ dark }) {
         return obj
       })
 
+      /* CSV 내 중복 제거 (동일 키: date+channel+campaign+ad_group+ad_creative → 마지막 행 우선) */
+      const deduped = Object.values(
+        rawRows.reduce((acc, row) => {
+          const key = [row.date, row.channel, row.campaign, row.ad_group, row.ad_creative].join('|')
+          acc[key] = row
+          return acc
+        }, {})
+      )
+
       const CHUNK = 500
       let inserted = 0
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const chunk = rows.slice(i, i + CHUNK)
+      for (let i = 0; i < deduped.length; i += CHUNK) {
+        const chunk = deduped.slice(i, i + CHUNK)
         const { error } = await supabase.from(TARGET_TABLE).upsert(chunk, {
           onConflict: 'date,channel,campaign,ad_group,ad_creative',
           ignoreDuplicates: false,
         })
         if (error) throw error
         inserted += chunk.length
-        setProgress(Math.round((inserted / rows.length) * 100))
+        setProgress(Math.round((inserted / deduped.length) * 100))
       }
 
       setResult({ ok: true, count: inserted })
