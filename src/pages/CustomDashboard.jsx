@@ -962,7 +962,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={slots.map(s => s.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-6 gap-3 items-start">
               {slots.map(slot => (
                 <SortableCard
                   key={slot.id}
