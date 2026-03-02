@@ -436,6 +436,29 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
     setEditSlot(null)
   }
 
+  /* 카드 사이즈 변경 */
+  const SPAN_OPTIONS = [
+    { value: 'col-span-1', label: '1열', icon: '▪' },
+    { value: 'col-span-2', label: '2열', icon: '▪▪' },
+    { value: 'col-span-3', label: '3열', icon: '▪▪▪' },
+    { value: 'col-span-4', label: '전체', icon: '▪▪▪▪' },
+  ]
+  const handleSpanChange = (slotId, newSpan) => {
+    setDashboard(prev => {
+      const existing = prev.widgets[slotId] || {
+        type: template.slots.find(s => s.id === slotId)?.defaultType || 'kpi',
+        config: {},
+      }
+      return {
+        ...prev,
+        widgets: {
+          ...prev.widgets,
+          [slotId]: { ...existing, config: { ...(existing.config || {}), span: newSpan } },
+        },
+      }
+    })
+  }
+
   const handleTemplateChange = tplId => {
     const next = makeDashboard(tplId)
     TEMPLATES[tplId].slots.forEach(slot => {
@@ -461,18 +484,43 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
       config: { ...DEFAULT_WIDGET_CONFIG[slot.defaultType] },
     }
     const isEditing = editSlot === slot.id
-    const wType = WIDGET_TYPES.find(t => t.id === w.type)
+    const wType     = WIDGET_TYPES.find(t => t.id === w.type)
+    const curSpan   = w.config?.span || slot.span   // 저장된 사이즈 우선
 
     return (
-      <div key={slot.id} className={`${slot.span} relative`}
+      <div key={slot.id} className={`${curSpan} relative`}
         style={{ minHeight: w.type === 'kpi' ? 120 : 220 }}>
+
+        {/* 편집모드 오버레이 */}
         {editMode && !isEditing && (
-          <button onClick={() => setEditSlot(slot.id)}
-            className="absolute top-2 right-2 z-10 flex items-center gap-1
-              px-2 py-1 bg-indigo-600 text-white text-[10px] rounded-lg shadow-md hover:bg-indigo-700">
-            <Settings2 size={10}/> {wType?.icon} 편집
-          </button>
+          <div className="absolute inset-0 z-10 rounded-xl ring-2 ring-indigo-500/30 pointer-events-none"/>
         )}
+
+        {/* 사이즈 + 편집 버튼 */}
+        {editMode && !isEditing && (
+          <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+            {/* 사이즈 선택 */}
+            <div className={`flex items-center gap-0.5 px-1.5 py-1 rounded-lg border
+              ${dark ? 'bg-[#0F1117] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              {SPAN_OPTIONS.map(opt => (
+                <button key={opt.value} onClick={() => handleSpanChange(slot.id, opt.value)}
+                  title={opt.label}
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors
+                    ${curSpan === opt.value
+                      ? 'bg-indigo-600 text-white'
+                      : dark ? 'text-slate-500 hover:text-white' : 'text-slate-300 hover:text-slate-600'}`}>
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
+            {/* 위젯 편집 */}
+            <button onClick={() => setEditSlot(slot.id)}
+              className="flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white text-[10px] rounded-lg shadow-md hover:bg-indigo-700">
+              <Settings2 size={10}/> {wType?.icon} 편집
+            </button>
+          </div>
+        )}
+
         {isEditing
           ? <WidgetEditor slotId={slot.id} widget={w} dark={dark}
               onSave={handleWidgetSave} onClose={() => setEditSlot(null)}/>
