@@ -529,7 +529,7 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
    - 호버 ×: 탭 삭제
    - + 탭 추가 버튼 (추가 후 자동 이동 없음)
 ══════════════════════════════════════════ */
-function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark }) {
+function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark, rightSlot }) {
   const [addingTab, setAddingTab] = useState(false)
   const [newLabel,  setNewLabel]  = useState('')
   const [renaming,  setRenaming]  = useState(null) // { id, value }
@@ -548,8 +548,11 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark })
   }
 
   return (
-    <div className={`flex items-center gap-0.5 px-5 pt-3 border-b overflow-x-auto shrink-0
+    <div className={`flex items-stretch border-b shrink-0
       ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+
+      {/* 탭 목록 (스크롤 가능) */}
+      <div className="flex items-center gap-0.5 px-5 pt-3 overflow-x-auto flex-1 min-w-0">
 
       {tabs.map(tab => (
         <div key={tab.id} className="relative group shrink-0">
@@ -637,6 +640,16 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, dark })
         >
           <Plus size={10}/> 탭 추가
         </button>
+      )}
+
+      </div>{/* end 탭 스크롤 영역 */}
+
+      {/* 우측 슬롯 — 대시보드 편집 툴바 */}
+      {rightSlot && (
+        <div className={`flex items-center gap-2 px-4 shrink-0 border-l
+          ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+          {rightSlot}
+        </div>
       )}
     </div>
   )
@@ -943,25 +956,24 @@ function AddWidgetModal({ dark, onAdd, onClose }) {
 /* ══════════════════════════════════════════
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, saved }) {
-  const [editMode,   setEditMode]   = useState(false)
+function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd }) {
   const [editSlot,   setEditSlot]   = useState(null)   // 편집 모달 대상 slotId
-  const [showAdd,    setShowAdd]    = useState(false)
   const [activeId,   setActiveId]   = useState(null)   // 드래그 중인 slotId
   const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
 
-  // 탭 전환 시 초기화
+  // 탭 전환 시 에디터 초기화
   useEffect(() => {
-    setEditMode(false)
     setEditSlot(null)
-    setShowAdd(false)
   }, [tabId])
+
+  // editMode 해제 시 에디터 닫기
+  useEffect(() => {
+    if (!editMode) setEditSlot(null)
+  }, [editMode])
 
   // 정규화된 슬롯 배열
   const norm  = useMemo(() => normalizeDashboard(dashboard), [dashboard])
   const slots = norm.slots || []
-
-  const currentTable = dashboard.dataSource?.table || 'marketing_data'
 
   // dnd-kit sensors — 5px 이상 움직여야 드래그 시작 (클릭과 구분)
   const sensors = useSensors(
@@ -991,11 +1003,6 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
     setEditSlot(null)
   }
 
-  const handleTableChange = (tableName) => {
-    const n = normalizeDashboard(dashboard)
-    setDashboard({ ...n, dataSource: { ...(n.dataSource || {}), table: tableName } })
-  }
-
   /* ── 드래그 앤 드롭 ── */
   const handleDragStart = ({ active }) => setActiveId(active.id)
 
@@ -1014,50 +1021,6 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 툴바 */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          {editMode ? (
-            <>
-              <button onClick={() => setShowAdd(true)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
-                  bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
-                <Plus size={12}/> 카드 추가
-              </button>
-              <DataSourceSelector tableName={currentTable} onChange={handleTableChange} dark={dark}/>
-            </>
-          ) : (
-            <span className={`flex items-center gap-1.5 text-[10px]
-              ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
-              <Database size={10}/>
-              <span className="font-mono">{currentTable}</span>
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {editMode ? (
-            <>
-              <button onClick={() => { setEditMode(false); setEditSlot(null) }}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                취소
-              </button>
-              <button onClick={() => { onSave(); setEditMode(false); setEditSlot(null) }}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
-                  ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-                <Check size={12}/> {saved ? '저장됨' : '저장'}
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setEditMode(true)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-              <Settings2 size={12}/> 대시보드 편집
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* 위젯 그리드 */}
       {slots.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 gap-5 rounded-2xl border-2 border-dashed
@@ -1069,7 +1032,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
             </p>
             <p className="text-xs mt-1.5">카드를 추가해 원하는 지표를 시각화해보세요</p>
           </div>
-          <button onClick={() => { setEditMode(true); setShowAdd(true) }}
+          <button onClick={onOpenAdd}
             className="flex items-center gap-2 text-xs px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
             <Plus size={13}/> 첫 번째 카드 추가
           </button>
@@ -1099,7 +1062,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
               ))}
               {/* 편집모드: 인라인 추가 버튼 */}
               {editMode && (
-                <div onClick={() => setShowAdd(true)}
+                <div onClick={onOpenAdd}
                   style={{ gridRow: 'span 8' }}
                   className={`col-span-1 rounded-xl border-2 border-dashed cursor-pointer
                     flex flex-col items-center justify-center gap-1.5 transition-colors select-none
@@ -1127,7 +1090,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} onAdd={handleAddSlot} onClose={() => setShowAdd(false)}/>
+        <AddWidgetModal dark={dark} onAdd={handleAddSlot} onClose={onCloseAdd}/>
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
@@ -1168,14 +1131,25 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     if (!activeTab) return makeDashboard()
     return tabsConfig?.getDashboard(activeTab.id) ?? makeDashboard()
   })
-  const [saved, setSaved] = useState(false)
+  const [saved,    setSaved]    = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [showAdd,  setShowAdd]  = useState(false)
 
-  /* 탭 전환 → 대시보드 로드 */
+  const currentTable = dashboard.dataSource?.table || 'marketing_data'
+
+  const handleTableChange = (tableName) => {
+    const n = normalizeDashboard(dashboard)
+    setDashboard({ ...n, dataSource: { ...(n.dataSource || {}), table: tableName } })
+  }
+
+  /* 탭 전환 → 대시보드 로드 + 편집 상태 초기화 */
   useEffect(() => {
     if (!activeTab) return
     const d = tabsConfig?.getDashboard(activeTab.id) ?? makeDashboard()
     setDashboard(d)
     setSaved(false)
+    setEditMode(false)
+    setShowAdd(false)
   }, [activeTab?.id])
 
   /* 데이터 소스: L2 subDataSource.table 우선, 없으면 dashboard.dataSource, 기본값 marketing_data */
@@ -1226,6 +1200,34 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         onRemove={handleRemoveTab}
         onRename={(tabId, label) => tabsConfig?.renameTab(tabId, label)}
         dark={dark}
+        rightSlot={activeTab ? (
+          editMode ? (
+            <>
+              <button onClick={() => setShowAdd(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
+                  bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+                <Plus size={12}/> 카드 추가
+              </button>
+              <DataSourceSelector tableName={currentTable} onChange={handleTableChange} dark={dark}/>
+              <button onClick={() => { setEditMode(false); setShowAdd(false) }}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                취소
+              </button>
+              <button onClick={() => { handleSave(); setEditMode(false) }}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
+                  ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                <Check size={12}/> {saved ? '저장됨' : '저장'}
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setEditMode(true)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              <Settings2 size={12}/> 대시보드 편집
+            </button>
+          )
+        ) : null}
       />
 
       {/* ── 컨텐츠 ── */}
@@ -1244,8 +1246,10 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             setDashboard={setDashboard}
             data={data}
             dark={dark}
-            onSave={handleSave}
-            saved={saved}
+            editMode={editMode}
+            showAdd={showAdd}
+            onOpenAdd={() => setShowAdd(true)}
+            onCloseAdd={() => setShowAdd(false)}
           />
         </div>
       ) : (
