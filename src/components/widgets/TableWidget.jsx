@@ -4,7 +4,7 @@ import { METRICS, GROUP_BY } from '../../store/useConfig'
 import { groupData, fmtMetric } from './widgetUtils'
 
 export default function TableWidget({ data, config, dark }) {
-  const { metrics = ['cost','installs','conv','revenue'], groupBy = 'Channel', title = '성과 테이블' } = config
+  const { metrics = ['cost','installs','conv','revenue'], groupBy = 'channel', title = '성과 테이블' } = config
   const [sort, setSort] = useState({ key: metrics[0] || 'cost', dir: -1 })
 
   const rows = useMemo(() => {
@@ -53,7 +53,7 @@ export default function TableWidget({ data, config, dark }) {
                       ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${row[mid] >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
                           {fmtMetric(mid, row[mid] || 0)}
                         </span>
-                      : fmtMetric(mid, row[mid] || 0)
+                      : fmtMetric(mid, row[mid] || 0)  /* ROAS raw value >= 2 = 200% = 손익분기점 이상 */
                     }
                   </td>
                 ))}

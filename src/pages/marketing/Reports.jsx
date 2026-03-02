@@ -33,7 +33,7 @@ export default function Reports({ dark }) {
       map[k].revenue     += parseFloat(r['revenue'])     || 0
     })
     return Object.values(map)
-      .map(r => ({ ...r, roas: r.cost > 0 ? (r.revenue / r.cost).toFixed(2) : '—', ctr: r.impressions > 0 ? ((r.clicks / r.impressions) * 100).toFixed(2) : '—' }))
+      .map(r => ({ ...r, roas: r.cost > 0 ? Math.round(r.revenue / r.cost * 100) : 0, ctr: r.impressions > 0 ? ((r.clicks / r.impressions) * 100).toFixed(1) : '—' }))
       .sort((a, b) => b.cost - a.cost)
   }, [data, groupBy])
 
@@ -86,12 +86,12 @@ export default function Reports({ dark }) {
       {/* 합계 요약 */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {[
-          ['총 광고비', fmtW(totals.cost)],
+          ['총 광고비', Math.round(totals.cost).toLocaleString() + '원'],
           ['노출',      Math.round(totals.impressions).toLocaleString()],
           ['클릭',      Math.round(totals.clicks).toLocaleString()],
           ['인스톨',    Math.round(totals.installs).toLocaleString()],
           ['구매',      Math.round(totals.conv).toLocaleString()],
-          ['ROAS',      totals.cost > 0 ? (totals.revenue / totals.cost).toFixed(2) + 'x' : '—'],
+          ['ROAS',      totals.cost > 0 ? Math.round(totals.revenue / totals.cost * 100).toLocaleString() + '%' : '—'],
         ].map(([label, value]) => (
           <div key={label} className={`rounded-xl px-4 py-3 border ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
             <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
@@ -120,10 +120,10 @@ export default function Reports({ dark }) {
                   <td className={td}>{Math.round(r.clicks).toLocaleString()}</td>
                   <td className={td}>{Math.round(r.installs).toLocaleString()}</td>
                   <td className={td}>{Math.round(r.conv).toLocaleString()}</td>
-                  <td className={td}>{fmtW(r.revenue)}</td>
+                  <td className={td}>{Math.round(r.revenue).toLocaleString()}원</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${parseFloat(r.roas) >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                      {r.roas}x
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${r.roas >= 200 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                      {r.roas}%
                     </span>
                   </td>
                   <td className={td}>{r.ctr}%</td>

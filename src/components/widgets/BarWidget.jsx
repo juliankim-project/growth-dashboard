@@ -19,7 +19,7 @@ function Tip({ active, payload, label, dark }) {
 }
 
 export default function BarWidget({ data, config, dark }) {
-  const { metric = 'cost', groupBy = 'Channel', title = '채널별 성과' } = config
+  const { metric = 'cost', groupBy = 'channel', title = '채널별 성과' } = config
 
   const chartData = useMemo(() => {
     const grouped = groupData(data, groupBy, [metric])

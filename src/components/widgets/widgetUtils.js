@@ -1,13 +1,16 @@
 import { METRICS } from '../../store/useConfig'
 
+/* 차트 축 전용 - 축약 표기 (소수점 없음) */
 export const fmtW = n => {
   if (n == null || isNaN(n)) return '—'
-  if (n >= 100_000_000) return (n / 100_000_000).toFixed(1) + '억'
-  if (n >= 10_000)      return (n / 10_000).toFixed(1) + '만'
+  if (n >= 100_000_000) return Math.round(n / 100_000_000) + '억'
+  if (n >= 10_000)      return Math.round(n / 10_000) + '만'
   return Math.round(n).toLocaleString()
 }
-export const fmt  = n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString()
-export const fmtP = n => (n == null || isNaN(n)) ? '—' : n.toFixed(2) + '%'
+/* KPI/테이블 전용 - 풀 숫자 */
+export const fmtNum = n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString()
+export const fmtKRW = n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString() + '원'
+export const fmtP   = n => (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%'
 
 export const sumField = (data, field) =>
   data.reduce((s, r) => s + (parseFloat(r[field]) || 0), 0)
@@ -32,14 +35,14 @@ export function calcMetric(data, metricId) {
   return sumField(data, m.field)
 }
 
-/* 포맷 */
+/* 포맷 - KPI/테이블 표시용 */
 export function fmtMetric(metricId, value) {
   const m = METRICS.find(x => x.id === metricId)
   if (!m) return String(value)
-  if (m.fmt === 'currency') return fmtW(value)
-  if (m.fmt === 'roas')     return value.toFixed(2) + 'x'
-  if (m.fmt === 'pct')      return value.toFixed(2) + '%'
-  return fmt(value)
+  if (m.fmt === 'currency') return fmtKRW(value)
+  if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
+  if (m.fmt === 'pct')      return value.toFixed(1) + '%'
+  return fmtNum(value)
 }
 
 /* 그룹핑 */
