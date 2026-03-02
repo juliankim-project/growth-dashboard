@@ -63,13 +63,13 @@ export function useDateRange() {
 
   /**
    * data 배열을 dateRange 기준으로 필터링
-   * Event Date 컬럼: 'YYYY-MM-DD...' 형식
+   * date 컬럼: 'YYYY-MM-DD' 형식 (구버전 'Event Date' fallback 포함)
    */
   const filterByDate = useCallback((data) => {
     const { start, end } = state
     if (!start || !end || !Array.isArray(data)) return data
     return data.filter(r => {
-      const d = r['Event Date']?.slice(0, 10)
+      const d = (r['date'] || r['Event Date'])?.slice(0, 10)
       return d && d >= start && d <= end
     })
   }, [state])
