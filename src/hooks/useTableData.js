@@ -5,7 +5,7 @@ import { fetchAll, supabase } from '../lib/supabase'
  * 범용 Supabase 테이블 데이터 훅
  * tableName 이 바뀌면 자동으로 재조회
  */
-export function useTableData(tableName = 'marketing_perf') {
+export function useTableData(tableName = 'marketing_data') {
   const [data,    setData]    = useState([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)

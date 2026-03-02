@@ -3,31 +3,31 @@ import { Upload, FileText, CheckCircle, AlertCircle, X, TrendingUp, Info } from 
 import { supabase } from '../lib/supabase'
 
 /* ─── 항상 이 테이블에 저장 ─── */
-const TARGET_TABLE = 'marketing_perf'
+const TARGET_TABLE = 'marketing_data'
 
 /* 필수 컬럼 (CSV 기준) */
 const REQUIRED_COLS = ['Event Date', 'Channel']
 
 /**
- * CSV 컬럼명 → DB 컬럼명 매핑
- * marketing_perf 테이블에서 channel만 소문자라서 별도 처리
+ * CSV 컬럼명(에어브릿지) → DB 컬럼명(snake_case) 매핑
  */
 const COL_MAP = {
-  'Event Date':            'Event Date',
-  'Channel':               'channel',          // ← DB는 소문자
-  'Campaign':              'Campaign',
-  'Ad Group':              'Ad Group',
-  'Ad Creative':           'Ad Creative',
-  'Content':               'Content',
-  'Sub Publisher':         'Sub Publisher',
-  'Impressions (Channel)': 'Impressions (Channel)',
-  'Clicks (Channel)':      'Clicks (Channel)',
-  'CPC (Channel)':         'CPC (Channel)',
-  'Installs (App)':        'Installs (App)',
-  'Cost (Channel)':        'Cost (Channel)',
-  '회원가입 (App+Web)':      '회원가입 (App+Web)',
-  '구매 완료 (App+Web)':     '구매 완료 (App+Web)',
-  '구매액 (App+Web)':        '구매액 (App+Web)',
+  'Event Date':            'date',
+  'Channel':               'channel',
+  'Campaign':              'campaign',
+  'Ad Group':              'ad_group',
+  'Ad Creative':           'ad_creative',
+  'Content':               'content',
+  'Sub Publisher':         'sub_publisher',
+  'Term':                  'term',
+  'Impressions (Channel)': 'impressions',
+  'Clicks (Channel)':      'clicks',
+  'CPC (Channel)':         'cpc',
+  'Installs (App)':        'installs',
+  'Cost (Channel)':        'spend',
+  '회원가입 (App+Web)':      'signups',
+  '구매 완료 (App+Web)':     'purchases',
+  '구매액 (App+Web)':        'revenue',
 }
 
 /* CSV 컬럼명 목록 (표시/매핑 확인용) */

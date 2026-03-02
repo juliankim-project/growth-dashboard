@@ -93,16 +93,16 @@ export const WIDGET_TYPES = [
    지표 목록
 ─────────────────────────────────────────── */
 export const METRICS = [
-  { id:'cost',     label:'광고비',   field:'Cost (Channel)',        fmt:'currency' },
-  { id:'revenue',  label:'매출',     field:'구매액 (App+Web)',       fmt:'currency' },
-  { id:'roas',     label:'ROAS',     field:null,                   fmt:'roas',    derived:true },
-  { id:'installs', label:'인스톨',   field:'Installs (App)',        fmt:'number' },
-  { id:'conv',     label:'구매',     field:'구매 완료 (App+Web)',    fmt:'number' },
-  { id:'signup',   label:'회원가입', field:'회원가입 (App+Web)',     fmt:'number' },
-  { id:'impr',     label:'노출',     field:'Impressions (Channel)', fmt:'number' },
-  { id:'clicks',   label:'클릭',     field:'Clicks (Channel)',      fmt:'number' },
-  { id:'ctr',      label:'CTR',      field:null,                   fmt:'pct',     derived:true },
-  { id:'cpc',      label:'CPC',      field:'CPC (Channel)',         fmt:'currency' },
+  { id:'cost',     label:'광고비',   field:'spend',       fmt:'currency' },
+  { id:'revenue',  label:'매출',     field:'revenue',     fmt:'currency' },
+  { id:'roas',     label:'ROAS',     field:null,          fmt:'roas',    derived:true },
+  { id:'installs', label:'인스톨',   field:'installs',    fmt:'number' },
+  { id:'conv',     label:'구매',     field:'purchases',   fmt:'number' },
+  { id:'signup',   label:'회원가입', field:'signups',     fmt:'number' },
+  { id:'impr',     label:'노출',     field:'impressions', fmt:'number' },
+  { id:'clicks',   label:'클릭',     field:'clicks',      fmt:'number' },
+  { id:'ctr',      label:'CTR',      field:null,          fmt:'pct',     derived:true },
+  { id:'cpc',      label:'CPC',      field:'cpc',         fmt:'currency' },
 ]
 
 /* GROUP_BY: channel은 DB 컬럼명 그대로 소문자 사용 */
