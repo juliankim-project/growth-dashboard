@@ -131,7 +131,10 @@ export default function DataStudio({ dark }) {
       let inserted = 0
       for (let i = 0; i < rows.length; i += CHUNK) {
         const chunk = rows.slice(i, i + CHUNK)
-        const { error } = await supabase.from(TARGET_TABLE).insert(chunk)
+        const { error } = await supabase.from(TARGET_TABLE).upsert(chunk, {
+          onConflict: 'date,channel,campaign,ad_group,ad_creative',
+          ignoreDuplicates: false,
+        })
         if (error) throw error
         inserted += chunk.length
         setProgress(Math.round((inserted / rows.length) * 100))
