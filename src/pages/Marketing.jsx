@@ -168,7 +168,7 @@ export default function Marketing({ dark, filterByDate }) {
 
   /* 채널 목록 */
   const channels = useMemo(() =>
-    [...new Set(data.map(r => r['Channel']).filter(Boolean))].sort()
+    [...new Set(data.map(r => r['channel'] ?? r['Channel']).filter(Boolean))].sort()
   , [data])
 
   const [selChannel,  setSelChannel]  = useState(null)
@@ -181,7 +181,7 @@ export default function Marketing({ dark, filterByDate }) {
   }, [channels])
 
   /* 필터링 */
-  const chanData = useMemo(() => data.filter(r => r['Channel'] === selChannel), [data, selChannel])
+  const chanData = useMemo(() => data.filter(r => (r['channel'] ?? r['Channel']) === selChannel), [data, selChannel])
   const campData = useMemo(() =>
     selCampaign ? chanData.filter(r => r['Campaign'] === selCampaign) : chanData
   , [chanData, selCampaign])

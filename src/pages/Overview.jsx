@@ -93,7 +93,7 @@ export default function Overview({ dark, filterByDate }) {
     /* 채널별 집계 */
     const byChan = {}
     data.forEach(r => {
-      const ch = r['Channel'] || '기타'
+      const ch = r['channel'] || r['Channel'] || '기타'
       if (!byChan[ch]) byChan[ch] = { channel: ch, cost: 0, installs: 0, revenue: 0 }
       byChan[ch].cost     += parseFloat(r['Cost (Channel)'])   || 0
       byChan[ch].installs += parseFloat(r['Installs (App)'])   || 0

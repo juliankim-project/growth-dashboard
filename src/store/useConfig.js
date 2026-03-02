@@ -125,24 +125,10 @@ export const DEFAULT_WIDGET_CONFIG = {
 }
 
 /* ──────────────────────────────────────────
-   대시보드 초기값 생성 (템플릿 기반)
+   대시보드 초기값 생성 (빈 슬롯 배열)
 ─────────────────────────────────────────── */
-export function makeDashboard(templateId = 'A') {
-  const tpl = TEMPLATES[templateId]
-  const widgets = {}
-  const KPI_METRICS = ['cost','revenue','roas','installs','conv','signup','impr','clicks']
-  let kpiIdx = 0
-  tpl.slots.forEach(slot => {
-    const type = slot.defaultType
-    const cfg  = { ...DEFAULT_WIDGET_CONFIG[type] }
-    if (type === 'kpi') {
-      cfg.metric = KPI_METRICS[kpiIdx % KPI_METRICS.length]
-      cfg.label  = METRICS.find(m => m.id === cfg.metric)?.label || ''
-      kpiIdx++
-    }
-    widgets[slot.id] = { type, config: cfg }
-  })
-  return { template: templateId, widgets }
+export function makeDashboard() {
+  return { slots: [] }
 }
 
 /* ──────────────────────────────────────────
