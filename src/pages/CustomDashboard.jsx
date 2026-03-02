@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Settings2, Check, X, Plus, Database, GripVertical } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
@@ -295,78 +295,97 @@ function WidgetEditor({ slotId, widget, dark, onSave, onClose }) {
 /* ══════════════════════════════════════════
    드래그 가능한 카드 (dnd-kit)
 ══════════════════════════════════════════ */
+/* 1px 행 기반 masonry: rowSpan = ceil((height + gap) / (1 + gap)) */
+const MGAP = 12  // gap-3
+
 function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, data, dark }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
   } = useSortable({ id: slot.id, disabled: !editMode })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0 : 1,
-    zIndex:  isDragging ? 50 : 'auto',
-  }
+  /* ── masonry 높이 측정 ── */
+  const innerRef  = useRef(null)
+  const [rowSpan, setRowSpan] = useState(20)
+
+  useEffect(() => {
+    const el = innerRef.current
+    if (!el) return
+    const calc = () => {
+      const h = el.getBoundingClientRect().height
+      if (h > 0) setRowSpan(Math.ceil((h + MGAP) / (1 + MGAP)))
+    }
+    calc()
+    const ro = new ResizeObserver(calc)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [slot.type, slot.config, data])
 
   const meta = WIDGET_META[slot.type] || WIDGET_META.kpi
 
+  const dndStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity:  isDragging ? 0 : 1,
+    gridRow:  `span ${rowSpan}`,
+  }
+
   return (
-    <div
-      ref={setNodeRef}
-      style={{ ...style, ...(slot.type !== 'kpi' && { minHeight: 210 }) }}
-      className={`${slot.span} relative`}
-    >
-      {editMode && (
-        <>
-          {/* 드래그 핸들 */}
-          <div
-            {...attributes}
-            {...listeners}
-            className={`absolute top-2 left-1/2 -translate-x-1/2 z-20
-              flex items-center gap-1 px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
-              ${dark
-                ? 'bg-[#0F1117]/90 text-slate-500 hover:text-slate-300 border border-[#252836]'
-                : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}
-          >
-            <GripVertical size={12}/>
-          </div>
+    <div ref={setNodeRef} style={dndStyle} className={`${slot.span} relative`}>
+      {/* 내용 측정용 wrapper */}
+      <div ref={innerRef}>
+        {editMode && (
+          <>
+            {/* 드래그 핸들 */}
+            <div
+              {...attributes}
+              {...listeners}
+              className={`absolute top-2 left-1/2 -translate-x-1/2 z-20
+                flex items-center gap-1 px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
+                ${dark
+                  ? 'bg-[#0F1117]/90 text-slate-500 hover:text-slate-300 border border-[#252836]'
+                  : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}
+            >
+              <GripVertical size={12}/>
+            </div>
 
-          {/* 삭제 버튼 */}
-          <button
-            onClick={() => onDelete(slot.id)}
-            className="absolute -top-2.5 -right-2.5 z-20 w-6 h-6 rounded-full
-              bg-red-500 hover:bg-red-600 text-white shadow-lg
-              flex items-center justify-center text-sm leading-none font-bold
-              transition-transform hover:scale-110">
-            ×
-          </button>
+            {/* 삭제 버튼 */}
+            <button
+              onClick={() => onDelete(slot.id)}
+              className="absolute -top-2.5 -right-2.5 z-20 w-6 h-6 rounded-full
+                bg-red-500 hover:bg-red-600 text-white shadow-lg
+                flex items-center justify-center text-sm leading-none font-bold
+                transition-transform hover:scale-110">
+              ×
+            </button>
 
-          {/* 크기 버튼 */}
-          <div className="absolute top-2 left-2 z-20 flex gap-0.5">
-            {SPAN_OPTS.map(opt => (
-              <button key={opt.value} onClick={() => onSpanChange(slot.id, opt.value)}
-                title={opt.label}
-                className={`w-5 h-5 rounded text-[9px] font-bold transition-colors
-                  ${slot.span === opt.value
-                    ? 'bg-indigo-500 text-white'
-                    : dark
-                      ? 'bg-[#0F1117]/80 text-slate-400 hover:bg-indigo-500/20 hover:text-indigo-300'
-                      : 'bg-white/90 text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 shadow'}`}>
-                {opt.cols}
-              </button>
-            ))}
-          </div>
+            {/* 크기 버튼 */}
+            <div className="absolute top-2 left-2 z-20 flex gap-0.5">
+              {SPAN_OPTS.map(opt => (
+                <button key={opt.value} onClick={() => onSpanChange(slot.id, opt.value)}
+                  title={opt.label}
+                  className={`w-5 h-5 rounded text-[9px] font-bold transition-colors
+                    ${slot.span === opt.value
+                      ? 'bg-indigo-500 text-white'
+                      : dark
+                        ? 'bg-[#0F1117]/80 text-slate-400 hover:bg-indigo-500/20 hover:text-indigo-300'
+                        : 'bg-white/90 text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 shadow'}`}>
+                  {opt.cols}
+                </button>
+              ))}
+            </div>
 
-          {/* 편집 버튼 */}
-          <button
-            onClick={() => onEdit(slot.id)}
-            className="absolute bottom-2 right-2 z-20 flex items-center gap-1
-              px-2.5 py-1 bg-indigo-600 text-white text-[10px] rounded-lg shadow-lg hover:bg-indigo-700">
-            <Settings2 size={10}/> {meta.icon} 편집
-          </button>
-        </>
-      )}
-      {renderWidget(slot.type, data, slot.config, dark)}
+            {/* 편집 버튼 */}
+            <button
+              onClick={() => onEdit(slot.id)}
+              className="absolute bottom-2 right-2 z-20 flex items-center gap-1
+                px-2.5 py-1 bg-indigo-600 text-white text-[10px] rounded-lg shadow-lg hover:bg-indigo-700">
+              <Settings2 size={10}/> {meta.icon} 편집
+            </button>
+          </>
+        )}
+        {renderWidget(slot.type, data, slot.config, dark)}
+      </div>
     </div>
   )
 }
@@ -962,7 +981,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={slots.map(s => s.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-6 gap-3 items-start">
+            <div className="grid grid-cols-6 gap-3" style={{ gridAutoRows: '1px' }}>
               {slots.map(slot => (
                 <SortableCard
                   key={slot.id}
@@ -978,13 +997,14 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
               {/* 편집모드: 인라인 추가 버튼 */}
               {editMode && (
                 <div onClick={() => setShowAdd(true)}
-                  className={`col-span-1 min-h-[88px] rounded-xl border-2 border-dashed cursor-pointer
-                    flex flex-col items-center justify-center gap-2 transition-colors select-none
+                  style={{ gridRow: 'span 8' }}
+                  className={`col-span-1 rounded-xl border-2 border-dashed cursor-pointer
+                    flex flex-col items-center justify-center gap-1.5 transition-colors select-none
                     ${dark
                       ? 'border-[#252836] text-slate-600 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
                       : 'border-slate-200 text-slate-300 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
-                  <Plus size={20}/>
-                  <span className="text-xs font-semibold">카드 추가</span>
+                  <Plus size={16}/>
+                  <span className="text-[10px] font-semibold">카드 추가</span>
                 </div>
               )}
             </div>
