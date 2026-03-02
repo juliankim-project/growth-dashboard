@@ -570,9 +570,21 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
 export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
   const tabs = tabsConfig?.tabs || []
 
+  /* 탭이 하나도 없으면 첫 방문 → 기본 탭 자동 생성 */
+  useEffect(() => {
+    if (tabs.length === 0 && tabsConfig?.addTab) {
+      tabsConfig.addTab('대시보드')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   /* 활성 탭 */
   const [activeTabId, setActiveTabId] = useState(() => tabs[0]?.id ?? null)
   const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0] ?? null
+
+  /* 탭 목록 변경 시 activeTabId 동기화 */
+  useEffect(() => {
+    if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id)
+  }, [tabs.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* 활성 탭의 대시보드 (로컬 편집 상태) */
   const [dashboard, setDashboard] = useState(() => {

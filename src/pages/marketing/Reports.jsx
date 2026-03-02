@@ -17,20 +17,20 @@ export default function Reports({ dark }) {
 
   const report = useMemo(() => {
     if (!data.length) return []
-    const key = groupBy === 'channel' ? 'Channel'
-      : groupBy === 'campaign' ? 'Campaign'
-      : 'Event Date'
+    const key = groupBy === 'channel' ? 'channel'
+      : groupBy === 'campaign' ? 'campaign'
+      : 'date'
 
     const map = {}
     data.forEach(r => {
       const k = r[key] || '(없음)'
       if (!map[k]) map[k] = { name: k, cost: 0, impressions: 0, clicks: 0, installs: 0, conv: 0, revenue: 0 }
-      map[k].cost        += parseFloat(r['Cost (Channel)']) || 0
-      map[k].impressions += parseFloat(r['Impressions (Channel)']) || 0
-      map[k].clicks      += parseFloat(r['Clicks (Channel)']) || 0
-      map[k].installs    += parseFloat(r['Installs (App)']) || 0
-      map[k].conv        += parseFloat(r['구매 완료 (App+Web)']) || 0
-      map[k].revenue     += parseFloat(r['구매액 (App+Web)']) || 0
+      map[k].cost        += parseFloat(r['spend'])       || 0
+      map[k].impressions += parseFloat(r['impressions']) || 0
+      map[k].clicks      += parseFloat(r['clicks'])      || 0
+      map[k].installs    += parseFloat(r['installs'])    || 0
+      map[k].conv        += parseFloat(r['purchases'])   || 0
+      map[k].revenue     += parseFloat(r['revenue'])     || 0
     })
     return Object.values(map)
       .map(r => ({ ...r, roas: r.cost > 0 ? (r.revenue / r.cost).toFixed(2) : '—', ctr: r.impressions > 0 ? ((r.clicks / r.impressions) * 100).toFixed(2) : '—' }))
@@ -38,12 +38,12 @@ export default function Reports({ dark }) {
   }, [data, groupBy])
 
   const totals = useMemo(() => ({
-    cost: sum(data, 'Cost (Channel)'),
-    impressions: sum(data, 'Impressions (Channel)'),
-    clicks: sum(data, 'Clicks (Channel)'),
-    installs: sum(data, 'Installs (App)'),
-    conv: sum(data, '구매 완료 (App+Web)'),
-    revenue: sum(data, '구매액 (App+Web)'),
+    cost:        sum(data, 'spend'),
+    impressions: sum(data, 'impressions'),
+    clicks:      sum(data, 'clicks'),
+    installs:    sum(data, 'installs'),
+    conv:        sum(data, 'purchases'),
+    revenue:     sum(data, 'revenue'),
   }), [data])
 
   const exportCSV = () => {

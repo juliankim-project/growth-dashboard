@@ -18,13 +18,13 @@ export function calcMetric(data, metricId) {
   if (!m) return 0
   if (m.derived) {
     if (metricId === 'roas') {
-      const cost = sumField(data, 'Cost (Channel)')
-      const rev  = sumField(data, '구매액 (App+Web)')
+      const cost = sumField(data, 'spend')
+      const rev  = sumField(data, 'revenue')
       return cost > 0 ? rev / cost : 0
     }
     if (metricId === 'ctr') {
-      const impr  = sumField(data, 'Impressions (Channel)')
-      const click = sumField(data, 'Clicks (Channel)')
+      const impr  = sumField(data, 'impressions')
+      const click = sumField(data, 'clicks')
       return impr > 0 ? (click / impr) * 100 : 0
     }
     return 0
@@ -58,10 +58,10 @@ export function groupData(data, groupByField, metrics) {
       }
     })
   })
-  // derived
+  // derived (cost/revenue/impressions/clicks는 metric id를 key로 가짐)
   Object.values(map).forEach(row => {
-    if (metrics.includes('roas')) row.roas = row.cost > 0 ? (row.revenue / row.cost) : 0
-    if (metrics.includes('ctr'))  row.ctr  = row.impr  > 0 ? (row.clicks  / row.impr ) * 100 : 0
+    if (metrics.includes('roas')) row.roas = (row.cost || 0) > 0 ? ((row.revenue || 0) / row.cost) : 0
+    if (metrics.includes('ctr'))  row.ctr  = (row.impr  || 0) > 0 ? ((row.clicks  || 0) / row.impr ) * 100 : 0
   })
   return Object.values(map)
 }
@@ -70,7 +70,7 @@ export function groupData(data, groupByField, metrics) {
 export function dailyData(data, metrics) {
   const map = {}
   data.forEach(r => {
-    const d = r['Event Date']?.slice(0, 10)
+    const d = (r['date'] || r['Event Date'])?.slice(0, 10)
     if (!d) return
     if (!map[d]) { map[d] = { label: d.slice(5) }; metrics.forEach(mid => { map[d][mid] = 0 }) }
     metrics.forEach(mid => {
