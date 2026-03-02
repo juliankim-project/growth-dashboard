@@ -59,7 +59,7 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
 ───────────────────────────────────────── */
 function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource, dark }) {
   const ds       = getSubDataSource(sectionId, subId)
-  const table    = ds.table    || 'marketing_perf'
+  const table    = ds.table    || 'marketing_data'
   const fieldMap = ds.fieldMap || {}
 
   const [tableInput, setTableInput] = useState(table)
@@ -76,7 +76,7 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
       if (col.trim()) newFieldMap[id] = col.trim()
     })
     setSubDataSource(sectionId, subId, {
-      table:    tableInput.trim() || 'marketing_perf',
+      table:    tableInput.trim() || 'marketing_data',
       fieldMap: newFieldMap,
     })
     setSaved(true)
@@ -84,13 +84,13 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
   }
 
   const reset = () => {
-    setTableInput('marketing_perf')
+    setTableInput('marketing_data')
     setMapInputs(() => {
       const init = {}
       METRICS.filter(m => !m.derived).forEach(m => { init[m.id] = '' })
       return init
     })
-    setSubDataSource(sectionId, subId, { table: 'marketing_perf', fieldMap: {} })
+    setSubDataSource(sectionId, subId, { table: 'marketing_data', fieldMap: {} })
   }
 
   const inp = `px-2 py-1 rounded-lg border text-xs outline-none w-full font-mono
@@ -115,11 +115,11 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
           className={inp}
           value={tableInput}
           onChange={e => setTableInput(e.target.value)}
-          placeholder="marketing_perf"
+          placeholder="marketing_data"
           list="ds-known-tables"
         />
         <datalist id="ds-known-tables">
-          <option value="marketing_perf"/>
+          <option value="marketing_data"/>
         </datalist>
       </div>
 
@@ -291,7 +291,7 @@ function SubRow({
   const label     = config.subLabels[key] || sub.label
   const l3Count   = getL3Tabs(sectionId, sub.id).length
   const ds        = getSubDataSource(sectionId, sub.id)
-  const hasCustomDS = ds.table !== 'marketing_perf' || Object.keys(ds.fieldMap || {}).length > 0
+  const hasCustomDS = ds.table !== 'marketing_data' || Object.keys(ds.fieldMap || {}).length > 0
 
   if (isHidden) {
     /* 숨겨진 빌트인: 흐릿하게 표시 + 복원 버튼 */

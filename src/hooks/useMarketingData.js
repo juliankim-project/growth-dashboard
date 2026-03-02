@@ -17,7 +17,7 @@ export function useMarketingData() {
     let cancelled = false
     setLoading(true)
 
-    fetchAll('marketing_perf')
+    fetchAll('marketing_data')
       .then(rows => {
         if (!cancelled) {
           setData(rows)

@@ -44,7 +44,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
   const [draft,   setDraft]   = useState(tableName)
 
   // 일반적으로 사용되는 테이블 예시 (초기값)
-  const KNOWN_TABLES = ['marketing_perf']
+  const KNOWN_TABLES = ['marketing_data']
 
   const commit = () => {
     const t = draft.trim()
@@ -453,7 +453,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, onSave, sav
     }))
   }
 
-  const currentTable = dashboard.dataSource?.table || 'marketing_perf'
+  const currentTable = dashboard.dataSource?.table || 'marketing_data'
 
   const renderSlot = slot => {
     const w = dashboard.widgets[slot.id] || {
@@ -589,10 +589,10 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     setSaved(false)
   }, [activeTab?.id])
 
-  /* 데이터 소스: L2 subDataSource.table 우선, 없으면 dashboard.dataSource, 기본값 marketing_perf */
+  /* 데이터 소스: L2 subDataSource.table 우선, 없으면 dashboard.dataSource, 기본값 marketing_data */
   const tableName = subDataSource?.table
     || dashboard.dataSource?.table
-    || 'marketing_perf'
+    || 'marketing_data'
   const fieldMap  = subDataSource?.fieldMap || {}
 
   const { data: rawData, loading, error } = useTableData(tableName)

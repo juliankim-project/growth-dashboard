@@ -105,12 +105,12 @@ export const METRICS = [
   { id:'cpc',      label:'CPC',      field:'cpc',         fmt:'currency' },
 ]
 
-/* GROUP_BY: channel은 DB 컬럼명 그대로 소문자 사용 */
+/* GROUP_BY: DB 컬럼명 snake_case 사용 */
 export const GROUP_BY = [
   { id:'channel',     label:'채널'        },
-  { id:'Campaign',    label:'캠페인'      },
-  { id:'Ad Group',    label:'광고그룹'    },
-  { id:'Ad Creative', label:'크리에이티브' },
+  { id:'campaign',    label:'캠페인'      },
+  { id:'ad_group',    label:'광고그룹'    },
+  { id:'ad_creative', label:'크리에이티브' },
 ]
 
 /* ──────────────────────────────────────────
@@ -148,11 +148,37 @@ export function makeDashboard(templateId = 'A') {
 /* ──────────────────────────────────────────
    React Hook
 ─────────────────────────────────────────── */
+/* 구 테이블명 → marketing_data 마이그레이션 */
+const OLD_TABLE_NAMES = new Set([
+  'marketing_perf','meta_perf','perf_meta',
+  'perf_google','perf_naver_pl','perf_naver_brand',
+])
+
+function migrateConfig(raw) {
+  const merged = { ...DEFAULT_CONFIG, ...raw }
+  if (!merged.subDataSources) return merged
+  let changed = false
+  const newDS = Object.fromEntries(
+    Object.entries(merged.subDataSources).map(([k, v]) => {
+      if (OLD_TABLE_NAMES.has(v?.table)) {
+        changed = true
+        return [k, { ...v, table: 'marketing_data' }]
+      }
+      return [k, v]
+    })
+  )
+  if (changed) {
+    merged.subDataSources = newDS
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch {}
+  }
+  return merged
+}
+
 export function useConfig() {
   const [config, _setConfig] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-      return { ...DEFAULT_CONFIG, ...raw }
+      return migrateConfig(raw)
     } catch { return { ...DEFAULT_CONFIG } }
   })
 
@@ -191,7 +217,7 @@ export function useConfig() {
 
   /* ── L2 서브 데이터 소스 ── */
   const getSubDataSource = (sectionId, subId) =>
-    config.subDataSources[`${sectionId}.${subId}`] || { table: 'marketing_perf', fieldMap: {} }
+    config.subDataSources[`${sectionId}.${subId}`] || { table: 'marketing_data', fieldMap: {} }
 
   const setSubDataSource = (sectionId, subId, dataSource) =>
     persist({

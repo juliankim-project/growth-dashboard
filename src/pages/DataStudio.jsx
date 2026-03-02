@@ -206,7 +206,7 @@ export default function DataStudio({ dark }) {
                 CSV 파일을 드롭하거나 클릭해서 선택
               </p>
               <p className={`text-xs mt-1 ${sub}`}>
-                UTF-8 인코딩 · 채널 자동 감지 · marketing_perf에 직접 저장
+                UTF-8 인코딩 · 채널 자동 감지 · marketing_data에 직접 저장
               </p>
             </div>
           </div>
