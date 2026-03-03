@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, FileText, CheckCircle, AlertCircle, X, TrendingUp, Info } from 'lucide-react'
+import { Upload, FileText, CheckCircle, AlertCircle, X, TrendingUp, Info, Trash2, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 /* ─── 항상 이 테이블에 저장 ─── */
@@ -65,9 +65,6 @@ function getDateRange(rows) {
   return { start: dates[0], end: dates[dates.length - 1] }
 }
 
-const CHANNEL_COLORS = [
-  'indigo', 'violet', 'cyan', 'emerald', 'orange', 'pink', 'yellow',
-]
 const colorClass = (i, dark) => {
   const colors = [
     dark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'  : 'bg-indigo-50 border-indigo-100 text-indigo-600',
@@ -81,13 +78,15 @@ const colorClass = (i, dark) => {
 
 /* ════════════════════════════════════════════════ */
 export default function DataStudio({ dark }) {
-  const [step,           setStep]           = useState(0)   // 0:업로드 1:확인 2:완료
-  const [file,           setFile]           = useState(null)
-  const [parsed,         setParsed]         = useState(null) // { headers, rows }
-  const [uploading,      setUploading]      = useState(false)
-  const [progress,       setProgress]       = useState(0)
-  const [result,         setResult]         = useState(null)
-  const [dragOver,       setDragOver]       = useState(false)
+  const [step,         setStep]         = useState(0)   // 0:업로드 1:확인 2:완료
+  const [file,         setFile]         = useState(null)
+  const [parsed,       setParsed]       = useState(null) // { headers, rows }
+  const [uploading,    setUploading]    = useState(false)
+  const [progress,     setProgress]     = useState(0)
+  const [result,       setResult]       = useState(null)
+  const [dragOver,     setDragOver]     = useState(false)
+  const [uploadMode,   setUploadMode]   = useState('overwrite') // 'overwrite' | 'clear_all'
+  const [clearConfirm, setClearConfirm] = useState(false)
   const fileRef = useRef()
 
   /* 파일 처리 */
@@ -110,6 +109,10 @@ export default function DataStudio({ dark }) {
   const missingCols    = parsed ? REQUIRED_COLS.filter(c => !parsed.headers.includes(c)) : []
   const matchedCols    = parsed ? ALL_COLS.filter(c => parsed.headers.includes(c)) : []
   const unmatchedCols  = parsed ? ALL_COLS.filter(c => !parsed.headers.includes(c)) : []
+
+  /* 업로드 가능 여부 */
+  const canUpload = !uploading && missingCols.length === 0
+    && (uploadMode !== 'clear_all' || clearConfirm)
 
   /* 업로드 실행 */
   const handleUpload = async () => {
@@ -136,20 +139,38 @@ export default function DataStudio({ dark }) {
         }, {})
       )
 
+      /* ── Step 1: 기존 데이터 삭제 ── */
+      if (uploadMode === 'clear_all') {
+        /* 전체 초기화: 테이블 전체 삭제 */
+        const { error } = await supabase
+          .from(TARGET_TABLE)
+          .delete()
+          .gte('date', '1900-01-01')
+        if (error) throw error
+      } else {
+        /* 날짜 범위 덮어쓰기: CSV 날짜 범위 내 행만 삭제 */
+        if (dateRange) {
+          const { error } = await supabase
+            .from(TARGET_TABLE)
+            .delete()
+            .gte('date', dateRange.start)
+            .lte('date', dateRange.end)
+          if (error) throw error
+        }
+      }
+
+      /* ── Step 2: 새 데이터 삽입 ── */
       const CHUNK = 500
       let inserted = 0
       for (let i = 0; i < deduped.length; i += CHUNK) {
         const chunk = deduped.slice(i, i + CHUNK)
-        const { error } = await supabase.from(TARGET_TABLE).upsert(chunk, {
-          onConflict: 'date,channel,campaign,ad_group,ad_creative',
-          ignoreDuplicates: false,
-        })
+        const { error } = await supabase.from(TARGET_TABLE).insert(chunk)
         if (error) throw error
         inserted += chunk.length
         setProgress(Math.round((inserted / deduped.length) * 100))
       }
 
-      setResult({ ok: true, count: inserted })
+      setResult({ ok: true, count: inserted, mode: uploadMode, dateRange })
       setStep(2)
     } catch (err) {
       setResult({ ok: false, error: err.message })
@@ -161,6 +182,7 @@ export default function DataStudio({ dark }) {
   const reset = () => {
     setStep(0); setFile(null); setParsed(null)
     setResult(null); setProgress(0)
+    setUploadMode('overwrite'); setClearConfirm(false)
   }
 
   /* 스타일 헬퍼 */
@@ -255,7 +277,7 @@ export default function DataStudio({ dark }) {
             )}
 
             {/* 요약 카드 */}
-            <div className={`grid grid-cols-3 gap-3 mb-4`}>
+            <div className="grid grid-cols-3 gap-3 mb-4">
               {[
                 { label: '총 행 수',   value: parsed.rows.length.toLocaleString() + '행' },
                 { label: '날짜 범위',  value: dateRange ? `${dateRange.start} ~ ${dateRange.end}` : '—' },
@@ -317,6 +339,110 @@ export default function DataStudio({ dark }) {
             </p>
           </div>
 
+          {/* ── 업로드 방식 선택 ── */}
+          <div className={card}>
+            <p className={`text-xs font-semibold mb-3 ${sub}`}>업로드 방식</p>
+            <div className="grid grid-cols-2 gap-3">
+
+              {/* 날짜 범위 덮어쓰기 */}
+              <button
+                onClick={() => { setUploadMode('overwrite'); setClearConfirm(false) }}
+                className={`
+                  rounded-xl border p-4 text-left transition-all
+                  ${uploadMode === 'overwrite'
+                    ? dark
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-indigo-500 bg-indigo-50'
+                    : dark
+                      ? 'border-[#252836] hover:border-indigo-500/40 bg-[#13151C]'
+                      : 'border-slate-200 hover:border-indigo-300 bg-slate-50'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center
+                    ${uploadMode === 'overwrite'
+                      ? 'bg-indigo-500 text-white'
+                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-400'}`}>
+                    <RefreshCw size={14} />
+                  </div>
+                  <span className={`text-xs font-bold ${uploadMode === 'overwrite' ? 'text-indigo-400' : sub}`}>
+                    날짜 범위 덮어쓰기
+                  </span>
+                  {uploadMode === 'overwrite' && (
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-indigo-500 text-white font-semibold">
+                      권장
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  CSV의 날짜 범위 내 기존 데이터만 삭제 후 교체합니다.
+                  범위 밖 데이터는 그대로 유지됩니다.
+                </p>
+                {uploadMode === 'overwrite' && dateRange && (
+                  <div className={`mt-2.5 rounded-lg px-2.5 py-2 text-[11px] font-mono
+                    ${dark ? 'bg-indigo-500/10 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
+                    🗓 {dateRange.start} ~ {dateRange.end}
+                  </div>
+                )}
+              </button>
+
+              {/* 전체 초기화 */}
+              <button
+                onClick={() => { setUploadMode('clear_all'); setClearConfirm(false) }}
+                className={`
+                  rounded-xl border p-4 text-left transition-all
+                  ${uploadMode === 'clear_all'
+                    ? dark
+                      ? 'border-red-500/60 bg-red-500/10'
+                      : 'border-red-400 bg-red-50'
+                    : dark
+                      ? 'border-[#252836] hover:border-red-500/30 bg-[#13151C]'
+                      : 'border-slate-200 hover:border-red-300 bg-slate-50'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center
+                    ${uploadMode === 'clear_all'
+                      ? 'bg-red-500 text-white'
+                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-400'}`}>
+                    <Trash2 size={14} />
+                  </div>
+                  <span className={`text-xs font-bold ${uploadMode === 'clear_all' ? 'text-red-400' : sub}`}>
+                    전체 초기화
+                  </span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  테이블의 모든 데이터를 삭제하고 CSV 데이터로 새로 채웁니다.
+                  되돌릴 수 없습니다.
+                </p>
+              </button>
+            </div>
+
+            {/* 전체 초기화 확인 체크박스 */}
+            {uploadMode === 'clear_all' && (
+              <label className={`
+                mt-3 flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer
+                border transition-all select-none
+                ${clearConfirm
+                  ? dark ? 'border-red-500/40 bg-red-500/10' : 'border-red-300 bg-red-50'
+                  : dark ? 'border-[#252836] bg-[#13151C]' : 'border-slate-200 bg-slate-50'
+                }
+              `}>
+                <input
+                  type="checkbox"
+                  checked={clearConfirm}
+                  onChange={e => setClearConfirm(e.target.checked)}
+                  className="w-4 h-4 accent-red-500 shrink-0"
+                />
+                <span className={`text-xs ${clearConfirm ? 'text-red-400 font-semibold' : sub}`}>
+                  <span className="font-mono font-bold">{TARGET_TABLE}</span>의 모든 데이터가 삭제됨을 이해했습니다
+                </span>
+              </label>
+            )}
+          </div>
+
           {/* 업로드 진행 바 */}
           {uploading && (
             <div className={card}>
@@ -334,13 +460,21 @@ export default function DataStudio({ dark }) {
           {/* 업로드 버튼 */}
           <button
             onClick={handleUpload}
-            disabled={uploading || missingCols.length > 0}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50
-              disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
+            disabled={!canUpload}
+            className={`
+              w-full py-3 text-white text-sm font-semibold rounded-xl transition-colors
+              disabled:opacity-40 disabled:cursor-not-allowed
+              ${uploadMode === 'clear_all'
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'}
+            `}
           >
             {uploading
               ? `업로드 중... ${progress}%`
-              : `${parsed.rows.length.toLocaleString()}행 → ${TARGET_TABLE} 업로드`}
+              : uploadMode === 'clear_all'
+                ? `전체 초기화 후 ${parsed.rows.length.toLocaleString()}행 업로드`
+                : `${parsed.rows.length.toLocaleString()}행 → ${TARGET_TABLE} 덮어쓰기`
+            }
           </button>
         </div>
       )}
@@ -357,12 +491,29 @@ export default function DataStudio({ dark }) {
               <p className={`text-lg font-bold ${txt}`}>
                 {result.ok ? '업로드 완료!' : '업로드 실패'}
               </p>
-              <p className={`text-sm mt-1.5 ${sub}`}>
-                {result.ok
-                  ? `${result.count.toLocaleString()}행이 ${TARGET_TABLE}에 저장되었습니다. 대시보드를 새로고침하면 반영됩니다.`
-                  : result.error
-                }
-              </p>
+              {result.ok ? (
+                <div className={`text-sm mt-1.5 ${sub} flex flex-col gap-1`}>
+                  <p>
+                    {result.count.toLocaleString()}행이{' '}
+                    <span className="font-mono font-semibold text-indigo-400">{TARGET_TABLE}</span>에 저장되었습니다.
+                  </p>
+                  {result.mode === 'overwrite' && result.dateRange && (
+                    <p className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                      적용 범위: {result.dateRange.start} ~ {result.dateRange.end}
+                    </p>
+                  )}
+                  {result.mode === 'clear_all' && (
+                    <p className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                      기존 데이터 전체 삭제 후 새로 저장
+                    </p>
+                  )}
+                  <p className={`text-xs mt-1 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                    대시보드를 새로고침하면 반영됩니다.
+                  </p>
+                </div>
+              ) : (
+                <p className={`text-sm mt-1.5 ${sub}`}>{result.error}</p>
+              )}
             </div>
             <button onClick={reset}
               className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors">
