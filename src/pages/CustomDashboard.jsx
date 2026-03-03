@@ -39,6 +39,149 @@ function applyFieldMap(rows, fieldMap) {
   })
 }
 
+/* ── 카드별 필터 적용: channel → campaign → ad_group 캐스케이딩 ── */
+function applyWidgetFilters(data, filters) {
+  if (!filters) return data
+  let result = data
+  if (filters.channel?.length)  result = result.filter(r => filters.channel.includes(r.channel))
+  if (filters.campaign?.length) result = result.filter(r => filters.campaign.includes(r.campaign))
+  if (filters.ad_group?.length) result = result.filter(r => filters.ad_group.includes(r.ad_group))
+  return result
+}
+
+/* ── 위젯 필터 UI (채널→캠페인→광고그룹 캐스케이딩 선택) ── */
+function FilterSection({ filters = {}, data, dark, onChange }) {
+  const [open, setOpen] = useState(false)
+
+  const S = {
+    lab:   `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`,
+    chip:  (on) => `text-[11px] px-2 py-1 rounded-lg border transition-colors cursor-pointer select-none
+      ${on ? 'border-indigo-500 bg-indigo-500/15 text-indigo-400 font-semibold'
+           : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-400/50 hover:text-slate-300'
+                  : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-slate-700'}`,
+  }
+
+  const toggle = (dim, val) => {
+    const cur = filters[dim] || []
+    const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
+    if (dim === 'channel')       onChange({ ...filters, channel: next, campaign: [], ad_group: [] })
+    else if (dim === 'campaign') onChange({ ...filters, campaign: next, ad_group: [] })
+    else                         onChange({ ...filters, [dim]: next })
+  }
+  const clear = (dim) => {
+    if (dim === 'channel')       onChange({ ...filters, channel: [], campaign: [], ad_group: [] })
+    else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [] })
+    else                         onChange({ ...filters, [dim]: [] })
+  }
+
+  const selCh  = filters.channel  || []
+  const selCp  = filters.campaign || []
+  const selAg  = filters.ad_group || []
+
+  const byChannel   = selCh.length ? data.filter(r => selCh.includes(r.channel))   : data
+  const byCampaign  = selCp.length ? byChannel.filter(r => selCp.includes(r.campaign)) : byChannel
+
+  const channels  = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
+  const campaigns = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
+  const adGroups  = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
+
+  const activeCount = selCh.length + selCp.length + selAg.length
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors
+          ${dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}
+      >
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold ${dark ? 'text-slate-300' : 'text-slate-700'}`}>데이터 필터</span>
+          {activeCount > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white font-bold">
+              {activeCount}
+            </span>
+          )}
+        </div>
+        <span className={`text-[10px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className={`px-3.5 pb-3.5 flex flex-col gap-3.5 border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+          <p className={`pt-2.5 text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+            선택 없으면 전체 데이터 사용. 채널 선택 시 하위 캠페인 목록이 바뀝니다.
+          </p>
+
+          {/* 채널 */}
+          {channels.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className={S.lab}>채널</p>
+                {selCh.length > 0 && (
+                  <button onClick={() => clear('channel')}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {channels.map(ch => (
+                  <button key={ch} onClick={() => toggle('channel', ch)} className={S.chip(selCh.includes(ch))}>
+                    {ch}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 캠페인 */}
+          {campaigns.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className={S.lab}>캠페인</p>
+                {selCp.length > 0 && (
+                  <button onClick={() => clear('campaign')}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {campaigns.map(c => (
+                  <button key={c} onClick={() => toggle('campaign', c)} className={S.chip(selCp.includes(c))}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 광고그룹 */}
+          {adGroups.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className={S.lab}>광고그룹</p>
+                {selAg.length > 0 && (
+                  <button onClick={() => clear('ad_group')}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {adGroups.map(g => (
+                  <button key={g} onClick={() => toggle('ad_group', g)} className={S.chip(selAg.includes(g))}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {channels.length === 0 && (
+            <p className={`text-[11px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
+              데이터가 없거나 채널 컬럼이 없습니다
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const WIDGET_MAP = {
   kpi: KPIWidget, timeseries: TimeSeriesWidget,
   bar: BarWidget, donut: DonutWidget, table: TableWidget,
@@ -110,9 +253,10 @@ function DataSourceSelector({ tableName, onChange, dark }) {
 /* ══════════════════════════════════════════
    위젯 에디터 모달 (카드 밖 전체화면 모달)
 ══════════════════════════════════════════ */
-function WidgetEditor({ slotId, widget, dark, onSave, onClose }) {
-  const [type,   setType]   = useState(widget.type)
-  const [config, setConfig] = useState({ ...widget.config })
+function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
+  const [type,    setType]    = useState(widget.type)
+  const [config,  setConfig]  = useState({ ...widget.config })
+  const [filters, setFilters] = useState(widget.config.filters || {})
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
   const toggleMetric = mid => {
@@ -154,7 +298,7 @@ function WidgetEditor({ slotId, widget, dark, onSave, onClose }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => onSave(slotId, { type, config })}
+            <button onClick={() => onSave(slotId, { type, config: { ...config, filters } })}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white text-xs rounded-xl hover:bg-indigo-700 font-semibold">
               <Check size={12}/> 저장
             </button>
@@ -286,6 +430,14 @@ function WidgetEditor({ slotId, widget, dark, onSave, onClose }) {
               </div>
             </>
           )}
+
+          {/* 데이터 필터 */}
+          <FilterSection
+            filters={filters}
+            data={data}
+            dark={dark}
+            onChange={setFilters}
+          />
         </div>
       </div>
     </div>
@@ -480,7 +632,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
             </button>
           </>
         )}
-        {renderWidget(slot.type, data, slot.config, dark)}
+        {renderWidget(slot.type, applyWidgetFilters(data, slot.config.filters), slot.config, dark)}
       </div>
     </div>
   )
@@ -1107,7 +1259,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
             {activeSlot && (
               <div className={`${activeSlot.span} rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl`}
                 style={{ ...(activeSlot.type !== 'kpi' && { minHeight: 210 }) }}>
-                {renderWidget(activeSlot.type, data, activeSlot.config, dark)}
+                {renderWidget(activeSlot.type, applyWidgetFilters(data, activeSlot.config.filters), activeSlot.config, dark)}
               </div>
             )}
           </DragOverlay>
@@ -1124,6 +1276,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
         <WidgetEditor
           slotId={editingSlot.id}
           widget={{ type: editingSlot.type, config: editingSlot.config }}
+          data={data}
           dark={dark}
           onSave={handleWidgetSave}
           onClose={() => setEditSlot(null)}
