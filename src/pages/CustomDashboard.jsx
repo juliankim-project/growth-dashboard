@@ -43,11 +43,12 @@ function applyFieldMap(rows, fieldMap) {
 function applyWidgetFilters(data, filters) {
   if (!filters) return data
   let result = data
-  if (filters.channel?.length)  result = result.filter(r => filters.channel.includes(r.channel))
-  if (filters.campaign?.length) result = result.filter(r => filters.campaign.includes(r.campaign))
-  if (filters.ad_group?.length) result = result.filter(r => filters.ad_group.includes(r.ad_group))
-  if (filters.content?.length)  result = result.filter(r => filters.content.includes(r.content))
-  if (filters.term?.length)     result = result.filter(r => filters.term.includes(r.term))
+  if (filters.channel?.length)     result = result.filter(r => filters.channel.includes(r.channel))
+  if (filters.campaign?.length)    result = result.filter(r => filters.campaign.includes(r.campaign))
+  if (filters.ad_group?.length)    result = result.filter(r => filters.ad_group.includes(r.ad_group))
+  if (filters.ad_creative?.length) result = result.filter(r => filters.ad_creative.includes(r.ad_creative))
+  if (filters.content?.length)     result = result.filter(r => filters.content.includes(r.content))
+  if (filters.term?.length)        result = result.filter(r => filters.term.includes(r.term))
   return result
 }
 
@@ -65,62 +66,71 @@ const KNOWN_TABLES = [
 function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByChange, initialOpen = false }) {
   const [open, setOpen] = useState(initialOpen)
 
-  const selTable   = filters.table    || ''
-  const selCh      = filters.channel  || []
-  const selCp      = filters.campaign || []
-  const selAg      = filters.ad_group || []
-  const selContent = filters.content  || []
-  const selTerm    = filters.term     || []
+  const selTable    = filters.table       || ''
+  const selCh       = filters.channel     || []
+  const selCp       = filters.campaign    || []
+  const selAg       = filters.ad_group    || []
+  const selAc       = filters.ad_creative || []
+  const selContent  = filters.content     || []
+  const selTerm     = filters.term        || []
 
   /* 캐스케이딩 데이터 */
-  const byChannel  = selCh.length      ? data.filter(r => selCh.includes(r.channel))           : data
-  const byCampaign = selCp.length      ? byChannel.filter(r => selCp.includes(r.campaign))     : byChannel
-  const byAdGroup  = selAg.length      ? byCampaign.filter(r => selAg.includes(r.ad_group))    : byCampaign
-  const byContent  = selContent.length ? byAdGroup.filter(r => selContent.includes(r.content)) : byAdGroup
+  const byChannel    = selCh.length      ? data.filter(r => selCh.includes(r.channel))              : data
+  const byCampaign   = selCp.length      ? byChannel.filter(r => selCp.includes(r.campaign))        : byChannel
+  const byAdGroup    = selAg.length      ? byCampaign.filter(r => selAg.includes(r.ad_group))       : byCampaign
+  const byAdCreative = selAc.length      ? byAdGroup.filter(r => selAc.includes(r.ad_creative))     : byAdGroup
+  const byContent    = selContent.length ? byAdCreative.filter(r => selContent.includes(r.content)) : byAdCreative
 
-  const channels  = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
-  const campaigns = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
-  const adGroups  = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
-  const contents  = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
-  const terms     = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
+  const channels    = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
+  const campaigns   = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
+  const adGroups    = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
+  const adCreatives = [...new Set(byAdGroup.map(r => r.ad_creative).filter(Boolean))].sort()
+  const contents    = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
+  /* term: ad_group 선택 후 바로 출현 (Naver처럼 content 없는 경우 대응) */
+  const terms       = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
 
-  /* 단계별 컬럼 정의 */
+  /* 단계별 컬럼 정의
+     · ad_creative, content 는 ad_group 선택 후 데이터 있으면 동시 출현 (플랫폼별 차이)
+     · term 은 ad_group 선택 후 바로 출현 (content/ad_creative 없어도) */
   const COLS = [
-    { key: 'table',    label: '테이블',   isTable: true,
+    { key: 'table',       label: '테이블',     isTable: true,
       opts: KNOWN_TABLES.map(t => t.id),
       labelOf: Object.fromEntries(KNOWN_TABLES.map(t => [t.id, t.label])),
       sel: selTable ? [selTable] : [], show: true },
-    { key: 'channel',  label: '채널',     opts: channels,  sel: selCh,      show: true },
-    { key: 'campaign', label: '캠페인',   opts: campaigns, sel: selCp,      show: selCh.length > 0 && campaigns.length > 0 },
-    { key: 'ad_group', label: '광고그룹', opts: adGroups,  sel: selAg,      show: selCp.length > 0 && adGroups.length > 0 },
-    { key: 'content',  label: '콘텐츠',   opts: contents,  sel: selContent, show: selAg.length > 0 && contents.length > 0 },
-    { key: 'term',     label: '검색어',   opts: terms,     sel: selTerm,    show: selContent.length > 0 && terms.length > 0 },
+    { key: 'channel',     label: '채널',       opts: channels,    sel: selCh,      show: true },
+    { key: 'campaign',    label: '캠페인',     opts: campaigns,   sel: selCp,      show: selCh.length > 0 && campaigns.length > 0 },
+    { key: 'ad_group',    label: '광고그룹',   opts: adGroups,    sel: selAg,      show: selCp.length > 0 && adGroups.length > 0 },
+    { key: 'ad_creative', label: '크리에이티브', opts: adCreatives, sel: selAc,    show: selAg.length > 0 && adCreatives.length > 0 },
+    { key: 'content',     label: '콘텐츠',     opts: contents,    sel: selContent, show: selAg.length > 0 && contents.length > 0 },
+    { key: 'term',        label: '검색어',     opts: terms,       sel: selTerm,    show: selAg.length > 0 && terms.length > 0 },
   ].filter(c => c.show)
 
   /* 이벤트 핸들러 */
   const selectTable = (id) => {
     const next = selTable === id ? '' : id
-    onChange({ ...filters, table: next, channel: [], campaign: [], ad_group: [], content: [], term: [] })
+    onChange({ ...filters, table: next, channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
   }
   const toggle = (dim, val) => {
     const cur  = filters[dim] || []
     const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
-    if      (dim === 'channel')  onChange({ ...filters, channel: next,  campaign: [], ad_group: [], content: [], term: [] })
-    else if (dim === 'campaign') onChange({ ...filters, campaign: next, ad_group: [], content: [], term: [] })
-    else if (dim === 'ad_group') onChange({ ...filters, ad_group: next, content: [], term: [] })
-    else if (dim === 'content')  onChange({ ...filters, content: next,  term: [] })
-    else                         onChange({ ...filters, [dim]: next })
+    if      (dim === 'channel')     onChange({ ...filters, channel: next,     campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'campaign')    onChange({ ...filters, campaign: next,    ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_group')    onChange({ ...filters, ad_group: next,    ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: next, term: [] })
+    else if (dim === 'content')     onChange({ ...filters, content: next,     term: [] })
+    else                            onChange({ ...filters, [dim]: next })
   }
   const clearDim = (dim) => {
-    if      (dim === 'table')    onChange({ ...filters, table: '',    channel: [], campaign: [], ad_group: [], content: [], term: [] })
-    else if (dim === 'channel')  onChange({ ...filters, channel: [],  campaign: [], ad_group: [], content: [], term: [] })
-    else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [], content: [], term: [] })
-    else if (dim === 'ad_group') onChange({ ...filters, ad_group: [], content: [], term: [] })
-    else if (dim === 'content')  onChange({ ...filters, content: [],  term: [] })
-    else                         onChange({ ...filters, [dim]: [] })
+    if      (dim === 'table')       onChange({ ...filters, table: '',         channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'channel')     onChange({ ...filters, channel: [],       campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'campaign')    onChange({ ...filters, campaign: [],      ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_group')    onChange({ ...filters, ad_group: [],      ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: [],   term: [] })
+    else if (dim === 'content')     onChange({ ...filters, content: [],       term: [] })
+    else                            onChange({ ...filters, [dim]: [] })
   }
 
-  const activeCount = (selTable ? 1 : 0) + selCh.length + selCp.length + selAg.length + selContent.length + selTerm.length
+  const activeCount = (selTable ? 1 : 0) + selCh.length + selCp.length + selAg.length + selAc.length + selContent.length + selTerm.length
 
   /* 그룹바이 라벨 */
   const groupByLabel = COLS.find(c => c.key === groupBy)?.label ?? groupBy
@@ -202,7 +212,7 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                               key={v}
                               onClick={() => !dimmed && (col.isTable ? selectTable(v) : toggle(col.key, v))}
                               title={v}
-                              className={`text-[11px] px-2.5 py-[5px] text-left truncate w-full transition-colors
+                              className={`text-[11px] px-2.5 py-[5px] text-left w-full transition-colors leading-snug break-words
                                 ${dimmed
                                   ? dark ? 'text-slate-700 cursor-default' : 'text-slate-300 cursor-default'
                                   : isOn
