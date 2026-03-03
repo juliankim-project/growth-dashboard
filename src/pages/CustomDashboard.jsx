@@ -51,42 +51,57 @@ function applyWidgetFilters(data, filters) {
   return result
 }
 
-/* ── 위젯 필터 UI (채널→캠페인→광고그룹→콘텐츠→term 단계별 캐스케이딩) ── */
-function FilterSection({ filters = {}, data, dark, onChange }) {
+/* ── 테이블 목록 (나중에 product / crm 등 추가 가능) ── */
+const KNOWN_TABLES = [
+  { id: 'marketing_data', label: '마케팅' },
+  { id: 'product_data',   label: '프로덕트' },
+  { id: 'crm_data',       label: 'CRM' },
+]
+
+/* ─────────────────────────────────────────────────────────────────
+   FilterSection  —  테이블→채널→캠페인→광고그룹→콘텐츠→검색어
+   가로 컬럼 레이아웃 · 단계별 출현 · 컬럼별 "그룹바이" 토글
+───────────────────────────────────────────────────────────────── */
+function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByChange }) {
   const [open, setOpen] = useState(false)
 
-  const chip = (on) => `text-[11px] px-2 py-1 rounded-lg border transition-colors cursor-pointer select-none
-    ${on ? 'border-indigo-500 bg-indigo-500/15 text-indigo-400 font-semibold'
-         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-400/50 hover:text-slate-300'
-                : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-slate-700'}`
-
-  const lab = `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`
-
+  const selTable   = filters.table    || ''
   const selCh      = filters.channel  || []
   const selCp      = filters.campaign || []
   const selAg      = filters.ad_group || []
   const selContent = filters.content  || []
   const selTerm    = filters.term     || []
 
-  /* 각 레벨별 필터링된 데이터 */
+  /* 캐스케이딩 데이터 */
   const byChannel  = selCh.length      ? data.filter(r => selCh.includes(r.channel))           : data
   const byCampaign = selCp.length      ? byChannel.filter(r => selCp.includes(r.campaign))     : byChannel
   const byAdGroup  = selAg.length      ? byCampaign.filter(r => selAg.includes(r.ad_group))    : byCampaign
   const byContent  = selContent.length ? byAdGroup.filter(r => selContent.includes(r.content)) : byAdGroup
 
-  /* 각 레벨 available 옵션 */
   const channels  = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
   const campaigns = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
   const adGroups  = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
   const contents  = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
   const terms     = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
 
-  /* 단계별 표시 조건 — 이전 레벨 선택 후에만 노출 */
-  const showCampaigns = selCh.length > 0 && campaigns.length > 0
-  const showAdGroups  = selCp.length > 0 && adGroups.length > 0
-  const showContents  = selAg.length > 0 && contents.length > 0
-  const showTerms     = selContent.length > 0 && terms.length > 0
+  /* 단계별 컬럼 정의 */
+  const COLS = [
+    { key: 'table',    label: '테이블',   isTable: true,
+      opts: KNOWN_TABLES.map(t => t.id),
+      labelOf: Object.fromEntries(KNOWN_TABLES.map(t => [t.id, t.label])),
+      sel: selTable ? [selTable] : [], show: true },
+    { key: 'channel',  label: '채널',     opts: channels,  sel: selCh,      show: true },
+    { key: 'campaign', label: '캠페인',   opts: campaigns, sel: selCp,      show: selCh.length > 0 && campaigns.length > 0 },
+    { key: 'ad_group', label: '광고그룹', opts: adGroups,  sel: selAg,      show: selCp.length > 0 && adGroups.length > 0 },
+    { key: 'content',  label: '콘텐츠',   opts: contents,  sel: selContent, show: selAg.length > 0 && contents.length > 0 },
+    { key: 'term',     label: '검색어',   opts: terms,     sel: selTerm,    show: selContent.length > 0 && terms.length > 0 },
+  ].filter(c => c.show)
 
+  /* 이벤트 핸들러 */
+  const selectTable = (id) => {
+    const next = selTable === id ? '' : id
+    onChange({ ...filters, table: next, channel: [], campaign: [], ad_group: [], content: [], term: [] })
+  }
   const toggle = (dim, val) => {
     const cur  = filters[dim] || []
     const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
@@ -96,68 +111,116 @@ function FilterSection({ filters = {}, data, dark, onChange }) {
     else if (dim === 'content')  onChange({ ...filters, content: next,  term: [] })
     else                         onChange({ ...filters, [dim]: next })
   }
-  const clear = (dim) => {
-    if      (dim === 'channel')  onChange({ ...filters, channel: [],  campaign: [], ad_group: [], content: [], term: [] })
+  const clearDim = (dim) => {
+    if      (dim === 'table')    onChange({ ...filters, table: '',    channel: [], campaign: [], ad_group: [], content: [], term: [] })
+    else if (dim === 'channel')  onChange({ ...filters, channel: [],  campaign: [], ad_group: [], content: [], term: [] })
     else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [], content: [], term: [] })
     else if (dim === 'ad_group') onChange({ ...filters, ad_group: [], content: [], term: [] })
     else if (dim === 'content')  onChange({ ...filters, content: [],  term: [] })
     else                         onChange({ ...filters, [dim]: [] })
   }
 
-  const activeCount = selCh.length + selCp.length + selAg.length + selContent.length + selTerm.length
+  const activeCount = (selTable ? 1 : 0) + selCh.length + selCp.length + selAg.length + selContent.length + selTerm.length
 
-  const DimRow = ({ dimKey, label, opts, sel }) => (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <p className={lab}>{label}</p>
-        {sel.length > 0 && (
-          <button onClick={() => clear(dimKey)}
-            className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {opts.map(v => (
-          <button key={v} onClick={() => toggle(dimKey, v)} className={chip(sel.includes(v))}>
-            {v}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
+  /* 그룹바이 라벨 */
+  const groupByLabel = COLS.find(c => c.key === groupBy)?.label ?? groupBy
 
   return (
     <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+
+      {/* 헤더 토글 */}
       <button
         onClick={() => setOpen(o => !o)}
         className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors rounded-xl
           ${dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`text-xs font-bold ${dark ? 'text-slate-300' : 'text-slate-700'}`}>데이터 필터</span>
           {activeCount > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white font-bold">
-              {activeCount}
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white font-bold">{activeCount}</span>
+          )}
+          {groupBy && onGroupByChange && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full
+              ${dark ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-50 text-violet-600'}`}>
+              그룹바이: {groupByLabel}
             </span>
           )}
         </div>
-        <span className={`text-[10px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>{open ? '▲' : '▼'}</span>
+        <span className={`text-[10px] shrink-0 ml-2 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>{open ? '▲' : '▼'}</span>
       </button>
 
+      {/* 가로 컬럼 패널 */}
       {open && (
-        <div className={`px-3.5 pb-3.5 flex flex-col gap-3.5 border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-          <p className={`pt-2.5 text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-            선택 없으면 전체 데이터 사용. 단계별로 선택하면 하위 항목이 나타납니다.
-          </p>
+        <div className={`border-t overflow-x-auto ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+          <div className="flex min-w-max">
+            {COLS.map((col, ci) => {
+              const isGroupByDim = !col.isTable && groupBy === col.key
+              const bdrR = ci < COLS.length - 1
+                ? dark ? 'border-r border-[#252836]' : 'border-r border-slate-200'
+                : ''
 
-          {channels.length > 0
-            ? <DimRow dimKey="channel"  label="채널"   opts={channels}  sel={selCh} />
-            : <p className={`text-[11px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>데이터가 없거나 채널 컬럼이 없습니다</p>
-          }
+              return (
+                <div key={col.key} className={`w-36 flex flex-col shrink-0 ${bdrR}`}>
 
-          {showCampaigns && <DimRow dimKey="campaign" label="캠페인"   opts={campaigns} sel={selCp} />}
-          {showAdGroups  && <DimRow dimKey="ad_group" label="광고그룹" opts={adGroups}  sel={selAg} />}
-          {showContents  && <DimRow dimKey="content"  label="콘텐츠"   opts={contents}  sel={selContent} />}
-          {showTerms     && <DimRow dimKey="term"     label="검색어"   opts={terms}     sel={selTerm} />}
+                  {/* 컬럼 헤더 */}
+                  <div className={`flex items-center justify-between px-2.5 py-1.5 border-b shrink-0
+                    ${dark ? 'bg-[#0D0F18] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide truncate
+                      ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{col.label}</span>
+                    {col.sel.length > 0 && !isGroupByDim && (
+                      <button onClick={() => clearDim(col.key)}
+                        className="text-[9px] text-indigo-400 hover:text-indigo-300 ml-1 shrink-0">해제</button>
+                    )}
+                  </div>
+
+                  {/* 그룹바이 토글 (테이블 열 제외, 지원 위젯만) */}
+                  {!col.isTable && onGroupByChange && (
+                    <button
+                      onClick={() => onGroupByChange(isGroupByDim ? null : col.key)}
+                      className={`text-[10px] px-2.5 py-1 text-center border-b w-full transition-colors
+                        ${dark ? 'border-[#252836]' : 'border-slate-200'}
+                        ${isGroupByDim
+                          ? 'bg-violet-500/15 text-violet-400 font-semibold'
+                          : dark
+                            ? 'text-slate-600 hover:text-slate-400 hover:bg-[#1A1D27]'
+                            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      {isGroupByDim ? '✓ 그룹바이' : '그룹바이'}
+                    </button>
+                  )}
+
+                  {/* 옵션 목록 */}
+                  <div className="overflow-y-auto flex flex-col" style={{ maxHeight: 164 }}>
+                    {col.opts.length === 0
+                      ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>없음</p>
+                      : col.opts.map(v => {
+                          const lbl    = col.labelOf?.[v] ?? v
+                          const isOn   = col.isTable ? selTable === v : col.sel.includes(v)
+                          const dimmed = !col.isTable && isGroupByDim
+                          return (
+                            <button
+                              key={v}
+                              onClick={() => !dimmed && (col.isTable ? selectTable(v) : toggle(col.key, v))}
+                              title={v}
+                              className={`text-[11px] px-2.5 py-[5px] text-left truncate w-full transition-colors
+                                ${dimmed
+                                  ? dark ? 'text-slate-700 cursor-default' : 'text-slate-300 cursor-default'
+                                  : isOn
+                                    ? dark ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
+                                           : 'bg-indigo-50 text-indigo-600 font-semibold'
+                                    : dark ? 'text-slate-400 hover:bg-[#1A1D27] hover:text-slate-200'
+                                           : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                              {!dimmed && isOn ? '✓ ' : ''}{lbl}
+                            </button>
+                          )
+                        })
+                    }
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -262,7 +325,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`rounded-2xl border w-full max-w-lg flex flex-col max-h-[90vh]
+      <div className={`rounded-2xl border w-full max-w-3xl flex flex-col max-h-[90vh]
         ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
 
         {/* 헤더 */}
@@ -416,9 +479,13 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
           {/* 데이터 필터 */}
           <FilterSection
             filters={filters}
+            groupBy={config.groupBy}
             data={data}
             dark={dark}
             onChange={setFilters}
+            onGroupByChange={['bar','donut','table'].includes(type)
+              ? (dim) => upd('groupBy', dim ?? 'channel')
+              : undefined}
           />
         </div>
       </div>
@@ -899,7 +966,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-md flex flex-col max-h-[90vh]
+      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-3xl flex flex-col max-h-[90vh]
         ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
 
         {/* 헤더 */}
@@ -1057,9 +1124,13 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
               {/* 데이터 필터 — 모든 카드 타입 공통 */}
               <FilterSection
                 filters={filters}
+                groupBy={config.groupBy}
                 data={data}
                 dark={dark}
                 onChange={setFilters}
+                onGroupByChange={['bar','donut','table'].includes(type)
+                  ? (dim) => upd('groupBy', dim ?? 'channel')
+                  : undefined}
               />
             </div>
           )}
