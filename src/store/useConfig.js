@@ -8,6 +8,7 @@ const STORAGE_KEY = 'growth_config_v4'   // v4: 빌트인 숨기기 + 서브 데
 export const DEFAULT_CONFIG = {
   sectionLabels:      {},  // { 'marketing': '퍼포먼스' }
   subLabels:          {},  // { 'marketing.performance': '매체별 분석' }
+  customSections:     [],  // [{id, label}] — 커스텀 L1 메인탭
   customSubs:         {},  // { 'marketing': [{id, label}] }
   dashboards:         {},  // { 'section.sub[.l3sub].tabId': { template, widgets } }
   l3tabs:             {},  // { 'section.sub[.l3sub]': [{id, label}] }
@@ -223,6 +224,40 @@ export function useConfig() {
       subDataSources: { ...config.subDataSources, [`${sectionId}.${subId}`]: dataSource },
     })
 
+  /* ── L1 커스텀 섹션(메인탭) ── */
+  const getCustomSections = () => config.customSections || []
+
+  const addCustomSection = (label) => {
+    const id = `cm_${Date.now()}`
+    persist({
+      ...config,
+      customSections: [...(config.customSections || []), { id, label }],
+    })
+    return id
+  }
+
+  const removeCustomSection = (id) => {
+    // cascade: 이 섹션에 속한 모든 데이터 삭제
+    const newSectionLabels = { ...config.sectionLabels }
+    delete newSectionLabels[id]
+    const prefix = `${id}.`
+    const filterOut = (obj) =>
+      Object.fromEntries(Object.entries(obj || {}).filter(([k]) => !k.startsWith(prefix)))
+    const newCustomSubs = { ...config.customSubs }
+    delete newCustomSubs[id]
+    persist({
+      ...config,
+      customSections:  (config.customSections || []).filter(s => s.id !== id),
+      sectionLabels:   newSectionLabels,
+      subLabels:       filterOut(config.subLabels),
+      customSubs:      newCustomSubs,
+      l3subs:          filterOut(config.l3subs),
+      l3tabs:          filterOut(config.l3tabs),
+      dashboards:      filterOut(config.dashboards),
+      subDataSources:  filterOut(config.subDataSources),
+    })
+  }
+
   /* ── L2 커스텀 서브탭 ── */
   const addCustomSub = (sectionId, label) => {
     const id  = `cx_${Date.now()}`
@@ -393,6 +428,7 @@ export function useConfig() {
     config,
     getSectionLabel, getSubLabel, getCustomSubs, getDashboard, saveDashboard,
     setSectionLabel, setSubLabel,
+    getCustomSections, addCustomSection, removeCustomSection,
     addCustomSub, removeCustomSub,
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
     getSubDataSource, setSubDataSource,

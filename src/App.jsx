@@ -105,8 +105,10 @@ function Dashboard({ dark, setDark, user, signOut }) {
         onAddSub={(sid, label) => cfg.addCustomSub(sid, label)}
         onRemoveSub={(sid, sub) => {
           cfg.removeCustomSub(sid, sub)
-          if (nav.section === sid && nav.sub === sub)
-            setNav({ section: sid, sub: 'dashboard', l3sub: null })
+          if (nav.section === sid && nav.sub === sub) {
+            const isDefault = DEFAULT_SECTIONS.some(s => s.id === sid)
+            setNav({ section: isDefault ? sid : 'overview', sub: 'dashboard', l3sub: null })
+          }
         }}
         onHideBuiltinSub={(sid, sub) => {
           cfg.hideBuiltinSub(sid, sub)
@@ -123,6 +125,12 @@ function Dashboard({ dark, setDark, user, signOut }) {
         renameL3Tab={cfg.renameL3Tab}
         getSubDataSource={cfg.getSubDataSource}
         setSubDataSource={cfg.setSubDataSource}
+        customSections={cfg.config.customSections || []}
+        addCustomSection={cfg.addCustomSection}
+        removeCustomSection={(id) => {
+          cfg.removeCustomSection(id)
+          if (nav.section === id) setNav({ section: 'overview', sub: 'dashboard', l3sub: null })
+        }}
       />
     )
   } else if (FIXED_MAP[key]) {
@@ -154,12 +162,14 @@ function Dashboard({ dark, setDark, user, signOut }) {
         getCustomSubs={cfg.getCustomSubs}
         getL3Subs={cfg.getL3Subs}
         reorderL3Subs={cfg.reorderL3Subs}
+        customSections={cfg.config.customSections || []}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           nav={nav}
           dark={dark}
           config={cfg.config}
+          getL3Subs={cfg.getL3Subs}
           dateRange={dateRange}
           setPreset={setPreset}
           setCustomRange={setCustomRange}

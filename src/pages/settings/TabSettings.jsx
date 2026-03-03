@@ -279,7 +279,6 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
 ───────────────────────────────────────── */
 function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, dark }) {
   const l3subs = getL3Subs(sectionId, subId)
-  const [openSubs,  setOpenSubs]  = useState({})
   const [adding,    setAdding]    = useState(false)
   const [newLabel,  setNewLabel]  = useState('')
 
@@ -289,10 +288,6 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
     setNewLabel('')
     setAdding(false)
   }
-
-  const toggleSub = (id) => setOpenSubs(prev => ({ ...prev, [id]: !prev[id] }))
-
-  const chipBorder = dark ? 'border-[#252836]' : 'border-slate-200'
 
   return (
     <div className={`ml-10 mr-3 mb-1 px-3 py-2 rounded-lg
@@ -304,17 +299,11 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
         <Layers size={10} className="text-emerald-400"/> 중위탭 서서브 (L3)
       </div>
 
-      {/* L3 서서브 목록 */}
+      {/* L3 서서브 목록 — L4 탭은 항상 바로 노출 */}
       {l3subs.map(ls => (
-        <div key={ls.id} className={`rounded-lg mb-1 border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+        <div key={ls.id} className={`rounded-lg mb-2 border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
           {/* 서서브 헤더 행 */}
           <div className="flex items-center gap-1.5 px-2 py-1.5 group/ls">
-            <button
-              onClick={() => toggleSub(ls.id)}
-              className={`shrink-0 transition-colors ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}
-            >
-              {openSubs[ls.id] ? <ChevronDown size={10}/> : <ChevronRight size={10}/>}
-            </button>
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500`}/>
             <EditableLabel
               value={ls.label}
@@ -324,10 +313,6 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
               onSave={label => renameL3Sub(sectionId, subId, ls.id, label)}
             />
             <div className="ml-auto flex items-center gap-1">
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full
-                ${dark ? 'bg-[#252836] text-slate-600' : 'bg-slate-100 text-slate-400'}`}>
-                L4 · {getL3Tabs(sectionId, subId, ls.id).length}
-              </span>
               <button
                 onClick={() => { if (confirm(`"${ls.label}" 서서브를 삭제할까요?\n해당 서서브의 탭과 대시보드가 모두 삭제됩니다.`)) removeL3Sub(sectionId, subId, ls.id) }}
                 className="opacity-0 group-hover/ls:opacity-100 p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-opacity"
@@ -337,26 +322,24 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
             </div>
           </div>
 
-          {/* L4 탭 영역 */}
-          {openSubs[ls.id] && (
-            <div className={`mx-2 mb-2 px-2 py-1.5 rounded-lg
-              ${dark ? 'bg-[#0F1117] border border-[#1E2130]' : 'bg-white border border-slate-100'}`}>
-              <div className={`flex items-center gap-1 mb-1 text-[9px] font-bold uppercase tracking-widest
-                ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
-                <Layers size={9} className="text-violet-400"/> 하위탭 (L4)
-              </div>
-              <L3TabsRow
-                sectionId={sectionId}
-                subId={subId}
-                l3subId={ls.id}
-                getL3Tabs={getL3Tabs}
-                addL3Tab={addL3Tab}
-                removeL3Tab={removeL3Tab}
-                renameL3Tab={renameL3Tab}
-                dark={dark}
-              />
+          {/* L4 탭 영역 — 항상 노출 */}
+          <div className={`mx-2 mb-2 px-2 py-1.5 rounded-lg
+            ${dark ? 'bg-[#0F1117] border border-[#1E2130]' : 'bg-white border border-slate-100'}`}>
+            <div className={`flex items-center gap-1 mb-1 text-[9px] font-bold uppercase tracking-widest
+              ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+              <Layers size={9} className="text-violet-400"/> 하위탭 (L4)
             </div>
-          )}
+            <L3TabsRow
+              sectionId={sectionId}
+              subId={subId}
+              l3subId={ls.id}
+              getL3Tabs={getL3Tabs}
+              addL3Tab={addL3Tab}
+              removeL3Tab={removeL3Tab}
+              renameL3Tab={renameL3Tab}
+              dark={dark}
+            />
+          </div>
         </div>
       ))}
 
@@ -632,15 +615,25 @@ export default function TabSettings({
   getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
+  customSections = [], addCustomSection, removeCustomSection,
 }) {
-  const [openSections, setOpenSections] = useState(() => {
+  const [openSections,   setOpenSections]   = useState(() => {
     const init = {}
     DEFAULT_SECTIONS.forEach(s => { init[s.id] = true })
     return init
   })
+  const [addingSection,  setAddingSection]  = useState(false)
+  const [newSecLabel,    setNewSecLabel]    = useState('')
 
   const toggleSection = (id) =>
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }))
+
+  const commitAddSection = () => {
+    if (!newSecLabel.trim()) { setAddingSection(false); return }
+    addCustomSection?.(newSecLabel.trim())
+    setNewSecLabel('')
+    setAddingSection(false)
+  }
 
   return (
     <div className="p-6 flex flex-col gap-4 max-w-2xl">
@@ -679,7 +672,7 @@ export default function TabSettings({
         </div>
       </div>
 
-      {/* 섹션 목록 */}
+      {/* ── DEFAULT 섹션 목록 ── */}
       {DEFAULT_SECTIONS.map(section => {
         const isOpen         = !!openSections[section.id]
         const customSubs     = config.customSubs[section.id] || []
@@ -792,6 +785,132 @@ export default function TabSettings({
           </div>
         )
       })}
+
+      {/* ── 커스텀 L1 메인탭 목록 ── */}
+      {customSections.map(cs => {
+        const isOpen       = !!openSections[cs.id]
+        const sectionLabel = config.sectionLabels[cs.id] || cs.label
+        const customSubs   = config.customSubs[cs.id] || []
+        const allSubs      = customSubs.map(sub => ({
+          id: sub.id, label: sub.label, isCustom: true, isHidden: false,
+        }))
+        return (
+          <div key={cs.id}
+            className={`rounded-xl border overflow-hidden
+              ${dark ? 'bg-[#1A1D27] border-indigo-500/30' : 'bg-white border-indigo-200 shadow-sm'}`}>
+
+            {/* L1 섹션 헤더 */}
+            <div
+              className={`flex items-center gap-3 px-4 py-3 border-b cursor-pointer group/sec
+                ${dark ? 'border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10' : 'border-indigo-100 bg-indigo-50 hover:bg-indigo-100'}`}
+              onClick={() => toggleSection(cs.id)}
+            >
+              <span className={`shrink-0 transition-transform duration-200
+                ${dark ? 'text-slate-600' : 'text-slate-300'}
+                ${isOpen ? 'rotate-90' : ''}`}>
+                <ChevronRight size={14}/>
+              </span>
+
+              <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0
+                ${dark ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
+                L1 커스텀
+              </span>
+
+              <div onClick={e => e.stopPropagation()}>
+                <EditableLabel
+                  value={sectionLabel}
+                  placeholder={cs.label}
+                  dark={dark}
+                  onSave={label => onUpdateSection(cs.id, label)}
+                />
+              </div>
+
+              <div className="ml-auto flex items-center gap-2">
+                <span className={`text-[10px] ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                  L2 · {allSubs.length}개
+                </span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (confirm(`"${sectionLabel}" 메인탭을 삭제할까요?\n하위 모든 탭과 대시보드 데이터가 삭제됩니다.`))
+                      removeCustomSection?.(cs.id)
+                  }}
+                  className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                  title="메인탭 삭제"
+                >
+                  <Trash2 size={12}/>
+                </button>
+              </div>
+            </div>
+
+            {/* L2 서브탭 목록 */}
+            {isOpen && (
+              <div className="px-2 py-2 flex flex-col gap-0.5">
+                <p className={`flex items-center gap-1.5 px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest
+                  ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                  <LayoutTemplate size={10} className="text-sky-400"/> 상위탭 (L2)
+                </p>
+                {allSubs.map(sub => (
+                  <SubRow
+                    key={sub.id}
+                    sectionId={cs.id}
+                    sub={sub}
+                    isCustom={true}
+                    isHidden={false}
+                    config={config}
+                    dark={dark}
+                    onUpdateSub={onUpdateSub}
+                    onRemoveSub={onRemoveSub}
+                    onHideBuiltinSub={onHideBuiltinSub}
+                    onShowBuiltinSub={onShowBuiltinSub}
+                    getL3Subs={getL3Subs}
+                    addL3Sub={addL3Sub}
+                    removeL3Sub={removeL3Sub}
+                    renameL3Sub={renameL3Sub}
+                    getL3Tabs={getL3Tabs}
+                    addL3Tab={addL3Tab}
+                    removeL3Tab={removeL3Tab}
+                    renameL3Tab={renameL3Tab}
+                    getSubDataSource={getSubDataSource}
+                    setSubDataSource={setSubDataSource}
+                  />
+                ))}
+                <AddSubRow dark={dark} onAdd={label => onAddSub(cs.id, label)} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* ── 메인탭 추가 버튼 ── */}
+      <div className={`rounded-xl border border-dashed p-4
+        ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+        {addingSection ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={newSecLabel}
+              onChange={e => setNewSecLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commitAddSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSecLabel('') } }}
+              placeholder="메인탭 이름 입력..."
+              className={`flex-1 px-3 py-2 rounded-lg border text-sm outline-none
+                ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-600' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-300'}`}
+            />
+            <button onClick={commitAddSection}
+              className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">추가</button>
+            <button onClick={() => { setAddingSection(false); setNewSecLabel('') }}
+              className={`px-3 py-2 text-sm rounded-lg ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>취소</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAddingSection(true)}
+            className={`w-full flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors
+              ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-600'}`}
+          >
+            <Plus size={15}/> 메인탭 추가 (L1)
+          </button>
+        )}
+      </div>
     </div>
   )
 }

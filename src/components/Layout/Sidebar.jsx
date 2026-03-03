@@ -61,7 +61,7 @@ const STORAGE_OPEN      = 'sidebar_open_v2'
 const STORAGE_SUB_ORDER = 'sidebar_sub_order_v1'
 
 /* ─────────── 메인 컴포넌트 ─────────── */
-export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs, getL3Subs, reorderL3Subs }) {
+export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs, getL3Subs, reorderL3Subs, customSections = [] }) {
 
   const [sections, setSections] = useState(() => {
     try {
@@ -134,7 +134,13 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
   const toggleSection = (sec) => {
     const isOpen = !!open[sec.id]
     setOpen(prev => ({ ...prev, [sec.id]: !isOpen }))
-    if (!isOpen) setNav({ section: sec.id, sub: sec.subs[0].id, l3sub: null })
+    if (!isOpen) {
+      const hiddenBuiltins = config.deletedBuiltinSubs?.[sec.id] || []
+      const customSubsList = getCustomSubs?.(sec.id) || []
+      const firstBuiltin   = (sec.subs || []).find(s => !hiddenBuiltins.includes(s.id))
+      const firstSub       = firstBuiltin || customSubsList[0]
+      if (firstSub) setNav({ section: sec.id, sub: firstSub.id, l3sub: null })
+    }
   }
 
   const goTo = (sectionId, subId, l3subId = null) => {
@@ -242,6 +248,7 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
           ≡ 드래그로 순서 변경
         </p>
 
+        {/* ── DEFAULT_SECTIONS (드래그 가능) ── */}
         {sections.map((sec, idx) => {
           const isOpen     = !!open[sec.id]
           const isActive   = nav.section === sec.id
@@ -364,6 +371,105 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
                                     <GripVertical size={9}
                                       className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity
                                         ${l3Active ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                                    <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
+                                    <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {/* ── 커스텀 L1 섹션 (드래그 불가) ── */}
+        {customSections.map(cs => {
+          const isOpen   = !!open[cs.id]
+          const isActive = nav.section === cs.id
+          const secLabel = getSectionLabel?.(cs.id) || cs.label
+          const csSubs   = (getCustomSubs?.(cs.id) || []).map(sub => ({
+            id: sub.id,
+            label: getSubLabel?.(cs.id, sub.id) || sub.label,
+            icon: 'LayoutTemplate',
+            isCustom: true,
+          }))
+
+          return (
+            <div key={cs.id} className="rounded-lg">
+              {/* 섹션 헤더 */}
+              <button
+                onClick={() => toggleSection({ ...cs, subs: [] })}
+                className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg text-xs transition-all duration-150 text-left group
+                  ${isActive ? dark ? 'text-white' : 'text-slate-800' : `${t.text} ${t.hover}`}`}
+              >
+                <LayoutTemplate size={14} className={isActive ? 'text-indigo-500' : 'opacity-60'}/>
+                <span className="font-semibold flex-1">{secLabel}</span>
+                <ChevronDown size={12}
+                  className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+              </button>
+
+              {/* 서브메뉴 */}
+              {isOpen && (
+                <div className="pl-4 pr-1 pb-1.5 flex flex-col gap-0.5">
+                  {csSubs.map((sub, subIdx) => {
+                    const l3subs    = getL3Subs?.(cs.id, sub.id) || []
+                    const hasL3Subs = l3subs.length > 0
+                    const l3key     = `${cs.id}.${sub.id}`
+                    const l3IsOpen  = !!l3Open[l3key]
+                    const subActive = isActive && nav.sub === sub.id && !nav.l3sub
+                    const l3subActive = isActive && nav.sub === sub.id && nav.l3sub && l3subs.some(s => s.id === nav.l3sub)
+                    const anyActive   = subActive || l3subActive
+
+                    return (
+                      <div key={sub.id}
+                        draggable
+                        onDragStart={e => onSubDragStart(e, cs.id, subIdx, sub.id)}
+                        onDragEnter={e => onSubDragEnter(e, subIdx)}
+                        onDragOver={onSubDragOver}
+                        onDragEnd={e => onSubDragEnd(e, cs.id, csSubs)}
+                        className={`rounded-lg transition-all ${subDragId === sub.id ? 'opacity-30' : ''}`}
+                      >
+                        <button
+                          onClick={() => handleSubClick(cs.id, sub.id)}
+                          className={`w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-all duration-150 text-left group
+                            ${subActive ? 'bg-indigo-600 text-white'
+                              : l3subActive ? dark ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-50 text-indigo-700'
+                              : `${t.text} ${t.hover}`}`}
+                        >
+                          <LayoutTemplate size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
+                          <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1`}>{sub.label}</span>
+                          {hasL3Subs && (
+                            <ChevronDown size={10}
+                              className={`shrink-0 transition-transform duration-200 ${l3IsOpen ? '' : '-rotate-90'}
+                                ${anyActive ? (subActive ? 'text-white/70' : 'text-indigo-400') : dark ? 'text-slate-600' : 'text-slate-300'}`}
+                            />
+                          )}
+                        </button>
+
+                        {/* L3 서서브 목록 */}
+                        {hasL3Subs && l3IsOpen && (
+                          <div className="pl-6 pr-1 pb-0.5 flex flex-col gap-0.5">
+                            {l3subs.map((ls, l3Idx) => {
+                              const l3Active = isActive && nav.sub === sub.id && nav.l3sub === ls.id
+                              return (
+                                <div key={ls.id}
+                                  draggable
+                                  onDragStart={e => onL3DragStart(e, cs.id, sub.id, l3Idx, ls.id)}
+                                  onDragEnter={e => onL3DragEnter(e, l3Idx)}
+                                  onDragOver={onL3DragOver}
+                                  onDragEnd={onL3DragEnd}
+                                  className={`rounded-lg transition-all ${l3DragId === ls.id ? 'opacity-30' : ''}`}
+                                >
+                                  <button
+                                    onClick={() => goTo(cs.id, sub.id, ls.id)}
+                                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left
+                                      ${l3Active ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
+                                  >
                                     <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
                                     <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
                                   </button>

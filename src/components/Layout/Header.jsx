@@ -235,19 +235,33 @@ function UserMenu({ user, onSignOut, dark }) {
 /* ──────────────────────────────────────────
    Header 메인
 ─────────────────────────────────────────── */
-export default function Header({ nav, dark, config, dateRange, setPreset, setCustomRange, user, onSignOut }) {
+export default function Header({ nav, dark, config, getL3Subs, dateRange, setPreset, setCustomRange, user, onSignOut }) {
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric'
   })
 
-  /* 탭 라벨 (커스텀 라벨 우선) */
-  const section = DEFAULT_SECTIONS.find(s => s.id === nav.section)
-  const sub     = section?.subs.find(s => s.id === nav.sub)
+  /* ── 탭 라벨 (커스텀 라벨 우선) ── */
+  const section       = DEFAULT_SECTIONS.find(s => s.id === nav.section)
+  // 커스텀 L1 섹션 fallback
+  const customSec     = (config?.customSections || []).find(s => s.id === nav.section)
+  const sectionLabel  = config?.sectionLabels?.[nav.section] || section?.label || customSec?.label || ''
 
-  const sectionLabel = config?.sectionLabels?.[nav.section] || section?.label || ''
-  const subKey       = `${nav.section}.${nav.sub}`
-  const subLabel     = config?.subLabels?.[subKey] || sub?.label || ''
-  const title        = subLabel || sectionLabel
+  // L2 서브 (빌트인 + 커스텀)
+  const builtinSub    = section?.subs.find(s => s.id === nav.sub)
+  const customSubItem = (config?.customSubs?.[nav.section] || []).find(s => s.id === nav.sub)
+  const subKey        = `${nav.section}.${nav.sub}`
+  const subLabel      = config?.subLabels?.[subKey] || builtinSub?.label || customSubItem?.label || ''
+
+  // L3 서서브 (l3sub 이동 시 이름 표시)
+  const l3subLabel = (() => {
+    if (!nav.l3sub || !getL3Subs) return ''
+    const l3subs = getL3Subs(nav.section, nav.sub)
+    return l3subs.find(s => s.id === nav.l3sub)?.label || ''
+  })()
+
+  const title = l3subLabel || subLabel || sectionLabel
+
+  const slash = <span className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
 
   return (
     <header className={`
@@ -262,9 +276,17 @@ export default function Header({ nav, dark, config, dateRange, setPreset, setCus
           </span>
           {subLabel && (
             <>
-              <span className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
-              <span className={`text-xs font-semibold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>
+              {slash}
+              <span className={`text-xs font-medium ${l3subLabel ? (dark ? 'text-slate-400' : 'text-slate-500') : (dark ? 'text-indigo-400' : 'text-indigo-500')}`}>
                 {subLabel}
+              </span>
+            </>
+          )}
+          {l3subLabel && (
+            <>
+              {slash}
+              <span className={`text-xs font-semibold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>
+                {l3subLabel}
               </span>
             </>
           )}
