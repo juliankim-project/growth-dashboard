@@ -46,52 +46,90 @@ function applyWidgetFilters(data, filters) {
   if (filters.channel?.length)  result = result.filter(r => filters.channel.includes(r.channel))
   if (filters.campaign?.length) result = result.filter(r => filters.campaign.includes(r.campaign))
   if (filters.ad_group?.length) result = result.filter(r => filters.ad_group.includes(r.ad_group))
+  if (filters.content?.length)  result = result.filter(r => filters.content.includes(r.content))
+  if (filters.term?.length)     result = result.filter(r => filters.term.includes(r.term))
   return result
 }
 
-/* ── 위젯 필터 UI (채널→캠페인→광고그룹 캐스케이딩 선택) ── */
+/* ── 위젯 필터 UI (채널→캠페인→광고그룹→콘텐츠→term 단계별 캐스케이딩) ── */
 function FilterSection({ filters = {}, data, dark, onChange }) {
   const [open, setOpen] = useState(false)
 
-  const S = {
-    lab:   `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`,
-    chip:  (on) => `text-[11px] px-2 py-1 rounded-lg border transition-colors cursor-pointer select-none
-      ${on ? 'border-indigo-500 bg-indigo-500/15 text-indigo-400 font-semibold'
-           : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-400/50 hover:text-slate-300'
-                  : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-slate-700'}`,
-  }
+  const chip = (on) => `text-[11px] px-2 py-1 rounded-lg border transition-colors cursor-pointer select-none
+    ${on ? 'border-indigo-500 bg-indigo-500/15 text-indigo-400 font-semibold'
+         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-400/50 hover:text-slate-300'
+                : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-slate-700'}`
 
-  const toggle = (dim, val) => {
-    const cur = filters[dim] || []
-    const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
-    if (dim === 'channel')       onChange({ ...filters, channel: next, campaign: [], ad_group: [] })
-    else if (dim === 'campaign') onChange({ ...filters, campaign: next, ad_group: [] })
-    else                         onChange({ ...filters, [dim]: next })
-  }
-  const clear = (dim) => {
-    if (dim === 'channel')       onChange({ ...filters, channel: [], campaign: [], ad_group: [] })
-    else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [] })
-    else                         onChange({ ...filters, [dim]: [] })
-  }
+  const lab = `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`
 
-  const selCh  = filters.channel  || []
-  const selCp  = filters.campaign || []
-  const selAg  = filters.ad_group || []
+  const selCh      = filters.channel  || []
+  const selCp      = filters.campaign || []
+  const selAg      = filters.ad_group || []
+  const selContent = filters.content  || []
+  const selTerm    = filters.term     || []
 
-  const byChannel   = selCh.length ? data.filter(r => selCh.includes(r.channel))   : data
-  const byCampaign  = selCp.length ? byChannel.filter(r => selCp.includes(r.campaign)) : byChannel
+  /* 각 레벨별 필터링된 데이터 */
+  const byChannel  = selCh.length      ? data.filter(r => selCh.includes(r.channel))           : data
+  const byCampaign = selCp.length      ? byChannel.filter(r => selCp.includes(r.campaign))     : byChannel
+  const byAdGroup  = selAg.length      ? byCampaign.filter(r => selAg.includes(r.ad_group))    : byCampaign
+  const byContent  = selContent.length ? byAdGroup.filter(r => selContent.includes(r.content)) : byAdGroup
 
+  /* 각 레벨 available 옵션 */
   const channels  = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
   const campaigns = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
   const adGroups  = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
+  const contents  = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
+  const terms     = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
 
-  const activeCount = selCh.length + selCp.length + selAg.length
+  /* 단계별 표시 조건 — 이전 레벨 선택 후에만 노출 */
+  const showCampaigns = selCh.length > 0 && campaigns.length > 0
+  const showAdGroups  = selCp.length > 0 && adGroups.length > 0
+  const showContents  = selAg.length > 0 && contents.length > 0
+  const showTerms     = selContent.length > 0 && terms.length > 0
+
+  const toggle = (dim, val) => {
+    const cur  = filters[dim] || []
+    const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
+    if      (dim === 'channel')  onChange({ ...filters, channel: next,  campaign: [], ad_group: [], content: [], term: [] })
+    else if (dim === 'campaign') onChange({ ...filters, campaign: next, ad_group: [], content: [], term: [] })
+    else if (dim === 'ad_group') onChange({ ...filters, ad_group: next, content: [], term: [] })
+    else if (dim === 'content')  onChange({ ...filters, content: next,  term: [] })
+    else                         onChange({ ...filters, [dim]: next })
+  }
+  const clear = (dim) => {
+    if      (dim === 'channel')  onChange({ ...filters, channel: [],  campaign: [], ad_group: [], content: [], term: [] })
+    else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [], content: [], term: [] })
+    else if (dim === 'ad_group') onChange({ ...filters, ad_group: [], content: [], term: [] })
+    else if (dim === 'content')  onChange({ ...filters, content: [],  term: [] })
+    else                         onChange({ ...filters, [dim]: [] })
+  }
+
+  const activeCount = selCh.length + selCp.length + selAg.length + selContent.length + selTerm.length
+
+  const DimRow = ({ dimKey, label, opts, sel }) => (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className={lab}>{label}</p>
+        {sel.length > 0 && (
+          <button onClick={() => clear(dimKey)}
+            className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {opts.map(v => (
+          <button key={v} onClick={() => toggle(dimKey, v)} className={chip(sel.includes(v))}>
+            {v}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+    <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
       <button
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors rounded-xl
           ${dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}
       >
         <div className="flex items-center gap-2">
@@ -108,74 +146,18 @@ function FilterSection({ filters = {}, data, dark, onChange }) {
       {open && (
         <div className={`px-3.5 pb-3.5 flex flex-col gap-3.5 border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <p className={`pt-2.5 text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-            선택 없으면 전체 데이터 사용. 채널 선택 시 하위 캠페인 목록이 바뀝니다.
+            선택 없으면 전체 데이터 사용. 단계별로 선택하면 하위 항목이 나타납니다.
           </p>
 
-          {/* 채널 */}
-          {channels.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className={S.lab}>채널</p>
-                {selCh.length > 0 && (
-                  <button onClick={() => clear('channel')}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {channels.map(ch => (
-                  <button key={ch} onClick={() => toggle('channel', ch)} className={S.chip(selCh.includes(ch))}>
-                    {ch}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          {channels.length > 0
+            ? <DimRow dimKey="channel"  label="채널"   opts={channels}  sel={selCh} />
+            : <p className={`text-[11px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>데이터가 없거나 채널 컬럼이 없습니다</p>
+          }
 
-          {/* 캠페인 */}
-          {campaigns.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className={S.lab}>캠페인</p>
-                {selCp.length > 0 && (
-                  <button onClick={() => clear('campaign')}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {campaigns.map(c => (
-                  <button key={c} onClick={() => toggle('campaign', c)} className={S.chip(selCp.includes(c))}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 광고그룹 */}
-          {adGroups.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className={S.lab}>광고그룹</p>
-                {selAg.length > 0 && (
-                  <button onClick={() => clear('ad_group')}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300">전체 해제</button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {adGroups.map(g => (
-                  <button key={g} onClick={() => toggle('ad_group', g)} className={S.chip(selAg.includes(g))}>
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {channels.length === 0 && (
-            <p className={`text-[11px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
-              데이터가 없거나 채널 컬럼이 없습니다
-            </p>
-          )}
+          {showCampaigns && <DimRow dimKey="campaign" label="캠페인"   opts={campaigns} sel={selCp} />}
+          {showAdGroups  && <DimRow dimKey="ad_group" label="광고그룹" opts={adGroups}  sel={selAg} />}
+          {showContents  && <DimRow dimKey="content"  label="콘텐츠"   opts={contents}  sel={selContent} />}
+          {showTerms     && <DimRow dimKey="term"     label="검색어"   opts={terms}     sel={selTerm} />}
         </div>
       )}
     </div>
@@ -310,7 +292,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
         </div>
 
         {/* 바디 */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 min-h-0">
 
           {/* 위젯 타입 */}
           <div>
@@ -879,15 +861,14 @@ function normalizeDashboard(d) {
    카드 추가 모달
 ══════════════════════════════════════════ */
 function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
-  const [step,    setStep]    = useState(1)   // 1:타입 2:크기 3:설정
+  const [step,    setStep]    = useState(1)   // 1:타입 선택  2:설정
   const [type,    setType]    = useState('kpi')
-  const [span,    setSpan]    = useState('col-span-1')
   const [config,  setConfig]  = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
   const [filters, setFilters] = useState({})
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
 
-  const changeType = t => { setType(t); setConfig({ ...DEFAULT_WIDGET_CONFIG[t] }) }
+  const changeType = t => { setType(t); setConfig({ ...DEFAULT_WIDGET_CONFIG[t] }); setStep(2) }
 
   const toggleMetric = mid => {
     const cur = config.metrics || []
@@ -895,7 +876,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
   }
 
   const handleAdd = () => {
-    onAdd({ id: `w_${Date.now()}`, span, type, config: { ...config, filters } })
+    onAdd({ id: `w_${Date.now()}`, span: 'col-span-2', type, config: { ...config, filters } })
     onClose()
   }
 
@@ -904,9 +885,6 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
       ${on ? 'border-indigo-500 bg-indigo-500/10'
            : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
                   : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
-    spanCard: (on) => `flex flex-col items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all
-      ${on ? 'border-indigo-500 bg-indigo-500/10'
-           : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`,
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -917,11 +895,11 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
            : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
   }
 
-  const STEPS = ['타입 선택', '크기 선택', '설정']
+  const STEPS = ['타입 선택', '설정']
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-md flex flex-col max-h-[88vh]
+      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-md flex flex-col max-h-[90vh]
         ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
 
         {/* 헤더 */}
@@ -942,7 +920,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                     ${step === i+1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
                     {s}
                   </span>
-                  {i < 2 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>›</span>}
+                  {i < 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>›</span>}
                 </div>
               ))}
             </div>
@@ -954,13 +932,13 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
         </div>
 
         {/* 바디 */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-5 min-h-0">
 
           {/* Step 1: 타입 */}
           {step === 1 && (
             <div className="grid grid-cols-2 gap-3">
               {Object.entries(WIDGET_META).map(([id, meta]) => (
-                <button key={id} onClick={() => { changeType(id); setStep(2) }}
+                <button key={id} onClick={() => changeType(id)}
                   className={S.card(type === id)}>
                   <span className="text-3xl">{meta.icon}</span>
                   <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
@@ -970,34 +948,8 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
             </div>
           )}
 
-          {/* Step 2: 크기 */}
+          {/* Step 2: 설정 */}
           {step === 2 && (
-            <div className="flex flex-col gap-3">
-              <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-                대시보드 4열 그리드 기준으로 카드의 너비를 선택하세요
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {SPAN_OPTS.map(opt => (
-                  <button key={opt.value} onClick={() => { setSpan(opt.value); setStep(3) }}
-                    className={S.spanCard(span === opt.value)}>
-                    <div className="w-full grid grid-cols-6 gap-0.5 mb-1">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className={`h-2.5 rounded-sm transition-colors ${
-                          i < opt.cols
-                            ? 'bg-indigo-500'
-                            : dark ? 'bg-[#252836]' : 'bg-slate-100'}`}/>
-                      ))}
-                    </div>
-                    <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{opt.label}</span>
-                    <span className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{opt.cols} / 4열</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: 설정 */}
-          {step === 3 && (
             <div className="flex flex-col gap-4">
               {type === 'kpi' && (
                 <>
@@ -1123,7 +1075,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
             {step > 1 ? '← 이전' : '취소'}
           </button>
-          {step < 3 ? (
+          {step < 2 ? (
             <button onClick={() => setStep(s => s + 1)}
               className="text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
               다음 →
