@@ -4,21 +4,29 @@ import { METRICS } from '../../store/useConfig'
 import { calcMetric, fmtMetric } from './widgetUtils'
 
 const COLOR_MAP = {
-  cost:     'text-indigo-500  bg-indigo-500/10',
-  revenue:  'text-emerald-500 bg-emerald-500/10',
-  roas:     'text-purple-500  bg-purple-500/10',
-  installs: 'text-blue-500    bg-blue-500/10',
-  conv:     'text-orange-500  bg-orange-500/10',
-  signup:   'text-teal-500    bg-teal-500/10',
-  impr:     'text-sky-500     bg-sky-500/10',
-  clicks:   'text-pink-500    bg-pink-500/10',
-  ctr:      'text-lime-500    bg-lime-500/10',
-  cpc:      'text-rose-500    bg-rose-500/10',
+  /* 지표 */
+  cost:         'text-indigo-500  bg-indigo-500/10',
+  impr:         'text-sky-500     bg-sky-500/10',
+  clicks:       'text-pink-500    bg-pink-500/10',
+  view_content: 'text-cyan-500    bg-cyan-500/10',
+  signup:       'text-teal-500    bg-teal-500/10',
+  conv:         'text-orange-500  bg-orange-500/10',
+  revenue:      'text-emerald-500 bg-emerald-500/10',
+  installs:     'text-blue-500    bg-blue-500/10',
+  /* 단가 */
+  cpm:          'text-violet-500  bg-violet-500/10',
+  cpc:          'text-rose-500    bg-rose-500/10',
+  ctr:          'text-lime-500    bg-lime-500/10',
+  cpa_view:     'text-amber-500   bg-amber-500/10',
+  cac:          'text-fuchsia-500 bg-fuchsia-500/10',
+  cps:          'text-red-500     bg-red-500/10',
+  roas:         'text-purple-500  bg-purple-500/10',
 }
 
 const ICON_MAP = {
-  cost:'₩', revenue:'↑', roas:'✕', installs:'📲', conv:'🛒',
-  signup:'👤', impr:'👁', clicks:'🖱', ctr:'%', cpc:'₩'
+  cost:'₩', impr:'👁', clicks:'🖱', view_content:'📄', signup:'👤',
+  conv:'🛒', revenue:'↑', installs:'📲',
+  cpm:'₩', cpc:'₩', ctr:'%', cpa_view:'₩', cac:'₩', cps:'₩', roas:'✕',
 }
 
 export default function KPIWidget({ data, config, dark }) {

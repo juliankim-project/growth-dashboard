@@ -92,19 +92,30 @@ export const WIDGET_TYPES = [
 
 /* ──────────────────────────────────────────
    지표 목록
+   group: 'metric' = 원시 지표 / 'rate' = 단가·비율 파생지표
 ─────────────────────────────────────────── */
 export const METRICS = [
-  { id:'cost',     label:'광고비',   field:'spend',       fmt:'currency' },
-  { id:'revenue',  label:'매출',     field:'revenue',     fmt:'currency' },
-  { id:'roas',     label:'ROAS',     field:null,          fmt:'roas',    derived:true },
-  { id:'installs', label:'인스톨',   field:'installs',    fmt:'number' },
-  { id:'conv',     label:'구매',     field:'purchases',   fmt:'number' },
-  { id:'signup',   label:'회원가입', field:'signups',     fmt:'number' },
-  { id:'impr',     label:'노출',     field:'impressions', fmt:'number' },
-  { id:'clicks',   label:'클릭',     field:'clicks',      fmt:'number' },
-  { id:'ctr',      label:'CTR',      field:null,          fmt:'pct',     derived:true },
-  { id:'cpc',      label:'CPC',      field:'cpc',         fmt:'currency' },
+  /* ── 지표 (원시) ── */
+  { id:'cost',         label:'광고비',           field:'spend',        fmt:'currency', group:'metric' },
+  { id:'impr',         label:'노출',             field:'impressions',  fmt:'number',   group:'metric' },
+  { id:'clicks',       label:'클릭',             field:'clicks',       fmt:'number',   group:'metric' },
+  { id:'view_content', label:'상세페이지 조회',  field:'view_content', fmt:'number',   group:'metric' },
+  { id:'signup',       label:'회원가입',         field:'signups',      fmt:'number',   group:'metric' },
+  { id:'conv',         label:'구매',             field:'purchases',    fmt:'number',   group:'metric' },
+  { id:'revenue',      label:'매출',             field:'revenue',      fmt:'currency', group:'metric' },
+  { id:'installs',     label:'인스톨',           field:'installs',     fmt:'number',   group:'metric' },
+  /* ── 단가 / 비율 (파생) ── */
+  { id:'cpm',          label:'CPM',              field:null,           fmt:'currency', group:'rate', derived:true },
+  { id:'cpc',          label:'CPC',              field:'cpc',          fmt:'currency', group:'rate' },
+  { id:'ctr',          label:'CTR',              field:null,           fmt:'pct',      group:'rate', derived:true },
+  { id:'cpa_view',     label:'CPA(조회)',         field:null,           fmt:'currency', group:'rate', derived:true },
+  { id:'cac',          label:'CAC',              field:null,           fmt:'currency', group:'rate', derived:true },
+  { id:'cps',          label:'CPS',              field:null,           fmt:'currency', group:'rate', derived:true },
+  { id:'roas',         label:'ROAS',             field:null,           fmt:'roas',     group:'rate', derived:true },
 ]
+
+/* 파생지표 계산에 필요한 기반 지표 ID */
+export const DERIVED_BASE_METRICS = ['cost', 'impr', 'clicks', 'view_content', 'signup', 'conv', 'revenue']
 
 /* GROUP_BY: DB 컬럼명 snake_case 사용 */
 export const GROUP_BY = [

@@ -1,4 +1,4 @@
-import { METRICS } from '../../store/useConfig'
+import { METRICS, DERIVED_BASE_METRICS } from '../../store/useConfig'
 
 /* 차트 축 전용 - 축약 표기 (소수점 없음) */
 export const fmtW = n => {
@@ -20,17 +20,22 @@ export function calcMetric(data, metricId) {
   const m = METRICS.find(x => x.id === metricId)
   if (!m) return 0
   if (m.derived) {
-    if (metricId === 'roas') {
-      const cost = sumField(data, 'spend')
-      const rev  = sumField(data, 'revenue')
-      return cost > 0 ? rev / cost : 0
+    const cost        = sumField(data, 'spend')
+    const rev         = sumField(data, 'revenue')
+    const impr        = sumField(data, 'impressions')
+    const clicks      = sumField(data, 'clicks')
+    const viewContent = sumField(data, 'view_content')
+    const signup      = sumField(data, 'signups')
+    const conv        = sumField(data, 'purchases')
+    switch (metricId) {
+      case 'roas':     return cost > 0        ? rev         / cost   : 0
+      case 'ctr':      return impr > 0        ? (clicks     / impr)  * 100 : 0
+      case 'cpm':      return impr > 0        ? (cost       / impr)  * 1000 : 0
+      case 'cpa_view': return viewContent > 0 ? cost        / viewContent : 0
+      case 'cac':      return signup > 0      ? cost        / signup : 0
+      case 'cps':      return conv > 0        ? cost        / conv   : 0
+      default:         return 0
     }
-    if (metricId === 'ctr') {
-      const impr  = sumField(data, 'impressions')
-      const click = sumField(data, 'clicks')
-      return impr > 0 ? (click / impr) * 100 : 0
-    }
-    return 0
   }
   return sumField(data, m.field)
 }
@@ -45,42 +50,55 @@ export function fmtMetric(metricId, value) {
   return fmtNum(value)
 }
 
+/* 파생지표 계산 (그룹/일별 공통) — row에 기반 지표가 누적된 상태에서 호출 */
+function calcDerived(row, metrics) {
+  const c = row.cost || 0, rv = row.revenue || 0
+  const im = row.impr || 0, cl = row.clicks || 0
+  const vc = row.view_content || 0, sg = row.signup || 0, cv = row.conv || 0
+  if (metrics.includes('roas'))     row.roas     = c  > 0  ? rv / c        : 0
+  if (metrics.includes('ctr'))      row.ctr      = im > 0  ? (cl / im) * 100  : 0
+  if (metrics.includes('cpm'))      row.cpm      = im > 0  ? (c  / im) * 1000 : 0
+  if (metrics.includes('cpa_view')) row.cpa_view = vc > 0  ? c  / vc      : 0
+  if (metrics.includes('cac'))      row.cac      = sg > 0  ? c  / sg      : 0
+  if (metrics.includes('cps'))      row.cps      = cv > 0  ? c  / cv      : 0
+}
+
 /* 그룹핑 */
 export function groupData(data, groupByField, metrics) {
+  /* 파생지표 계산용 기반 지표를 항상 누적 */
+  const allAccum = [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+
   const map = {}
   data.forEach(r => {
     const k = r[groupByField] || '(없음)'
-    if (!map[k]) {
-      map[k] = { name: k }
-      metrics.forEach(mid => { map[k][mid] = 0 })
-    }
-    metrics.forEach(mid => {
+    if (!map[k]) { map[k] = { name: k } }
+    allAccum.forEach(mid => {
       const m = METRICS.find(x => x.id === mid)
       if (m && !m.derived && m.field) {
-        map[k][mid] += parseFloat(r[m.field]) || 0
+        map[k][mid] = (map[k][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
   })
-  // derived (cost/revenue/impressions/clicks는 metric id를 key로 가짐)
-  Object.values(map).forEach(row => {
-    if (metrics.includes('roas')) row.roas = (row.cost || 0) > 0 ? ((row.revenue || 0) / row.cost) : 0
-    if (metrics.includes('ctr'))  row.ctr  = (row.impr  || 0) > 0 ? ((row.clicks  || 0) / row.impr ) * 100 : 0
-  })
+  Object.values(map).forEach(row => calcDerived(row, metrics))
   return Object.values(map)
 }
 
 /* 일별 집계 */
 export function dailyData(data, metrics) {
+  const allAccum = [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
   const map = {}
   data.forEach(r => {
     const d = (r['date'] || r['Event Date'])?.slice(0, 10)
     if (!d) return
-    if (!map[d]) { map[d] = { label: d.slice(5) }; metrics.forEach(mid => { map[d][mid] = 0 }) }
-    metrics.forEach(mid => {
+    if (!map[d]) { map[d] = { label: d.slice(5) } }
+    allAccum.forEach(mid => {
       const m = METRICS.find(x => x.id === mid)
-      if (m && !m.derived && m.field) map[d][mid] += parseFloat(r[m.field]) || 0
+      if (m && !m.derived && m.field) {
+        map[d][mid] = (map[d][mid] || 0) + (parseFloat(r[m.field]) || 0)
+      }
     })
   })
+  Object.values(map).forEach(row => calcDerived(row, metrics))
   return Object.values(map).sort((a, b) => a.label.localeCompare(b.label))
 }
 

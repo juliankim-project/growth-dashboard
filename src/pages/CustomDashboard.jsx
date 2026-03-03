@@ -406,11 +406,20 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {METRICS.map(m => (
-                        <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                          {m.label}
-                        </button>
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => (
+                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -425,15 +434,24 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
               {type === 'timeseries' && (
                 <div>
                   <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {METRICS.map(m => {
-                      const on = (config.metrics || []).includes(m.id)
-                      return (
-                        <button key={m.id} onClick={() => toggleMetric(m.id)} className={S.btn(on)}>
-                          {on ? '✓ ' : ''}{m.label}
-                        </button>
-                      )
-                    })}
+                  <div className="flex flex-col gap-3">
+                    {['metric', 'rate'].map(group => (
+                      <div key={group}>
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          {group === 'metric' ? '지표' : '단가'}
+                        </p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {METRICS.filter(m => m.group === group).map(m => {
+                            const on = (config.metrics || []).includes(m.id)
+                            return (
+                              <button key={m.id} onClick={() => toggleMetric(m.id)} className={S.btn(on)}>
+                                {on ? '✓ ' : ''}{m.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -442,11 +460,20 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {METRICS.map(m => (
-                        <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                          {m.label}
-                        </button>
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => (
+                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -464,18 +491,27 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {METRICS.map(m => {
-                        const on = (config.metrics || []).includes(m.id)
-                        return (
-                          <button key={m.id} onClick={() => {
-                            const cur = config.metrics || []
-                            upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
-                          }} className={S.btn(on)}>
-                            {on ? '✓ ' : ''}{m.label}
-                          </button>
-                        )
-                      })}
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => {
+                              const on = (config.metrics || []).includes(m.id)
+                              return (
+                                <button key={m.id} onClick={() => {
+                                  const cur = config.metrics || []
+                                  upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
+                                }} className={S.btn(on)}>
+                                  {on ? '✓ ' : ''}{m.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div>
@@ -1062,11 +1098,20 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {METRICS.map(m => (
-                        <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                          {m.label}
-                        </button>
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => (
+                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -1087,15 +1132,24 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {METRICS.map(m => {
-                        const on = (config.metrics || []).includes(m.id)
-                        return (
-                          <button key={m.id} onClick={() => toggleMetric(m.id)} className={S.btn(on)}>
-                            {on ? '✓ ' : ''}{m.label}
-                          </button>
-                        )
-                      })}
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => {
+                              const on = (config.metrics || []).includes(m.id)
+                              return (
+                                <button key={m.id} onClick={() => toggleMetric(m.id)} className={S.btn(on)}>
+                                  {on ? '✓ ' : ''}{m.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </>
@@ -1110,11 +1164,20 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {METRICS.map(m => (
-                        <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                          {m.label}
-                        </button>
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => (
+                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -1137,18 +1200,27 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {METRICS.map(m => {
-                        const on = (config.metrics || []).includes(m.id)
-                        return (
-                          <button key={m.id} onClick={() => {
-                            const cur = config.metrics || []
-                            upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
-                          }} className={S.btn(on)}>
-                            {on ? '✓ ' : ''}{m.label}
-                          </button>
-                        )
-                      })}
+                    <div className="flex flex-col gap-3">
+                      {['metric', 'rate'].map(group => (
+                        <div key={group}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {group === 'metric' ? '지표' : '단가'}
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {METRICS.filter(m => m.group === group).map(m => {
+                              const on = (config.metrics || []).includes(m.id)
+                              return (
+                                <button key={m.id} onClick={() => {
+                                  const cur = config.metrics || []
+                                  upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
+                                }} className={S.btn(on)}>
+                                  {on ? '✓ ' : ''}{m.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div>
