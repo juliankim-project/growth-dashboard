@@ -878,11 +878,12 @@ function normalizeDashboard(d) {
 /* ══════════════════════════════════════════
    카드 추가 모달
 ══════════════════════════════════════════ */
-function AddWidgetModal({ dark, onAdd, onClose }) {
-  const [step,   setStep]   = useState(1)   // 1:타입 2:크기 3:설정
-  const [type,   setType]   = useState('kpi')
-  const [span,   setSpan]   = useState('col-span-1')
-  const [config, setConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
+function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
+  const [step,    setStep]    = useState(1)   // 1:타입 2:크기 3:설정
+  const [type,    setType]    = useState('kpi')
+  const [span,    setSpan]    = useState('col-span-1')
+  const [config,  setConfig]  = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
+  const [filters, setFilters] = useState({})
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
 
@@ -894,7 +895,7 @@ function AddWidgetModal({ dark, onAdd, onClose }) {
   }
 
   const handleAdd = () => {
-    onAdd({ id: `w_${Date.now()}`, span, type, config })
+    onAdd({ id: `w_${Date.now()}`, span, type, config: { ...config, filters } })
     onClose()
   }
 
@@ -1100,6 +1101,14 @@ function AddWidgetModal({ dark, onAdd, onClose }) {
                   </div>
                 </>
               )}
+
+              {/* 데이터 필터 — 모든 카드 타입 공통 */}
+              <FilterSection
+                filters={filters}
+                data={data}
+                dark={dark}
+                onChange={setFilters}
+              />
             </div>
           )}
         </div>
@@ -1268,7 +1277,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} onAdd={handleAddSlot} onClose={onCloseAdd}/>
+        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd}/>
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
