@@ -33,19 +33,59 @@ const COL_MAP = {
 /* CSV 컬럼명 목록 (표시/매핑 확인용) */
 const ALL_COLS = Object.keys(COL_MAP)
 
-/* ─── CSV 파서 (줄바꿈·따옴표 기본 처리) ─── */
+/* ─── CSV 파서 (RFC 4180 준수 — quoted 필드 내 콤마·개행 올바르게 처리) ─── */
 function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/)
-  if (lines.length < 2) return { headers: [], rows: [] }
+  const rows = []
+  let row = []
+  let field = ''
+  let inQuotes = false
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
-  const rows = lines.slice(1).filter(l => l.trim()).map(line => {
-    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
-    const obj = {}
-    headers.forEach((h, i) => { obj[h] = vals[i] ?? '' })
-    return obj
-  })
-  return { headers, rows }
+  for (let i = 0; i < text.length; i++) {
+    const ch   = text[i]
+    const next = text[i + 1]
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { field += '"'; i++ }  // "" → escaped "
+      else if (ch === '"')             { inQuotes = false }
+      else                             { field += ch }
+    } else {
+      if      (ch === '"')                          { inQuotes = true }
+      else if (ch === ',')                          { row.push(field.trim()); field = '' }
+      else if (ch === '\r' && next === '\n')        { row.push(field.trim()); field = ''; rows.push(row); row = []; i++ }
+      else if (ch === '\n' || ch === '\r')          { row.push(field.trim()); field = ''; rows.push(row); row = [] }
+      else                                          { field += ch }
+    }
+  }
+  // 마지막 필드/행
+  row.push(field.trim())
+  if (row.some(f => f !== '')) rows.push(row)
+
+  if (rows.length < 2) return { headers: [], rows: [] }
+
+  const headers = rows[0]
+  const dataRows = rows.slice(1)
+    .filter(r => r.some(f => f !== ''))
+    .map(vals => {
+      const obj = {}
+      headers.forEach((h, i) => { obj[h] = vals[i] ?? '' })
+      return obj
+    })
+  return { headers, rows: dataRows }
+}
+
+/* ─── 숫자형 DB 컬럼 (insert 전 string → number 변환) ─── */
+const NUMERIC_DB_COLS = new Set([
+  'impressions', 'clicks', 'cpc', 'installs', 'spend',
+  'signups', 'purchases', 'revenue',
+])
+
+function toDbValue(dbCol, rawVal) {
+  if (rawVal === '' || rawVal === undefined || rawVal === null) return null
+  if (NUMERIC_DB_COLS.has(dbCol)) {
+    const n = parseFloat(String(rawVal).replace(/,/g, ''))  // "1,234" → 1234
+    return isNaN(n) ? null : n
+  }
+  return rawVal
 }
 
 /* ─── 채널별 행 수 집계 ─── */
@@ -119,13 +159,12 @@ export default function DataStudio({ dark }) {
     setUploading(true)
     setProgress(0)
     try {
-      /* COL_MAP 기준으로 CSV → DB 컬럼명 변환 */
+      /* COL_MAP 기준으로 CSV → DB 컬럼명 변환 + 숫자 타입 변환 */
       const rawRows = parsed.rows.map(row => {
         const obj = {}
         matchedCols.forEach(csvCol => {
           const dbCol = COL_MAP[csvCol]
-          const v = row[csvCol]
-          obj[dbCol] = (v === '' || v === undefined) ? null : v
+          obj[dbCol] = toDbValue(dbCol, row[csvCol])
         })
         return obj
       })
