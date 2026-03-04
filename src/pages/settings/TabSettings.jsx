@@ -481,13 +481,6 @@ function SubRow({
             </span>
           )}
 
-          {/* 커스텀 배지 */}
-          {isCustom && (
-            <span className={`text-[9px] px-1.5 py-0.5 rounded ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
-              커스텀
-            </span>
-          )}
-
           {/* 삭제 / 숨기기 */}
           {isCustom ? (
             <button
@@ -797,12 +790,12 @@ export default function TabSettings({
         return (
           <div key={cs.id}
             className={`rounded-xl border overflow-hidden
-              ${dark ? 'bg-[#1A1D27] border-indigo-500/30' : 'bg-white border-indigo-200 shadow-sm'}`}>
+              ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
 
             {/* L1 섹션 헤더 */}
             <div
               className={`flex items-center gap-3 px-4 py-3 border-b cursor-pointer group/sec
-                ${dark ? 'border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10' : 'border-indigo-100 bg-indigo-50 hover:bg-indigo-100'}`}
+                ${dark ? 'border-[#252836] bg-[#13151C] hover:bg-[#0F1117]' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
               onClick={() => toggleSection(cs.id)}
             >
               <span className={`shrink-0 transition-transform duration-200
@@ -812,8 +805,8 @@ export default function TabSettings({
               </span>
 
               <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0
-                ${dark ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'}`}>
-                L1 커스텀
+                ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
+                L1
               </span>
 
               <div onClick={e => e.stopPropagation()}>
