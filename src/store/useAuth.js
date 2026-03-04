@@ -62,12 +62,32 @@ export function useAuth() {
     setLoading(false)
   }
 
-  /** 매직링크 발송 */
-  const signInWithMagicLink = (email) =>
-    supabase.auth.signInWithOtp({
-      email,
+  /** 매직링크 발송 (allowed_users 사전 확인 → Supabase OTP) */
+  const signInWithMagicLink = async (email) => {
+    const trimmed = email.trim()
+
+    // ── 1) allowed_users 사전 체크 ──────────────────────────────
+    // Supabase Auth 호출 전에 먼저 확인해서 빠른 피드백 제공
+    try {
+      const { data } = await supabase
+        .from('allowed_users')
+        .select('email')
+        .eq('email', trimmed)
+        .maybeSingle()
+
+      if (!data) {
+        return { error: { message: 'email_not_allowed' } }
+      }
+    } catch {
+      // RLS 미설정 등 예외는 무시하고 Supabase OTP 단계로 넘어감
+    }
+
+    // ── 2) Supabase OTP 발송 ─────────────────────────────────────
+    return supabase.auth.signInWithOtp({
+      email: trimmed,
       options: { emailRedirectTo: window.location.origin },
     })
+  }
 
   /** 로그아웃 */
   const signOut = () => supabase.auth.signOut()

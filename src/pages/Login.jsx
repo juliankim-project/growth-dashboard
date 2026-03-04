@@ -16,8 +16,13 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
     if (error) {
       // Supabase 에러 메시지 한국어로 변환
       const msg = error.message || ''
-      if (msg.includes('Signups not allowed') || msg.includes('not allowed')) {
+      if (msg === 'email_not_allowed') {
+        // allowed_users 사전 체크 실패 (우리 테이블에 없음)
         setError('등록되지 않은 이메일입니다. 관리자에게 문의하세요.')
+      } else if (msg.includes('Signups not allowed') || msg.includes('signup') || msg.includes('sign up')) {
+        // allowed_users에는 있지만 Supabase auth.users에 계정이 없는 경우
+        // Supabase 대시보드 Authentication > Users 에서 직접 생성 필요
+        setError('이메일은 등록되어 있으나 계정이 아직 생성되지 않았습니다. 관리자에게 계정 생성을 요청해주세요.')
       } else if (msg.includes('rate limit') || msg.includes('too many')) {
         setError('잠시 후 다시 시도해주세요. (요청 횟수 초과)')
       } else {
