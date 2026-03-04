@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 export function useAuth() {
   const [session,     setSession]     = useState(undefined)
   const [loading,     setLoading]     = useState(true)
-  const [accessError, setAccessError] = useState('')   // 권한 없는 이메일
+  const [accessError, setAccessError] = useState('')
 
   useEffect(() => {
     if (!supabase) {
@@ -14,29 +14,23 @@ export function useAuth() {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        checkAllowed(session)
-      } else {
-        setSession(null)
-        setLoading(false)
-      }
+      if (session) checkAllowed(session)
+      else { setSession(null); setLoading(false) }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        checkAllowed(session)
-      } else {
-        setSession(null)
-        setLoading(false)
-      }
+      if (session) checkAllowed(session)
+      else { setSession(null); setLoading(false) }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   /**
-   * 로그인 후 allowed_users 테이블에서 이메일 확인
-   * 없으면 즉시 로그아웃
+   * 매직링크 클릭 후 세션이 생기면 allowed_users 확인
+   * ※ Supabase allowed_users 테이블에 아래 두 가지 RLS 정책 필요:
+   *   1) anon   SELECT  USING (true)           ← 로그인 전 사전 체크용
+   *   2) authenticated SELECT USING (true)     ← 로그인 후 이 함수용
    */
   async function checkAllowed(session) {
     try {
@@ -46,54 +40,59 @@ export function useAuth() {
         .eq('email', session.user.email)
         .maybeSingle()
 
-      if (error || !data) {
-        // 허용 목록에 없음 → 로그아웃
+      if (error) {
+        // DB / RLS 오류 → 로그인은 허용하되 콘솔에 경고
+        // (authenticated SELECT 정책이 없으면 여기에 걸림 → Supabase에서 정책 추가 필요)
+        console.warn('[checkAllowed] allowed_users 쿼리 오류:', error.message)
+        setAccessError('')
+        setSession(session)
+      } else if (!data) {
+        // 테이블에 없는 이메일 → 로그아웃
         await supabase.auth.signOut()
-        setAccessError(`${session.user.email} 은(는) 접근 권한이 없습니다. 관리자에게 문의하세요.`)
+        setAccessError('등록되지 않은 이메일입니다. 관리자에게 문의하세요.')
         setSession(null)
       } else {
+        // 정상 허용
         setAccessError('')
         setSession(session)
       }
-    } catch {
-      await supabase.auth.signOut()
-      setSession(null)
+    } catch (e) {
+      console.warn('[checkAllowed] 예외:', e)
+      // 예외 발생 시 세션 유지 (예외가 차단 근거가 되어선 안 됨)
+      setSession(session)
     }
     setLoading(false)
   }
 
-  /** 매직링크 발송 (allowed_users 사전 확인 → Supabase OTP) */
+  /**
+   * 매직링크 발송
+   * - allowed_users 에 있으면 → OTP 발송
+   * - 없으면 → 에러 반환 (메일 안 보냄)
+   * ※ anon SELECT RLS 정책이 없으면 사전 체크 불가 → OTP 시도 후 post-auth 에서 차단
+   */
   const signInWithMagicLink = async (email) => {
     const trimmed = email.trim()
 
-    // ── 1) allowed_users 사전 체크 ──────────────────────────────
-    // ⚠️ 이 체크가 동작하려면 Supabase 대시보드에서 아래 RLS 정책 필요:
-    //   Table: allowed_users  →  New Policy  →  SELECT  →  USING (true)  →  Role: anon
-    //   (anon 사용자도 읽을 수 있어야 사전 체크가 의미 있음)
-    try {
-      const { data, error: queryError } = await supabase
-        .from('allowed_users')
-        .select('email')
-        .eq('email', trimmed)
-        .maybeSingle()
+    const { data, error: checkError } = await supabase
+      .from('allowed_users')
+      .select('email')
+      .eq('email', trimmed)
+      .maybeSingle()
 
-      if (!queryError && data === null) {
-        // 쿼리는 성공했지만 행이 없음 → 미등록 이메일
-        return { error: { message: 'email_not_allowed' } }
-      }
-      // queryError 가 있으면 RLS 차단 등 → OTP 단계에서 post-auth checkAllowed 가 처리
-    } catch {
-      // 예외 → OTP 단계로 넘어감
+    if (checkError) {
+      // RLS 미설정 등 → 일단 OTP 시도 (checkAllowed가 최종 차단)
+      console.warn('[signInWithMagicLink] allowed_users 사전 체크 실패:', checkError.message)
+    } else if (!data) {
+      // 확실히 미등록 → 즉시 차단
+      return { error: { message: 'email_not_allowed' } }
     }
 
-    // ── 2) Supabase OTP 발송 ─────────────────────────────────────
     return supabase.auth.signInWithOtp({
       email: trimmed,
       options: { emailRedirectTo: window.location.origin },
     })
   }
 
-  /** 로그아웃 */
   const signOut = () => supabase.auth.signOut()
 
   return {
