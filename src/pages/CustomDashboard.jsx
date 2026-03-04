@@ -806,9 +806,14 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
    - 호버 ×: 탭 삭제
    - + 탭 추가 버튼 (추가 후 자동 이동 없음)
 ══════════════════════════════════════════ */
-function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot }) {
+function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef }) {
   const [addingTab, setAddingTab] = useState(false)
   const [newLabel,  setNewLabel]  = useState('')
+
+  /* 외부(빈 상태 버튼 등)에서 탭 추가 폼 열기용 */
+  useEffect(() => {
+    if (addRef) addRef.current = () => { setAddingTab(true); setNewLabel('') }
+  })
   const [renaming,  setRenaming]  = useState(null) // { id, value }
 
   /* ── 탭 가로 드래그 순서 변경 ── */
@@ -1457,6 +1462,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   const [saved,    setSaved]    = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [showAdd,  setShowAdd]  = useState(false)
+  const tabBarAddRef = useRef(null)
 
   const currentTable = dashboard.dataSource?.table || 'marketing_data'
 
@@ -1524,6 +1530,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         onRename={(tabId, label) => tabsConfig?.renameTab(tabId, label)}
         onReorder={(from, to) => tabsConfig?.reorderTabs?.(from, to)}
         dark={dark}
+        addRef={tabBarAddRef}
         rightSlot={activeTab ? (
           editMode ? (
             <>
@@ -1577,25 +1584,28 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
           />
         </div>
       ) : (
-        /* 빈 상태 */
-        <div className={`flex flex-col items-center justify-center flex-1 gap-5
-          ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center
-            ${dark ? 'bg-[#1A1D27]' : 'bg-slate-50'}`}>
-            <Plus size={32} className="text-indigo-400"/>
+        /* 빈 상태 — 클릭하면 탭 추가 폼 오픈 */
+        <button
+          onClick={() => tabBarAddRef.current?.()}
+          className={`flex flex-col items-center justify-center flex-1 gap-5 w-full
+            transition-colors group
+            ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-colors
+            ${dark
+              ? 'bg-[#1A1D27] group-hover:bg-indigo-600/20'
+              : 'bg-slate-50 group-hover:bg-indigo-50'}`}>
+            <Plus size={32} className="text-indigo-400 group-hover:text-indigo-500"/>
           </div>
           <div className="text-center">
             <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
               탭이 없습니다
             </p>
-            <p className="text-xs mt-1.5">
-              위의 <span className="text-indigo-400 font-semibold">+ 탭 추가</span> 버튼으로 첫 번째 탭을 만들어보세요
-            </p>
-            <p className={`text-xs mt-1 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
-              각 탭에 원하는 위젯과 지표를 자유롭게 배치할 수 있습니다
+            <p className="text-xs mt-1.5 text-indigo-400 group-hover:text-indigo-300 font-medium">
+              + 여기를 클릭해서 첫 번째 탭을 만들어보세요
             </p>
           </div>
-        </div>
+        </button>
       )}
     </div>
   )
