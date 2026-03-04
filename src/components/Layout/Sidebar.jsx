@@ -4,7 +4,13 @@ import {
   Settings, Sun, Moon, BarChart2,
   Target, FileBarChart, Upload, Table2, History,
   TrendingUp, GitBranch, Zap, ChevronDown, GripVertical,
-  Users, Sliders, LayoutTemplate, Plus
+  Users, Sliders, LayoutTemplate, Plus, Pencil,
+  /* icon picker 추가 아이콘 */
+  Star, Bell, Globe, Calendar, Clock, Bookmark, Flag, Tag,
+  PieChart, Activity, Briefcase, Folder, Box, Monitor,
+  ShoppingCart, DollarSign, CreditCard, Search, Filter,
+  Mail, Phone, Home, Shield, Wrench, Cpu, Server,
+  Wifi, Map, Image, Heart, Award, Rocket, Compass, Layers, Eye, Tv,
 } from 'lucide-react'
 
 /* ─────────── 기본 네비 구조 ─────────── */
@@ -47,12 +53,31 @@ export const DEFAULT_SECTIONS = [
   },
 ]
 
-const ICONS = {
+export const ICONS = {
   LayoutDashboard, Megaphone, Package, Database, Settings,
   TrendingUp, Target, FileBarChart, Upload, Table2, History,
-  GitBranch, Zap, Users, Sliders, LayoutTemplate,
+  GitBranch, Zap, Users, Sliders, LayoutTemplate, BarChart2, Layers,
+  Star, Bell, Globe, Calendar, Clock, Bookmark, Flag, Tag,
+  PieChart, Activity, Briefcase, Folder, Box, Monitor,
+  ShoppingCart, DollarSign, CreditCard, Search, Filter,
+  Mail, Phone, Home, Shield, Wrench, Cpu, Server,
+  Wifi, Map, Image, Heart, Award, Rocket, Compass, Eye, Tv,
 }
-const Icon = ({ name, size=16, className='' }) => {
+
+/* 아이콘 피커용 순서 정렬 목록 */
+export const ICON_LIST = [
+  'LayoutDashboard','LayoutTemplate','Layers','BarChart2','PieChart','Activity',
+  'TrendingUp','Target','FileBarChart','GitBranch','Zap','Rocket',
+  'Megaphone','Package','Database','Settings','Sliders','Briefcase',
+  'Users','Heart','Star','Award','Bookmark','Flag',
+  'Upload','Table2','History','Search','Filter','Folder',
+  'DollarSign','CreditCard','ShoppingCart','Monitor','Server','Cpu',
+  'Globe','Map','Compass','Wifi','Mail','Phone',
+  'Calendar','Clock','Bell','Tag','Shield','Home',
+  'Wrench','Box','Image','Eye','Tv','Star',
+]
+
+export const Icon = ({ name, size=16, className='' }) => {
   const C = ICONS[name]; return C ? <C size={size} className={className}/> : null
 }
 
@@ -61,8 +86,13 @@ const STORAGE_OPEN      = 'sidebar_open_v2'
 const STORAGE_SUB_ORDER = 'sidebar_sub_order_v1'
 
 /* ─────────── 메인 컴포넌트 ─────────── */
-export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getSectionLabel, getSubLabel, getCustomSubs, getL3Subs, reorderL3Subs, customSections = [] }) {
-
+export default function Sidebar({
+  nav, setNav, dark, toggleDark, config={},
+  getSectionLabel, getSubLabel, getCustomSubs, getL3Subs, reorderL3Subs,
+  customSections = [],
+  /* 인라인 편집 setters */
+  setSectionLabel, setSubLabel, renameL3Sub,
+}) {
   /* 커스텀 섹션을 DEFAULT와 동일한 형태로 변환 */
   const toSectionDef = (cs) => ({
     id: cs.id, label: cs.label, icon: 'LayoutTemplate', subs: [], isCustom: true,
@@ -109,6 +139,26 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
 
   /* L2 서브별 L3 서서브 열림 상태 */
   const [l3Open, setL3Open] = useState({})
+
+  /* ── 인라인 이름 편집 상태 ── */
+  const [sidebarEdit, setSidebarEdit] = useState(null)
+  // null | { type:'section'|'sub'|'l3sub', key:string, value:string }
+
+  const commitSidebarEdit = () => {
+    if (!sidebarEdit) return
+    const { type, key, value } = sidebarEdit
+    const v = value.trim()
+    if (!v) { setSidebarEdit(null); return }
+    if (type === 'section')  setSectionLabel?.(key, v)
+    else if (type === 'sub') {
+      const [sid, subId] = key.split('\x00')
+      setSubLabel?.(sid, subId, v)
+    } else if (type === 'l3sub') {
+      const [sid, subId, l3Id] = key.split('\x00')
+      renameL3Sub?.(sid, subId, l3Id, v)
+    }
+    setSidebarEdit(null)
+  }
 
   /* ── L1 섹션 드래그 refs ── */
   const dragIdx = useRef(null)
@@ -246,9 +296,30 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
     l3DragFrom.current = null; l3DragTo.current = null; setL3DragId(null)
   }
 
+  /* ── 인라인 편집 input 렌더 헬퍼 ── */
+  const InlineInput = ({ value, onChange, onCommit, onCancel }) => (
+    <input
+      autoFocus
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onBlur={onCommit}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { e.preventDefault(); onCommit() }
+        if (e.key === 'Escape') { e.preventDefault(); onCancel() }
+      }}
+      onClick={e => e.stopPropagation()}
+      className={`flex-1 min-w-0 px-1.5 py-0.5 rounded text-xs outline-none
+        ${dark ? 'bg-[#252836] text-white border border-indigo-500' : 'bg-white text-slate-800 border border-indigo-400'}`}
+    />
+  )
+
   const t = dark
     ? { text:'text-slate-400', hover:'hover:bg-[#1A1D27] hover:text-white', border:'border-[#1E2130]' }
     : { text:'text-slate-500', hover:'hover:bg-slate-100 hover:text-slate-700', border:'border-slate-200' }
+
+  /* config 값 */
+  const projectName = config.projectName || 'Growth HQ'
+  const logoUrl     = config.logoUrl || null
 
   return (
     <aside className={`flex flex-col w-[220px] min-h-screen shrink-0 border-r transition-colors duration-200
@@ -256,10 +327,16 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
 
       {/* 로고 */}
       <div className={`flex items-center gap-2.5 px-5 py-5 border-b ${t.border}`}>
-        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-          <BarChart2 size={16} className="text-white"/>
-        </div>
-        <span className={`font-bold text-[15px] ${dark ? 'text-white' : 'text-slate-800'}`}>Growth HQ</span>
+        {logoUrl ? (
+          <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-lg object-cover shrink-0"/>
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+            <BarChart2 size={16} className="text-white"/>
+          </div>
+        )}
+        <span className={`font-bold text-[15px] truncate ${dark ? 'text-white' : 'text-slate-800'}`}>
+          {projectName}
+        </span>
       </div>
 
       {/* 네비 */}
@@ -273,8 +350,11 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
           const isActive   = nav.section === sec.id
           const isDragging = dragId === sec.id
 
-          /* 커스텀 라벨 적용 */
-          const secLabel       = getSectionLabel?.(sec.id) || sec.label
+          /* 라벨 */
+          const secLabel   = getSectionLabel?.(sec.id) || sec.label
+          /* 아이콘 (config 오버라이드 → 기본값) */
+          const secIcon    = config.sectionIcons?.[sec.id] || sec.icon
+
           const customSubs     = getCustomSubs?.(sec.id) || []
           const hiddenBuiltins = config.deletedBuiltinSubs?.[sec.id] || []
           const allSubs        = [
@@ -298,6 +378,8 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
               ]
             : allSubs
 
+          const isEditingSection = sidebarEdit?.type === 'section' && sidebarEdit?.key === sec.id
+
           return (
             <div key={sec.id}
               draggable
@@ -309,16 +391,43 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
             >
               {/* 섹션 헤더 */}
               <button
-                onClick={() => toggleSection(sec)}
-                className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg text-xs transition-all duration-150 text-left group
+                onClick={() => { if (!isEditingSection) toggleSection(sec) }}
+                className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg text-xs transition-all duration-150 text-left group/sec
                   ${isActive ? dark ? 'text-white' : 'text-slate-800' : `${t.text} ${t.hover}`}`}
               >
                 <GripVertical size={12}
-                  className={`shrink-0 cursor-grab active:cursor-grabbing ${dark ? 'text-slate-700 group-hover:text-slate-500' : 'text-slate-300 group-hover:text-slate-400'}`}/>
-                <Icon name={sec.icon} size={14} className={isActive ? 'text-indigo-500' : 'opacity-80'}/>
-                <span className="font-semibold flex-1">{secLabel}</span>
-                <ChevronDown size={12}
-                  className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                  className={`shrink-0 cursor-grab active:cursor-grabbing ${dark ? 'text-slate-700 group-hover/sec:text-slate-500' : 'text-slate-300 group-hover/sec:text-slate-400'}`}/>
+                <Icon name={secIcon} size={14} className={isActive ? 'text-indigo-500' : 'opacity-80'}/>
+
+                {isEditingSection ? (
+                  <InlineInput
+                    value={sidebarEdit.value}
+                    onChange={v => setSidebarEdit(p => ({ ...p, value: v }))}
+                    onCommit={commitSidebarEdit}
+                    onCancel={() => setSidebarEdit(null)}
+                  />
+                ) : (
+                  <>
+                    <span className="font-semibold flex-1 truncate">{secLabel}</span>
+                    {/* 연필 버튼 (hover 시 표시) */}
+                    <button
+                      onClick={e => {
+                        e.stopPropagation()
+                        setSidebarEdit({ type: 'section', key: sec.id, value: secLabel })
+                      }}
+                      className={`opacity-0 group-hover/sec:opacity-100 p-0.5 rounded transition-opacity shrink-0
+                        ${dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+                      title="이름 변경"
+                    >
+                      <Pencil size={9}/>
+                    </button>
+                  </>
+                )}
+
+                {!isEditingSection && (
+                  <ChevronDown size={12}
+                    className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                )}
               </button>
 
               {/* 서브메뉴 */}
@@ -326,6 +435,7 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
                 <div className="pl-4 pr-1 pb-1.5 flex flex-col gap-0.5">
                   {orderedSubs.map((sub, subIdx) => {
                     const subLabel    = getSubLabel?.(sec.id, sub.id) || sub.label
+                    const subIcon     = config.subIcons?.[`${sec.id}.${sub.id}`] || sub.icon
                     const l3subs      = getL3Subs?.(sec.id, sub.id) || []
                     const hasL3Subs   = l3subs.length > 0
                     const l3key       = `${sec.id}.${sub.id}`
@@ -334,6 +444,8 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
                     const subActive   = isActive && nav.sub === sub.id && !nav.l3sub
                     const anyActive   = subActive || l3subActive
                     const isSubDragging = subDragId === sub.id
+                    const editKey     = `${sec.id}\x00${sub.id}`
+                    const isEditingSub = sidebarEdit?.type === 'sub' && sidebarEdit?.key === editKey
 
                     return (
                       <div key={sub.id}
@@ -345,18 +457,42 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
                         className={`rounded-lg transition-all ${isSubDragging ? 'opacity-30' : ''}`}
                       >
                         <button
-                          onClick={() => handleSubClick(sec.id, sub.id)}
-                          className={`w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-all duration-150 text-left group
+                          onClick={() => { if (!isEditingSub) handleSubClick(sec.id, sub.id) }}
+                          className={`w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-all duration-150 text-left group/sub
                             ${subActive ? 'bg-indigo-600 text-white'
                               : l3subActive ? dark ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-50 text-indigo-700'
                               : `${t.text} ${t.hover}`}`}
                         >
                           <GripVertical size={10}
-                            className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity
+                            className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/sub:opacity-100 transition-opacity
                               ${subActive ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
-                          <Icon name={sub.icon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
-                          <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1`}>{subLabel}</span>
-                          {hasL3Subs && (
+                          <Icon name={subIcon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
+
+                          {isEditingSub ? (
+                            <InlineInput
+                              value={sidebarEdit.value}
+                              onChange={v => setSidebarEdit(p => ({ ...p, value: v }))}
+                              onCommit={commitSidebarEdit}
+                              onCancel={() => setSidebarEdit(null)}
+                            />
+                          ) : (
+                            <>
+                              <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{subLabel}</span>
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  setSidebarEdit({ type: 'sub', key: editKey, value: subLabel })
+                                }}
+                                className={`opacity-0 group-hover/sub:opacity-100 p-0.5 rounded transition-opacity shrink-0
+                                  ${subActive ? 'text-white/50 hover:text-white' : dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+                                title="이름 변경"
+                              >
+                                <Pencil size={8}/>
+                              </button>
+                            </>
+                          )}
+
+                          {!isEditingSub && hasL3Subs && (
                             <ChevronDown size={10}
                               className={`shrink-0 transition-transform duration-200 ${l3IsOpen ? '' : '-rotate-90'}
                                 ${anyActive ? (subActive ? 'text-white/70' : 'text-indigo-400') : dark ? 'text-slate-600' : 'text-slate-300'}`}
@@ -370,6 +506,10 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
                             {l3subs.map((ls, l3Idx) => {
                               const l3Active    = isActive && nav.sub === sub.id && nav.l3sub === ls.id
                               const isL3Dragging = l3DragId === ls.id
+                              const l3Icon      = config.l3subIcons?.[`${sec.id}.${sub.id}.${ls.id}`] || null
+                              const l3EditKey   = `${sec.id}\x00${sub.id}\x00${ls.id}`
+                              const isEditingL3 = sidebarEdit?.type === 'l3sub' && sidebarEdit?.key === l3EditKey
+
                               return (
                                 <div key={ls.id}
                                   draggable
@@ -380,15 +520,41 @@ export default function Sidebar({ nav, setNav, dark, toggleDark, config={}, getS
                                   className={`rounded-lg transition-all ${isL3Dragging ? 'opacity-30' : ''}`}
                                 >
                                   <button
-                                    onClick={() => goTo(sec.id, sub.id, ls.id)}
-                                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left group
+                                    onClick={() => { if (!isEditingL3) goTo(sec.id, sub.id, ls.id) }}
+                                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left group/l3
                                       ${l3Active ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
                                   >
                                     <GripVertical size={9}
-                                      className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity
+                                      className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/l3:opacity-100 transition-opacity
                                         ${l3Active ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
-                                    <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
-                                    <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
+                                    {l3Icon
+                                      ? <Icon name={l3Icon} size={10} className={l3Active ? 'text-white' : 'opacity-60'}/>
+                                      : <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
+                                    }
+
+                                    {isEditingL3 ? (
+                                      <InlineInput
+                                        value={sidebarEdit.value}
+                                        onChange={v => setSidebarEdit(p => ({ ...p, value: v }))}
+                                        onCommit={commitSidebarEdit}
+                                        onCancel={() => setSidebarEdit(null)}
+                                      />
+                                    ) : (
+                                      <>
+                                        <span className={`${l3Active ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{ls.label}</span>
+                                        <button
+                                          onClick={e => {
+                                            e.stopPropagation()
+                                            setSidebarEdit({ type: 'l3sub', key: l3EditKey, value: ls.label })
+                                          }}
+                                          className={`opacity-0 group-hover/l3:opacity-100 p-0.5 rounded transition-opacity shrink-0
+                                            ${l3Active ? 'text-white/50 hover:text-white' : dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+                                          title="이름 변경"
+                                        >
+                                          <Pencil size={8}/>
+                                        </button>
+                                      </>
+                                    )}
                                   </button>
                                 </div>
                               )

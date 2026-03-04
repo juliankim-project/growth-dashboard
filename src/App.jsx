@@ -131,6 +131,19 @@ function Dashboard({ dark, setDark, user, signOut }) {
           cfg.removeCustomSection(id)
           if (nav.section === id) setNav({ section: 'overview', sub: 'dashboard', l3sub: null })
         }}
+        setSectionIcon={cfg.setSectionIcon}
+        setSubIcon={cfg.setSubIcon}
+        setL3SubIcon={cfg.setL3SubIcon}
+      />
+    )
+  } else if (key === 'settings.general') {
+    PageContent = (
+      <SettingsGeneral
+        dark={dark}
+        projectName={cfg.config.projectName}
+        logoUrl={cfg.config.logoUrl}
+        setProjectName={cfg.setProjectName}
+        setLogoUrl={cfg.setLogoUrl}
       />
     )
   } else if (FIXED_MAP[key]) {
@@ -163,6 +176,9 @@ function Dashboard({ dark, setDark, user, signOut }) {
         getL3Subs={cfg.getL3Subs}
         reorderL3Subs={cfg.reorderL3Subs}
         customSections={cfg.config.customSections || []}
+        setSectionLabel={cfg.setSectionLabel}
+        setSubLabel={cfg.setSubLabel}
+        renameL3Sub={cfg.renameL3Sub}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header

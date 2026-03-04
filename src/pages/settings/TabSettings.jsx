@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { DEFAULT_SECTIONS } from '../../components/Layout/Sidebar'
+import { DEFAULT_SECTIONS, ICON_LIST, Icon } from '../../components/Layout/Sidebar'
 import { METRICS } from '../../store/useConfig'
 import {
   Pencil, Plus, Trash2, Check, X, ChevronRight, ChevronDown,
   LayoutDashboard, LayoutTemplate, Layers, Database, Eye, EyeOff,
-  RefreshCw, GripVertical
+  RefreshCw, GripVertical, Smile,
 } from 'lucide-react'
 
 /* 사이드바와 동일한 localStorage 키 — 순서를 공유함 */
@@ -67,6 +67,65 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
       >
         <Pencil size={10}/>
       </button>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────
+   아이콘 피커
+───────────────────────────────────────── */
+function IconPicker({ value, onChange, dark, size = 12 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef()
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
+        title="아이콘 변경"
+        className={`p-1 rounded transition-colors group/iconbtn
+          ${open
+            ? dark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
+            : dark ? 'text-slate-500 hover:bg-[#252836] hover:text-slate-300' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+          }`}
+      >
+        {value ? <Icon name={value} size={size}/> : <Smile size={size}/>}
+      </button>
+
+      {open && (
+        <div
+          className={`absolute z-50 top-full left-0 mt-1 p-2 rounded-xl border shadow-xl
+            ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}
+          style={{ width: 216 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <p className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 px-0.5
+            ${dark ? 'text-slate-600' : 'text-slate-300'}`}>아이콘 선택</p>
+          <div className="grid grid-cols-9 gap-0.5">
+            {ICON_LIST.map((name, i) => (
+              <button
+                key={`${name}-${i}`}
+                onClick={() => { onChange(name); setOpen(false) }}
+                title={name}
+                className={`p-1.5 rounded transition-colors
+                  ${value === name
+                    ? dark ? 'bg-indigo-500/25 text-indigo-300' : 'bg-indigo-50 text-indigo-600'
+                    : dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+              >
+                <Icon name={name} size={13}/>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -296,7 +355,7 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
 /* ─────────────────────────────────────────
    L3 서서브 관리 (새 레벨)
 ───────────────────────────────────────── */
-function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, dark }) {
+function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, dark, setL3SubIcon, config }) {
   const l3subs = getL3Subs(sectionId, subId)
   const [adding,    setAdding]    = useState(false)
   const [newLabel,  setNewLabel]  = useState('')
@@ -323,7 +382,13 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
         <div key={ls.id} className={`rounded-lg mb-2 border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
           {/* 서서브 헤더 행 */}
           <div className="flex items-center gap-1.5 px-2 py-1.5 group/ls">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500`}/>
+            {/* L3 아이콘 피커 */}
+            <IconPicker
+              value={config?.l3subIcons?.[`${sectionId}.${subId}.${ls.id}`] || null}
+              onChange={icon => setL3SubIcon?.(sectionId, subId, ls.id, icon)}
+              dark={dark}
+              size={10}
+            />
             <EditableLabel
               value={ls.label}
               placeholder={ls.label}
@@ -415,6 +480,7 @@ function SubRow({
   getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
+  setSubIcon,
 }) {
   const [open,    setOpen]    = useState(false)
   const [showDS,  setShowDS]  = useState(false)
@@ -457,9 +523,13 @@ function SubRow({
           {open ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
         </button>
 
-        {/* 색상 dot */}
-        <div className={`w-1.5 h-1.5 rounded-full shrink-0
-          ${isCustom ? 'bg-indigo-500' : dark ? 'bg-slate-600' : 'bg-slate-300'}`}/>
+        {/* L2 아이콘 피커 */}
+        <IconPicker
+          value={config.subIcons?.[`${sectionId}.${sub.id}`] || sub.icon || null}
+          onChange={icon => setSubIcon?.(sectionId, sub.id, icon)}
+          dark={dark}
+          size={11}
+        />
 
         {/* 이름 편집 */}
         <EditableLabel
@@ -547,6 +617,8 @@ function SubRow({
             removeL3Tab={removeL3Tab}
             renameL3Tab={renameL3Tab}
             dark={dark}
+            setL3SubIcon={setL3SubIcon}
+            config={config}
           />
 
           {/* 기본 직접 하위탭 (L3 없이 직접 연결된 L4) */}
@@ -628,6 +700,7 @@ export default function TabSettings({
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
   customSections = [], addCustomSection, removeCustomSection,
+  setSectionIcon, setSubIcon, setL3SubIcon,
 }) {
   const [openSections,   setOpenSections]   = useState(() => {
     const init = {}
@@ -794,6 +867,16 @@ export default function TabSettings({
                 L1
               </span>
 
+              {/* L1 아이콘 피커 */}
+              <div onClick={e => e.stopPropagation()}>
+                <IconPicker
+                  value={config.sectionIcons?.[section.id] || section.icon || null}
+                  onChange={icon => setSectionIcon?.(section.id, icon)}
+                  dark={dark}
+                  size={13}
+                />
+              </div>
+
               <div onClick={e => e.stopPropagation()}>
                 <EditableLabel
                   value={sectionLabel}
@@ -864,6 +947,7 @@ export default function TabSettings({
                     renameL3Tab={renameL3Tab}
                     getSubDataSource={getSubDataSource}
                     setSubDataSource={setSubDataSource}
+                    setSubIcon={setSubIcon}
                   />
                 ))}
                 <AddSubRow dark={dark} onAdd={label => onAddSub(section.id, label)} />

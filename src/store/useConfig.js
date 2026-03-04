@@ -15,6 +15,13 @@ export const DEFAULT_CONFIG = {
   l3subs:             {},  // { 'section.sub': [{id, label}] }  ← 새 L3 사이드바 서서브
   deletedBuiltinSubs: {},  // { 'overview': ['dashboard'], 'product': ['funnel'] }
   subDataSources:     {},  // { 'section.sub': { table, fieldMap: { metricId: 'colName' } } }
+  /* ── 앱 설정 ── */
+  projectName:  'Growth HQ',
+  logoUrl:      null,      // base64 이미지 or null
+  /* ── 아이콘 오버라이드 ── */
+  sectionIcons: {},        // { 'sectionId': 'IconName' }
+  subIcons:     {},        // { 'sectionId.subId': 'IconName' }
+  l3subIcons:   {},        // { 'sectionId.subId.l3subId': 'IconName' }
 }
 
 /* ──────────────────────────────────────────
@@ -185,6 +192,23 @@ export function useConfig() {
     _setConfig(next)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   }, [])
+
+  /* ── 앱 설정 ── */
+  const setProjectName = (name) =>
+    persist({ ...config, projectName: name })
+
+  const setLogoUrl = (url) =>
+    persist({ ...config, logoUrl: url })
+
+  /* ── 아이콘 오버라이드 ── */
+  const setSectionIcon = (id, icon) =>
+    persist({ ...config, sectionIcons: { ...(config.sectionIcons || {}), [id]: icon } })
+
+  const setSubIcon = (sectionId, subId, icon) =>
+    persist({ ...config, subIcons: { ...(config.subIcons || {}), [`${sectionId}.${subId}`]: icon } })
+
+  const setL3SubIcon = (sectionId, subId, l3subId, icon) =>
+    persist({ ...config, l3subIcons: { ...(config.l3subIcons || {}), [`${sectionId}.${subId}.${l3subId}`]: icon } })
 
   /* ── L1/L2 라벨 ── */
   const setSectionLabel = (id, label) =>
@@ -428,6 +452,8 @@ export function useConfig() {
     config,
     getSectionLabel, getSubLabel, getCustomSubs, getDashboard, saveDashboard,
     setSectionLabel, setSubLabel,
+    setProjectName, setLogoUrl,
+    setSectionIcon, setSubIcon, setL3SubIcon,
     getCustomSections, addCustomSection, removeCustomSection,
     addCustomSub, removeCustomSub,
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
