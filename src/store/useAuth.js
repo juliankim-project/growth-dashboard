@@ -67,19 +67,23 @@ export function useAuth() {
     const trimmed = email.trim()
 
     // ── 1) allowed_users 사전 체크 ──────────────────────────────
-    // Supabase Auth 호출 전에 먼저 확인해서 빠른 피드백 제공
+    // ⚠️ 이 체크가 동작하려면 Supabase 대시보드에서 아래 RLS 정책 필요:
+    //   Table: allowed_users  →  New Policy  →  SELECT  →  USING (true)  →  Role: anon
+    //   (anon 사용자도 읽을 수 있어야 사전 체크가 의미 있음)
     try {
-      const { data } = await supabase
+      const { data, error: queryError } = await supabase
         .from('allowed_users')
         .select('email')
         .eq('email', trimmed)
         .maybeSingle()
 
-      if (!data) {
+      if (!queryError && data === null) {
+        // 쿼리는 성공했지만 행이 없음 → 미등록 이메일
         return { error: { message: 'email_not_allowed' } }
       }
+      // queryError 가 있으면 RLS 차단 등 → OTP 단계에서 post-auth checkAllowed 가 처리
     } catch {
-      // RLS 미설정 등 예외는 무시하고 Supabase OTP 단계로 넘어감
+      // 예외 → OTP 단계로 넘어감
     }
 
     // ── 2) Supabase OTP 발송 ─────────────────────────────────────
