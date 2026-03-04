@@ -88,6 +88,15 @@ function toDbValue(dbCol, rawVal) {
   return rawVal
 }
 
+/* ─── 업로드 기록 저장 ─── */
+const HISTORY_KEY = 'upload_history_v1'
+function appendHistory(entry) {
+  try {
+    const prev = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...prev].slice(0, 200)))
+  } catch {}
+}
+
 /* ─── 채널별 행 수 집계 ─── */
 function getChannelSummary(rows) {
   const map = {}
@@ -209,11 +218,22 @@ export default function DataStudio({ dark }) {
         setProgress(Math.round((inserted / deduped.length) * 100))
       }
 
-      setResult({ ok: true, count: inserted, mode: uploadMode, dateRange })
+      const res = { ok: true, count: inserted, mode: uploadMode, dateRange }
+      setResult(res)
       setStep(2)
+      appendHistory({
+        filename: file.name, table: TARGET_TABLE, rows: inserted, ok: true,
+        mode: uploadMode,
+        dateRange: dateRange ? `${dateRange.start} ~ ${dateRange.end}` : null,
+        date: new Date().toLocaleString('ko-KR'),
+      })
     } catch (err) {
       setResult({ ok: false, error: err.message })
       setStep(2)
+      appendHistory({
+        filename: file.name, table: TARGET_TABLE, rows: 0, ok: false,
+        error: err.message, date: new Date().toLocaleString('ko-KR'),
+      })
     }
     setUploading(false)
   }

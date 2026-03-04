@@ -1,11 +1,30 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { DEFAULT_SECTIONS } from '../../components/Layout/Sidebar'
 import { METRICS } from '../../store/useConfig'
 import {
   Pencil, Plus, Trash2, Check, X, ChevronRight, ChevronDown,
   LayoutDashboard, LayoutTemplate, Layers, Database, Eye, EyeOff,
-  RefreshCw
+  RefreshCw, GripVertical
 } from 'lucide-react'
+
+/* 사이드바와 동일한 localStorage 키 — 순서를 공유함 */
+const SIDEBAR_ORDER_KEY = 'sidebar_order_v2'
+
+function buildOrderedSections(customSections) {
+  const defaultDefs = DEFAULT_SECTIONS.map(s => ({ ...s, isCustom: false }))
+  const customDefs  = (customSections || []).map(cs => ({
+    id: cs.id, label: cs.label, isCustom: true, subs: [],
+  }))
+  const allDefs = [...defaultDefs, ...customDefs]
+  try {
+    const saved = JSON.parse(localStorage.getItem(SIDEBAR_ORDER_KEY) || '[]')
+    if (saved.length) {
+      return saved.map(id => allDefs.find(s => s.id === id)).filter(Boolean)
+        .concat(allDefs.filter(s => !saved.includes(s.id)))
+    }
+  } catch {}
+  return allDefs
+}
 
 /* ─────────────────────────────────────────
    인라인 이름 편집
@@ -613,10 +632,60 @@ export default function TabSettings({
   const [openSections,   setOpenSections]   = useState(() => {
     const init = {}
     DEFAULT_SECTIONS.forEach(s => { init[s.id] = true })
+    ;(customSections || []).forEach(cs => { init[cs.id] = true })
     return init
   })
   const [addingSection,  setAddingSection]  = useState(false)
   const [newSecLabel,    setNewSecLabel]    = useState('')
+
+  /* ── 사이드바 순서와 동기화된 섹션 목록 ── */
+  const [orderedSections, setOrderedSections] = useState(() => buildOrderedSections(customSections))
+
+  const customSectionsKey = (customSections || []).map(s => s.id).join(',')
+  useEffect(() => {
+    const defaultDefs = DEFAULT_SECTIONS.map(s => ({ ...s, isCustom: false }))
+    const customDefs  = (customSections || []).map(cs => ({
+      id: cs.id, label: cs.label, isCustom: true, subs: [],
+    }))
+    setOrderedSections(prev => {
+      const allDefs = [...defaultDefs, ...customDefs]
+      const filtered = prev.filter(s => allDefs.some(d => d.id === s.id))
+      const existingIds = filtered.map(s => s.id)
+      const toAdd = allDefs.filter(d => !existingIds.includes(d.id))
+      return [...filtered, ...toAdd]
+    })
+    setOpenSections(prev => {
+      const next = { ...prev }
+      ;(customSections || []).forEach(cs => { if (!(cs.id in next)) next[cs.id] = true })
+      return next
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customSectionsKey])
+
+  /* 순서 변경 시 localStorage 저장 (사이드바와 공유) */
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_ORDER_KEY, JSON.stringify(orderedSections.map(s => s.id)))
+  }, [orderedSections])
+
+  /* ── 드래그 핸들러 ── */
+  const dragIdx = useRef(null)
+  const overIdx = useRef(null)
+  const [dragId, setDragId] = useState(null)
+
+  const onDragStart = (e, idx) => {
+    dragIdx.current = idx; setDragId(orderedSections[idx].id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const onDragEnter = (e, idx) => { overIdx.current = idx; e.preventDefault() }
+  const onDragOver  = e => e.preventDefault()
+  const onDragEnd   = () => {
+    const from = dragIdx.current, to = overIdx.current
+    if (from !== null && to !== null && from !== to) {
+      const next = [...orderedSections]; const [m] = next.splice(from, 1); next.splice(to, 0, m)
+      setOrderedSections(next)
+    }
+    dragIdx.current = null; overIdx.current = null; setDragId(null)
+  }
 
   const toggleSection = (id) =>
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }))
@@ -644,6 +713,10 @@ export default function TabSettings({
       <div className={`flex flex-wrap items-center gap-4 px-4 py-2.5 rounded-xl text-[10px]
         ${dark ? 'bg-[#1A1D27] border border-[#252836]' : 'bg-slate-50 border border-slate-100'}`}>
         <div className="flex items-center gap-1.5">
+          <GripVertical size={10} className={dark ? 'text-slate-500' : 'text-slate-400'}/>
+          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>드래그로 L1 순서 변경 (사이드바 연동)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <LayoutDashboard size={10} className="text-indigo-400"/>
           <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L1 · 메인탭 (사이드바 섹션)</span>
         </div>
@@ -665,33 +738,36 @@ export default function TabSettings({
         </div>
       </div>
 
-      {/* ── DEFAULT 섹션 목록 ── */}
-      {DEFAULT_SECTIONS.map(section => {
-        const isOpen         = !!openSections[section.id]
-        const customSubs     = config.customSubs[section.id] || []
-        const hiddenBuiltins = config.deletedBuiltinSubs?.[section.id] || []
-        const sectionLabel   = config.sectionLabels[section.id] || section.label
+      {/* ── 섹션 목록 (사이드바 순서와 동일 · 드래그로 순서 변경 가능) ── */}
+      {orderedSections.map((section, idx) => {
+        const isCustomSection = section.isCustom
+        const isOpen          = !!openSections[section.id]
+        const sectionLabel    = config.sectionLabels[section.id] || section.label
+        const customSubs      = config.customSubs[section.id] || []
+        const hiddenBuiltins  = isCustomSection ? [] : (config.deletedBuiltinSubs?.[section.id] || [])
+        const isDragging      = dragId === section.id
 
         const allSubs = [
-          ...section.subs.map(s => ({
-            ...s,
-            isCustom: false,
-            isHidden: hiddenBuiltins.includes(s.id),
-          })),
+          ...(isCustomSection ? [] : (section.subs || []).map(s => ({
+            ...s, isCustom: false, isHidden: hiddenBuiltins.includes(s.id),
+          }))),
           ...customSubs.map(cs => ({
-            id: cs.id,
-            label: cs.label,
-            isCustom: true,
-            isHidden: false,
+            id: cs.id, label: cs.label, isCustom: true, isHidden: false,
           })),
         ]
 
         const visibleCount = allSubs.filter(s => !s.isHidden).length
-        const hiddenCount  = allSubs.filter(s => s.isHidden).length
+        const hiddenCount  = allSubs.filter(s =>  s.isHidden).length
 
         return (
           <div key={section.id}
-            className={`rounded-xl border overflow-hidden
+            draggable
+            onDragStart={e => onDragStart(e, idx)}
+            onDragEnter={e => onDragEnter(e, idx)}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            className={`rounded-xl border overflow-hidden transition-all
+              ${isDragging ? 'opacity-30 scale-[0.99]' : ''}
               ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
 
             {/* ── L1 섹션 헤더 ── */}
@@ -700,6 +776,13 @@ export default function TabSettings({
                 ${dark ? 'border-[#252836] bg-[#13151C] hover:bg-[#0F1117]' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
               onClick={() => toggleSection(section.id)}
             >
+              {/* 드래그 핸들 */}
+              <GripVertical size={13}
+                className={`shrink-0 cursor-grab active:cursor-grabbing
+                  ${dark ? 'text-slate-700 group-hover/sec:text-slate-500' : 'text-slate-300 group-hover/sec:text-slate-400'}`}
+                onClick={e => e.stopPropagation()}
+              />
+
               <span className={`shrink-0 transition-transform duration-200
                 ${dark ? 'text-slate-600' : 'text-slate-300'}
                 ${isOpen ? 'rotate-90' : ''}`}>
@@ -735,6 +818,19 @@ export default function TabSettings({
                     숨김 {hiddenCount}
                   </span>
                 )}
+                {isCustomSection && (
+                  <button
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (confirm(`"${sectionLabel}" 메인탭을 삭제할까요?\n하위 모든 탭과 대시보드 데이터가 삭제됩니다.`))
+                        removeCustomSection?.(section.id)
+                    }}
+                    className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    title="메인탭 삭제"
+                  >
+                    <Trash2 size={12}/>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -745,7 +841,6 @@ export default function TabSettings({
                   ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
                   <LayoutTemplate size={10} className="text-sky-400"/> 상위탭 (L2)
                 </p>
-
                 {allSubs.map(sub => (
                   <SubRow
                     key={sub.id}
@@ -771,104 +866,7 @@ export default function TabSettings({
                     setSubDataSource={setSubDataSource}
                   />
                 ))}
-
                 <AddSubRow dark={dark} onAdd={label => onAddSub(section.id, label)} />
-              </div>
-            )}
-          </div>
-        )
-      })}
-
-      {/* ── 커스텀 L1 메인탭 목록 ── */}
-      {customSections.map(cs => {
-        const isOpen       = !!openSections[cs.id]
-        const sectionLabel = config.sectionLabels[cs.id] || cs.label
-        const customSubs   = config.customSubs[cs.id] || []
-        const allSubs      = customSubs.map(sub => ({
-          id: sub.id, label: sub.label, isCustom: true, isHidden: false,
-        }))
-        return (
-          <div key={cs.id}
-            className={`rounded-xl border overflow-hidden
-              ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
-
-            {/* L1 섹션 헤더 */}
-            <div
-              className={`flex items-center gap-3 px-4 py-3 border-b cursor-pointer group/sec
-                ${dark ? 'border-[#252836] bg-[#13151C] hover:bg-[#0F1117]' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
-              onClick={() => toggleSection(cs.id)}
-            >
-              <span className={`shrink-0 transition-transform duration-200
-                ${dark ? 'text-slate-600' : 'text-slate-300'}
-                ${isOpen ? 'rotate-90' : ''}`}>
-                <ChevronRight size={14}/>
-              </span>
-
-              <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0
-                ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
-                L1
-              </span>
-
-              <div onClick={e => e.stopPropagation()}>
-                <EditableLabel
-                  value={sectionLabel}
-                  placeholder={cs.label}
-                  dark={dark}
-                  onSave={label => onUpdateSection(cs.id, label)}
-                />
-              </div>
-
-              <div className="ml-auto flex items-center gap-2">
-                <span className={`text-[10px] ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
-                  L2 · {allSubs.length}개
-                </span>
-                <button
-                  onClick={e => {
-                    e.stopPropagation()
-                    if (confirm(`"${sectionLabel}" 메인탭을 삭제할까요?\n하위 모든 탭과 대시보드 데이터가 삭제됩니다.`))
-                      removeCustomSection?.(cs.id)
-                  }}
-                  className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                  title="메인탭 삭제"
-                >
-                  <Trash2 size={12}/>
-                </button>
-              </div>
-            </div>
-
-            {/* L2 서브탭 목록 */}
-            {isOpen && (
-              <div className="px-2 py-2 flex flex-col gap-0.5">
-                <p className={`flex items-center gap-1.5 px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest
-                  ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
-                  <LayoutTemplate size={10} className="text-sky-400"/> 상위탭 (L2)
-                </p>
-                {allSubs.map(sub => (
-                  <SubRow
-                    key={sub.id}
-                    sectionId={cs.id}
-                    sub={sub}
-                    isCustom={true}
-                    isHidden={false}
-                    config={config}
-                    dark={dark}
-                    onUpdateSub={onUpdateSub}
-                    onRemoveSub={onRemoveSub}
-                    onHideBuiltinSub={onHideBuiltinSub}
-                    onShowBuiltinSub={onShowBuiltinSub}
-                    getL3Subs={getL3Subs}
-                    addL3Sub={addL3Sub}
-                    removeL3Sub={removeL3Sub}
-                    renameL3Sub={renameL3Sub}
-                    getL3Tabs={getL3Tabs}
-                    addL3Tab={addL3Tab}
-                    removeL3Tab={removeL3Tab}
-                    renameL3Tab={renameL3Tab}
-                    getSubDataSource={getSubDataSource}
-                    setSubDataSource={setSubDataSource}
-                  />
-                ))}
-                <AddSubRow dark={dark} onAdd={label => onAddSub(cs.id, label)} />
               </div>
             )}
           </div>
