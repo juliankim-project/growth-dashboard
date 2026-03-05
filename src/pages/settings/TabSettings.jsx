@@ -77,18 +77,35 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
 function IconPicker({ value, onChange, dark, size = 12 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef()
+  const btnRef = useRef()
+  const [pos, setPos] = useState({ top: 0, left: 0 })
 
   useEffect(() => {
     if (!open) return
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target) && !btnRef.current?.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  const handleOpen = (e) => {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      const pickerH = 240, pickerW = 216
+      const top = r.bottom + 4 + pickerH > window.innerHeight
+        ? r.top - pickerH - 4
+        : r.bottom + 4
+      const left = Math.min(r.left, window.innerWidth - pickerW - 8)
+      setPos({ top, left })
+    }
+    setOpen(o => !o)
+  }
+
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className="shrink-0">
       <button
-        onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
+        ref={btnRef}
+        onClick={handleOpen}
         title="아이콘 변경"
         className={`p-1 rounded transition-colors group/iconbtn
           ${open
@@ -101,9 +118,10 @@ function IconPicker({ value, onChange, dark, size = 12 }) {
 
       {open && (
         <div
-          className={`absolute z-50 top-full left-0 mt-1 p-2 rounded-xl border shadow-xl
+          ref={ref}
+          className={`fixed z-[9999] p-2 rounded-xl border shadow-xl
             ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}
-          style={{ width: 216 }}
+          style={{ width: 216, top: pos.top, left: pos.left }}
           onClick={e => e.stopPropagation()}
         >
           <p className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 px-0.5
@@ -480,7 +498,7 @@ function SubRow({
   getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
-  setSubIcon,
+  setSubIcon, setL3SubIcon,
   getSubType, setSubType,
 }) {
   const [open,    setOpen]    = useState(false)
@@ -1005,6 +1023,7 @@ export default function TabSettings({
                     getSubDataSource={getSubDataSource}
                     setSubDataSource={setSubDataSource}
                     setSubIcon={setSubIcon}
+                    setL3SubIcon={setL3SubIcon}
                     getSubType={getSubType}
                     setSubType={setSubType}
                   />
