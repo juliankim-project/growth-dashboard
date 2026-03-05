@@ -586,8 +586,8 @@ export default function Sidebar({
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition-all ${t.text} ${t.hover}`}>
           {dark ? <Sun size={14} className="text-yellow-400"/> : <Moon size={14} className="text-indigo-400"/>}
           <span className="font-medium">{dark ? 'Light Mode' : 'Dark Mode'}</span>
+          <span className={`ml-auto text-[10px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>Ver {APP_VERSION}</span>
         </button>
-        <p className={`text-[10px] mt-1 px-3 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>v{APP_VERSION}</p>
       </div>
     </aside>
   )
