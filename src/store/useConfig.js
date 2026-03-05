@@ -1,6 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
 
 const STORAGE_KEY = 'growth_config_v4'   // v4: 빌트인 숨기기 + 서브 데이터소스
+const DB_ROW_ID = 'default'              // Supabase dashboard_config 행 ID
+const SAVE_DEBOUNCE_MS = 500             // Supabase 저장 디바운스
 
 /* ──────────────────────────────────────────
    기본 설정
@@ -336,13 +339,81 @@ export function useConfig() {
     } catch { return { ...DEFAULT_CONFIG } }
   })
 
-  /** persist: updater 함수를 받아 최신 state 기반으로 업데이트 (stale closure 방지) */
+  const latestRef = useRef(config)
+  const saveTimer = useRef(null)
+  useEffect(() => { latestRef.current = config }, [config])
+
+  /* ── Supabase: 초기 로드 (DB 값으로 동기화) ── */
+  useEffect(() => {
+    if (!supabase) return
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('dashboard_config')
+        .select('config')
+        .eq('id', DB_ROW_ID)
+        .maybeSingle()
+
+      if (error) {
+        console.warn('[useConfig] DB 조회 실패:', error.message)
+        return
+      }
+      if (data?.config) {
+        const merged = migrateConfig(data.config)
+        _setConfig(merged)
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch {}
+      } else {
+        // DB에 데이터 없음 → 현재 localStorage 값을 DB에 업로드 (첫 배포)
+        await supabase.from('dashboard_config').upsert({
+          id: DB_ROW_ID,
+          config: latestRef.current,
+          updated_at: new Date().toISOString(),
+        })
+      }
+    })()
+  }, [])
+
+  /* ── Supabase: Realtime 구독 (다른 유저 변경 실시간 반영) ── */
+  useEffect(() => {
+    if (!supabase) return
+    const channel = supabase
+      .channel('config-sync')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'dashboard_config', filter: `id=eq.${DB_ROW_ID}` },
+        (payload) => {
+          const remote = payload.new?.config
+          if (!remote) return
+          const merged = migrateConfig(remote)
+          _setConfig(merged)
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch {}
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  /* ── cleanup ── */
+  useEffect(() => () => clearTimeout(saveTimer.current), [])
+
+  /** persist: state + localStorage + Supabase(debounced) */
   const persist = useCallback(updater => {
     _setConfig(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+      latestRef.current = next
       return next
     })
+    // Supabase 디바운스 저장
+    if (supabase) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = setTimeout(() => {
+        supabase
+          .from('dashboard_config')
+          .upsert({ id: DB_ROW_ID, config: latestRef.current, updated_at: new Date().toISOString() })
+          .then(({ error }) => {
+            if (error) console.warn('[useConfig] DB 저장 실패:', error.message)
+          })
+      }, SAVE_DEBOUNCE_MS)
+    }
   }, [])
 
   /* ── 앱 설정 ── */
