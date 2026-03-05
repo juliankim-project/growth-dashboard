@@ -4,13 +4,14 @@ import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
 } from '../store/useConfig'
-import { useTableData }    from '../hooks/useTableData'
-import Spinner             from '../components/UI/Spinner'
-import KPIWidget           from '../components/widgets/KPIWidget'
-import TimeSeriesWidget    from '../components/widgets/TimeSeriesWidget'
-import BarWidget           from '../components/widgets/BarWidget'
-import DonutWidget         from '../components/widgets/DonutWidget'
-import TableWidget         from '../components/widgets/TableWidget'
+import { useTableData } from '../hooks/useTableData'
+import Spinner from '../components/UI/Spinner'
+import ErrorBoundary from '../components/UI/ErrorBoundary'
+import KPIWidget from '../components/widgets/KPIWidget'
+import TimeSeriesWidget from '../components/widgets/TimeSeriesWidget'
+import BarWidget from '../components/widgets/BarWidget'
+import DonutWidget from '../components/widgets/DonutWidget'
+import TableWidget from '../components/widgets/TableWidget'
 import {
   DndContext, closestCenter,
   PointerSensor, KeyboardSensor,
@@ -43,20 +44,20 @@ function applyFieldMap(rows, fieldMap) {
 function applyWidgetFilters(data, filters) {
   if (!filters) return data
   let result = data
-  if (filters.channel?.length)     result = result.filter(r => filters.channel.includes(r.channel))
-  if (filters.campaign?.length)    result = result.filter(r => filters.campaign.includes(r.campaign))
-  if (filters.ad_group?.length)    result = result.filter(r => filters.ad_group.includes(r.ad_group))
+  if (filters.channel?.length) result = result.filter(r => filters.channel.includes(r.channel))
+  if (filters.campaign?.length) result = result.filter(r => filters.campaign.includes(r.campaign))
+  if (filters.ad_group?.length) result = result.filter(r => filters.ad_group.includes(r.ad_group))
   if (filters.ad_creative?.length) result = result.filter(r => filters.ad_creative.includes(r.ad_creative))
-  if (filters.content?.length)     result = result.filter(r => filters.content.includes(r.content))
-  if (filters.term?.length)        result = result.filter(r => filters.term.includes(r.term))
+  if (filters.content?.length) result = result.filter(r => filters.content.includes(r.content))
+  if (filters.term?.length) result = result.filter(r => filters.term.includes(r.term))
   return result
 }
 
 /* ── 테이블 목록 (나중에 product / crm 등 추가 가능) ── */
 const KNOWN_TABLES = [
   { id: 'marketing_data', label: '마케팅' },
-  { id: 'product_data',   label: '프로덕트' },
-  { id: 'crm_data',       label: 'CRM' },
+  { id: 'product_data', label: '프로덕트' },
+  { id: 'crm_data', label: 'CRM' },
 ]
 
 /* ─────────────────────────────────────────────────────────────────
@@ -66,43 +67,45 @@ const KNOWN_TABLES = [
 function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByChange, initialOpen = false }) {
   const [open, setOpen] = useState(initialOpen)
 
-  const selTable    = filters.table       || ''
-  const selCh       = filters.channel     || []
-  const selCp       = filters.campaign    || []
-  const selAg       = filters.ad_group    || []
-  const selAc       = filters.ad_creative || []
-  const selContent  = filters.content     || []
-  const selTerm     = filters.term        || []
+  const selTable = filters.table || ''
+  const selCh = filters.channel || []
+  const selCp = filters.campaign || []
+  const selAg = filters.ad_group || []
+  const selAc = filters.ad_creative || []
+  const selContent = filters.content || []
+  const selTerm = filters.term || []
 
   /* 캐스케이딩 데이터 */
-  const byChannel    = selCh.length      ? data.filter(r => selCh.includes(r.channel))              : data
-  const byCampaign   = selCp.length      ? byChannel.filter(r => selCp.includes(r.campaign))        : byChannel
-  const byAdGroup    = selAg.length      ? byCampaign.filter(r => selAg.includes(r.ad_group))       : byCampaign
-  const byAdCreative = selAc.length      ? byAdGroup.filter(r => selAc.includes(r.ad_creative))     : byAdGroup
-  const byContent    = selContent.length ? byAdCreative.filter(r => selContent.includes(r.content)) : byAdCreative
+  const byChannel = selCh.length ? data.filter(r => selCh.includes(r.channel)) : data
+  const byCampaign = selCp.length ? byChannel.filter(r => selCp.includes(r.campaign)) : byChannel
+  const byAdGroup = selAg.length ? byCampaign.filter(r => selAg.includes(r.ad_group)) : byCampaign
+  const byAdCreative = selAc.length ? byAdGroup.filter(r => selAc.includes(r.ad_creative)) : byAdGroup
+  const byContent = selContent.length ? byAdCreative.filter(r => selContent.includes(r.content)) : byAdCreative
 
-  const channels    = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
-  const campaigns   = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
-  const adGroups    = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
+  const channels = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
+  const campaigns = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
+  const adGroups = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
   const adCreatives = [...new Set(byAdGroup.map(r => r.ad_creative).filter(Boolean))].sort()
-  const contents    = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
+  const contents = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
   /* term: ad_group 선택 후 바로 출현 (Naver처럼 content 없는 경우 대응) */
-  const terms       = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
+  const terms = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
 
   /* 단계별 컬럼 정의
      · ad_creative, content 는 ad_group 선택 후 데이터 있으면 동시 출현 (플랫폼별 차이)
      · term 은 ad_group 선택 후 바로 출현 (content/ad_creative 없어도) */
   const COLS = [
-    { key: 'table',       label: '테이블',     isTable: true,
+    {
+      key: 'table', label: '테이블', isTable: true,
       opts: KNOWN_TABLES.map(t => t.id),
       labelOf: Object.fromEntries(KNOWN_TABLES.map(t => [t.id, t.label])),
-      sel: selTable ? [selTable] : [], show: true },
-    { key: 'channel',     label: '채널',       opts: channels,    sel: selCh,      show: true },
-    { key: 'campaign',    label: '캠페인',     opts: campaigns,   sel: selCp,      show: selCh.length > 0 && campaigns.length > 0 },
-    { key: 'ad_group',    label: '광고그룹',   opts: adGroups,    sel: selAg,      show: selCp.length > 0 && adGroups.length > 0 },
-    { key: 'ad_creative', label: '크리에이티브', opts: adCreatives, sel: selAc,    show: selAg.length > 0 && adCreatives.length > 0 },
-    { key: 'content',     label: '콘텐츠',     opts: contents,    sel: selContent, show: selAg.length > 0 && contents.length > 0 },
-    { key: 'term',        label: '검색어',     opts: terms,       sel: selTerm,    show: selAg.length > 0 && terms.length > 0 },
+      sel: selTable ? [selTable] : [], show: true
+    },
+    { key: 'channel', label: '채널', opts: channels, sel: selCh, show: true },
+    { key: 'campaign', label: '캠페인', opts: campaigns, sel: selCp, show: selCh.length > 0 && campaigns.length > 0 },
+    { key: 'ad_group', label: '광고그룹', opts: adGroups, sel: selAg, show: selCp.length > 0 && adGroups.length > 0 },
+    { key: 'ad_creative', label: '크리에이티브', opts: adCreatives, sel: selAc, show: selAg.length > 0 && adCreatives.length > 0 },
+    { key: 'content', label: '콘텐츠', opts: contents, sel: selContent, show: selAg.length > 0 && contents.length > 0 },
+    { key: 'term', label: '검색어', opts: terms, sel: selTerm, show: selAg.length > 0 && terms.length > 0 },
   ].filter(c => c.show)
 
   /* 이벤트 핸들러 */
@@ -111,23 +114,23 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
     onChange({ ...filters, table: next, channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
   }
   const toggle = (dim, val) => {
-    const cur  = filters[dim] || []
+    const cur = filters[dim] || []
     const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
-    if      (dim === 'channel')     onChange({ ...filters, channel: next,     campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'campaign')    onChange({ ...filters, campaign: next,    ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_group')    onChange({ ...filters, ad_group: next,    ad_creative: [], content: [], term: [] })
+    if (dim === 'channel') onChange({ ...filters, channel: next, campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'campaign') onChange({ ...filters, campaign: next, ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_group') onChange({ ...filters, ad_group: next, ad_creative: [], content: [], term: [] })
     else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: next, term: [] })
-    else if (dim === 'content')     onChange({ ...filters, content: next,     term: [] })
-    else                            onChange({ ...filters, [dim]: next })
+    else if (dim === 'content') onChange({ ...filters, content: next, term: [] })
+    else onChange({ ...filters, [dim]: next })
   }
   const clearDim = (dim) => {
-    if      (dim === 'table')       onChange({ ...filters, table: '',         channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'channel')     onChange({ ...filters, channel: [],       campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'campaign')    onChange({ ...filters, campaign: [],      ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_group')    onChange({ ...filters, ad_group: [],      ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: [],   term: [] })
-    else if (dim === 'content')     onChange({ ...filters, content: [],       term: [] })
-    else                            onChange({ ...filters, [dim]: [] })
+    if (dim === 'table') onChange({ ...filters, table: '', channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'channel') onChange({ ...filters, channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_group') onChange({ ...filters, ad_group: [], ad_creative: [], content: [], term: [] })
+    else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: [], term: [] })
+    else if (dim === 'content') onChange({ ...filters, content: [], term: [] })
+    else onChange({ ...filters, [dim]: [] })
   }
 
   const activeCount = (selTable ? 1 : 0) + selCh.length + selCp.length + selAg.length + selAc.length + selContent.length + selTerm.length
@@ -204,27 +207,27 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                     {col.opts.length === 0
                       ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>없음</p>
                       : col.opts.map(v => {
-                          const lbl    = col.labelOf?.[v] ?? v
-                          const isOn   = col.isTable ? selTable === v : col.sel.includes(v)
-                          const dimmed = !col.isTable && isGroupByDim
-                          return (
-                            <button
-                              key={v}
-                              onClick={() => !dimmed && (col.isTable ? selectTable(v) : toggle(col.key, v))}
-                              title={v}
-                              className={`text-[11px] px-2.5 py-[5px] text-left w-full transition-colors leading-snug break-words
+                        const lbl = col.labelOf?.[v] ?? v
+                        const isOn = col.isTable ? selTable === v : col.sel.includes(v)
+                        const dimmed = !col.isTable && isGroupByDim
+                        return (
+                          <button
+                            key={v}
+                            onClick={() => !dimmed && (col.isTable ? selectTable(v) : toggle(col.key, v))}
+                            title={v}
+                            className={`text-[11px] px-2.5 py-[5px] text-left w-full transition-colors leading-snug break-words
                                 ${dimmed
-                                  ? dark ? 'text-slate-700 cursor-default' : 'text-slate-300 cursor-default'
-                                  : isOn
-                                    ? dark ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
-                                           : 'bg-indigo-50 text-indigo-600 font-semibold'
-                                    : dark ? 'text-slate-400 hover:bg-[#1A1D27] hover:text-slate-200'
-                                           : 'text-slate-600 hover:bg-slate-50'}`}
-                            >
-                              {!dimmed && isOn ? '✓ ' : ''}{lbl}
-                            </button>
-                          )
-                        })
+                                ? dark ? 'text-slate-700 cursor-default' : 'text-slate-300 cursor-default'
+                                : isOn
+                                  ? dark ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
+                                    : 'bg-indigo-50 text-indigo-600 font-semibold'
+                                  : dark ? 'text-slate-400 hover:bg-[#1A1D27] hover:text-slate-200'
+                                    : 'text-slate-600 hover:bg-slate-50'}`}
+                          >
+                            {!dimmed && isOn ? '✓ ' : ''}{lbl}
+                          </button>
+                        )
+                      })
                     }
                   </div>
                 </div>
@@ -243,7 +246,12 @@ const WIDGET_MAP = {
 }
 const renderWidget = (type, data, cfg, dark) => {
   const C = WIDGET_MAP[type]
-  return C ? <C data={data} config={cfg} dark={dark}/> : null
+  if (!C) return null
+  return (
+    <ErrorBoundary dark={dark} label={type}>
+      <C data={data} config={cfg} dark={dark} />
+    </ErrorBoundary>
+  )
 }
 
 /* ══════════════════════════════════════════
@@ -251,7 +259,7 @@ const renderWidget = (type, data, cfg, dark) => {
 ══════════════════════════════════════════ */
 function DataSourceSelector({ tableName, onChange, dark }) {
   const [editing, setEditing] = useState(false)
-  const [draft,   setDraft]   = useState(tableName)
+  const [draft, setDraft] = useState(tableName)
 
   // 일반적으로 사용되는 테이블 예시 (초기값)
   const KNOWN_TABLES = ['marketing_data']
@@ -271,7 +279,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
           ? 'border-[#252836] text-slate-400 hover:text-indigo-400 hover:border-indigo-500/40'
           : 'border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300'}`}
     >
-      <Database size={11}/>
+      <Database size={11} />
       <span className="font-mono">{tableName}</span>
     </button>
   )
@@ -279,7 +287,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
   return (
     <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5
       ${dark ? 'border-indigo-500 bg-[#0F1117]' : 'border-indigo-400 bg-white shadow'}`}>
-      <Database size={11} className="text-indigo-400 shrink-0"/>
+      <Database size={11} className="text-indigo-400 shrink-0" />
       <input
         autoFocus
         value={draft}
@@ -291,7 +299,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
           ${dark ? 'text-white placeholder:text-slate-600' : 'text-slate-800 placeholder:text-slate-300'}`}
       />
       <datalist id="known-tables">
-        {KNOWN_TABLES.map(t => <option key={t} value={t}/>)}
+        {KNOWN_TABLES.map(t => <option key={t} value={t} />)}
       </datalist>
       <button onClick={commit}
         className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">
@@ -310,9 +318,9 @@ function DataSourceSelector({ tableName, onChange, dark }) {
    Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
 ══════════════════════════════════════════ */
 function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
-  const [step,    setStep]    = useState(1)
-  const [type,    setType]    = useState(widget.type)
-  const [config,  setConfig]  = useState({ ...widget.config })
+  const [step, setStep] = useState(1)
+  const [type, setType] = useState(widget.type)
+  const [config, setConfig] = useState({ ...widget.config })
   const [filters, setFilters] = useState(widget.config.filters || {})
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
@@ -331,11 +339,11 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`,
     btn: (on) => `text-xs px-2.5 py-2 rounded-lg border text-left transition-colors
       ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
-           : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
+        : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
     typeCard: (on) => `flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all
       ${on ? 'border-indigo-500 bg-indigo-500/10'
-           : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
-                  : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
+        : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
+          : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
   }
 
   const STEPS = ['타입', '설정', '데이터 필터']
@@ -354,13 +362,13 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
               {STEPS.map((s, i) => (
                 <div key={s} className="flex items-center gap-1">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
-                    ${step === i+1 ? 'bg-indigo-500 text-white'
-                      : step > i+1 ? 'bg-emerald-500 text-white'
-                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
-                    {step > i+1 ? '✓' : i+1}
+                    ${step === i + 1 ? 'bg-indigo-500 text-white'
+                      : step > i + 1 ? 'bg-emerald-500 text-white'
+                        : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
+                    {step > i + 1 ? '✓' : i + 1}
                   </div>
                   <span className={`text-[10px] font-medium
-                    ${step === i+1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
+                    ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
                     {s}
                   </span>
                   {i < 2 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>›</span>}
@@ -370,7 +378,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
           </div>
           <button onClick={onClose}
             className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
-            <X size={16}/>
+            <X size={16} />
           </button>
         </div>
 
@@ -398,7 +406,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
                 <div>
                   <p className={`${S.lab} mb-1.5`}>제목</p>
                   <input className={S.inp} value={config.title || ''}
-                    onChange={e => upd('title', e.target.value)} placeholder="위젯 제목"/>
+                    onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                 </div>
               )}
 
@@ -426,7 +434,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
                   <div>
                     <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
                     <input className={S.inp} value={config.label || ''}
-                      onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용"/>
+                      onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용" />
                   </div>
                 </>
               )}
@@ -535,7 +543,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
               dark={dark}
               onChange={setFilters}
               initialOpen={true}
-              onGroupByChange={['bar','donut','table'].includes(type)
+              onGroupByChange={['bar', 'donut', 'table'].includes(type)
                 ? (dim) => upd('groupBy', dim ?? 'channel')
                 : undefined}
             />
@@ -549,7 +557,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
             onClick={() => step > 1 ? setStep(s => s - 1) : onClose()}
             className={`text-xs px-4 py-2 rounded-xl border transition-colors
               ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600'
-                     : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
             {step > 1 ? '← 이전' : '취소'}
           </button>
           {step < 3 ? (
@@ -560,7 +568,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
           ) : (
             <button onClick={handleSave}
               className="flex items-center gap-1.5 text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-              <Check size={12}/> 저장
+              <Check size={12} /> 저장
             </button>
           )}
         </div>
@@ -574,7 +582,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
 ══════════════════════════════════════════ */
 /* 1px 행 기반 masonry: rowSpan = ceil((height + gap) / (1 + gap)) */
 const MGAP = 12  // gap-3
-const COLS  = 6  // grid-cols-6
+const COLS = 6  // grid-cols-6
 
 function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsChange, data, dark, gridRef }) {
   const {
@@ -585,10 +593,10 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
   /* ── refs: dnd-kit + outerRef 동시 연결 ── */
   const innerRef = useRef(null)
   const outerRef = useRef(null)
-  const setRefs  = useCallback((el) => { outerRef.current = el; setNodeRef(el) }, [setNodeRef])
+  const setRefs = useCallback((el) => { outerRef.current = el; setNodeRef(el) }, [setNodeRef])
 
   /* ── masonry 높이 자동 측정 (rowsOverride 없을 때만) ── */
-  const [rowSpan,  setRowSpan]  = useState(20)
+  const [rowSpan, setRowSpan] = useState(20)
   const [resizing, setResizing] = useState(false)
 
   useEffect(() => {
@@ -636,9 +644,9 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
     const grid = gridRef?.current
     if (!grid) return
 
-    const startX    = e.clientX
+    const startX = e.clientX
     const startCols = parseInt(slot.span.replace('col-span-', '')) || 1
-    const colUnit   = (grid.getBoundingClientRect().width + MGAP) / COLS
+    const colUnit = (grid.getBoundingClientRect().width + MGAP) / COLS
     setResizing(true)
 
     const onMove = (ev) => {
@@ -650,10 +658,10 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
     const onUp = () => {
       setResizing(false)
       document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup',   onUp)
+      document.removeEventListener('pointerup', onUp)
     }
     document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup',   onUp)
+    document.addEventListener('pointerup', onUp)
   }
 
   /* ── 아래쪽 드래그 리사이즈 (세로 + 이웃 스냅) ── */
@@ -661,7 +669,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
     e.preventDefault()
     e.stopPropagation()
 
-    const startY    = e.clientY
+    const startY = e.clientY
     const startRows = effectiveRows
     setResizing(true)
 
@@ -675,10 +683,10 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
     const onUp = () => {
       setResizing(false)
       document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup',   onUp)
+      document.removeEventListener('pointerup', onUp)
     }
     document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup',   onUp)
+    document.addEventListener('pointerup', onUp)
   }
 
   const dndStyle = {
@@ -708,7 +716,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
                   ? 'bg-[#0F1117]/90 text-slate-500 hover:text-slate-300 border border-[#252836]'
                   : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}
             >
-              <GripVertical size={11}/>
+              <GripVertical size={11} />
             </div>
 
             {/* 삭제 버튼 */}
@@ -753,7 +761,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
               onClick={() => onEdit(slot.id)}
               className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1
                 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
-              <Settings2 size={9}/> 편집
+              <Settings2 size={9} /> 편집
             </button>
           </>
         )}
@@ -775,7 +783,7 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
           <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 선택</p>
           <button onClick={onClose}
             className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-400 hover:bg-slate-100'}`}>
-            <X size={16}/>
+            <X size={16} />
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -808,17 +816,17 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
 ══════════════════════════════════════════ */
 function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef }) {
   const [addingTab, setAddingTab] = useState(false)
-  const [newLabel,  setNewLabel]  = useState('')
+  const [newLabel, setNewLabel] = useState('')
 
   /* 외부(빈 상태 버튼 등)에서 탭 추가 폼 열기용 */
   useEffect(() => {
     if (addRef) addRef.current = () => { setAddingTab(true); setNewLabel('') }
   })
-  const [renaming,  setRenaming]  = useState(null) // { id, value }
+  const [renaming, setRenaming] = useState(null) // { id, value }
 
   /* ── 탭 가로 드래그 순서 변경 ── */
   const tabDragFrom = useRef(null)
-  const tabDragTo   = useRef(null)
+  const tabDragTo = useRef(null)
   const [draggingTabId, setDraggingTabId] = useState(null)
 
   const onTabDragStart = (e, idx, tabId) => {
@@ -826,8 +834,8 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
     e.dataTransfer.effectAllowed = 'move'
   }
   const onTabDragEnter = (e, idx) => { tabDragTo.current = idx; e.preventDefault() }
-  const onTabDragOver  = e => e.preventDefault()
-  const onTabDragEnd   = () => {
+  const onTabDragOver = e => e.preventDefault()
+  const onTabDragEnd = () => {
     const from = tabDragFrom.current, to = tabDragTo.current
     if (from !== null && to !== null && from !== to) {
       onReorder?.(from, to)
@@ -855,100 +863,100 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
       {/* 탭 목록 (스크롤 가능) */}
       <div className="flex items-center gap-0.5 px-5 pt-3 overflow-x-auto flex-1 min-w-0">
 
-      {tabs.map((tab, tabIdx) => (
-        <div key={tab.id}
-          draggable
-          onDragStart={e => onTabDragStart(e, tabIdx, tab.id)}
-          onDragEnter={e => onTabDragEnter(e, tabIdx)}
-          onDragOver={onTabDragOver}
-          onDragEnd={onTabDragEnd}
-          className={`relative group shrink-0 transition-opacity ${draggingTabId === tab.id ? 'opacity-30' : ''}`}
-        >
-          {renaming?.id === tab.id ? (
-            <input
-              autoFocus
-              value={renaming.value}
-              onChange={e => setRenaming(r => ({ ...r, value: e.target.value }))}
-              onBlur={commitRename}
-              onKeyDown={e => {
-                if (e.key === 'Enter')  commitRename()
-                if (e.key === 'Escape') setRenaming(null)
-              }}
-              className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24
+        {tabs.map((tab, tabIdx) => (
+          <div key={tab.id}
+            draggable
+            onDragStart={e => onTabDragStart(e, tabIdx, tab.id)}
+            onDragEnter={e => onTabDragEnter(e, tabIdx)}
+            onDragOver={onTabDragOver}
+            onDragEnd={onTabDragEnd}
+            className={`relative group shrink-0 transition-opacity ${draggingTabId === tab.id ? 'opacity-30' : ''}`}
+          >
+            {renaming?.id === tab.id ? (
+              <input
+                autoFocus
+                value={renaming.value}
+                onChange={e => setRenaming(r => ({ ...r, value: e.target.value }))}
+                onBlur={commitRename}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') commitRename()
+                  if (e.key === 'Escape') setRenaming(null)
+                }}
+                className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24
                 border-b-2 border-indigo-500
                 ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`}
-            />
-          ) : (
-            <button
-              onClick={() => onSelect(tab.id)}
-              onDoubleClick={() => setRenaming({ id: tab.id, value: tab.label })}
-              title="더블클릭으로 이름 변경 · 드래그로 순서 변경"
-              className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium
+              />
+            ) : (
+              <button
+                onClick={() => onSelect(tab.id)}
+                onDoubleClick={() => setRenaming({ id: tab.id, value: tab.label })}
+                title="더블클릭으로 이름 변경 · 드래그로 순서 변경"
+                className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium
                 transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
                 ${activeId === tab.id
-                  ? dark
-                    ? 'border-indigo-500 text-white bg-[#1A1D27]'
-                    : 'border-indigo-500 text-indigo-600 bg-white'
-                  : dark
-                    ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#1A1D27]/50'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-            >
-              {tab.label}
-            </button>
-          )}
+                    ? dark
+                      ? 'border-indigo-500 text-white bg-[#1A1D27]'
+                      : 'border-indigo-500 text-indigo-600 bg-white'
+                    : dark
+                      ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#1A1D27]/50'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                {tab.label}
+              </button>
+            )}
 
-          {tabs.length > 1 && (
-            <button
-              onClick={() => onRemove(tab.id)}
-              title="탭 삭제"
-              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full
+            {tabs.length > 1 && (
+              <button
+                onClick={() => onRemove(tab.id)}
+                title="탭 삭제"
+                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full
                 bg-red-500/80 hover:bg-red-600 text-white
                 opacity-0 group-hover:opacity-100 transition-opacity
                 flex items-center justify-center text-[8px] leading-none"
-            >×</button>
-          )}
-        </div>
-      ))}
+              >×</button>
+            )}
+          </div>
+        ))}
 
-      {addingTab ? (
-        <div className="flex items-center gap-1 pb-px ml-1 shrink-0">
-          <input
-            autoFocus
-            value={newLabel}
-            onChange={e => setNewLabel(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter')  commitAdd()
-              if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') }
-            }}
-            placeholder="탭 이름"
-            className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
+        {addingTab ? (
+          <div className="flex items-center gap-1 pb-px ml-1 shrink-0">
+            <input
+              autoFocus
+              value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitAdd()
+                if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') }
+              }}
+              placeholder="탭 이름"
+              className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
               ${dark
-                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-600'
-                : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-300'}`}
-          />
-          <button onClick={commitAdd}
-            className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-            확인
-          </button>
-          <button onClick={() => { setAddingTab(false); setNewLabel('') }}
-            className={`text-xs px-2 py-1.5 rounded-lg
+                  ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-600'
+                  : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-300'}`}
+            />
+            <button onClick={commitAdd}
+              className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+              확인
+            </button>
+            <button onClick={() => { setAddingTab(false); setNewLabel('') }}
+              className={`text-xs px-2 py-1.5 rounded-lg
               ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-500'}`}>
-            취소
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setAddingTab(true)}
-          className={`shrink-0 flex items-center gap-1 text-xs px-3 py-2 ml-1
+              취소
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAddingTab(true)}
+            className={`shrink-0 flex items-center gap-1 text-xs px-3 py-2 ml-1
             rounded-t-lg border border-dashed mb-px transition-colors
             ${dark
-              ? 'border-[#2E3450] text-slate-500 hover:text-slate-300 hover:border-slate-500'
-              : 'border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'}`}
-        >
-          <Plus size={10}/> 탭 추가
-        </button>
-      )}
+                ? 'border-[#2E3450] text-slate-500 hover:text-slate-300 hover:border-slate-500'
+                : 'border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'}`}
+          >
+            <Plus size={10} /> 탭 추가
+          </button>
+        )}
 
       </div>{/* end 탭 스크롤 영역 */}
 
@@ -967,20 +975,20 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
    상수 & 유틸
 ══════════════════════════════════════════ */
 const SPAN_OPTS = [
-  { value: 'col-span-1', label: '1열',  cols: 1 },
-  { value: 'col-span-2', label: '2열',  cols: 2 },
-  { value: 'col-span-3', label: '3열',  cols: 3 },
-  { value: 'col-span-4', label: '4열',  cols: 4 },
-  { value: 'col-span-5', label: '5열',  cols: 5 },
+  { value: 'col-span-1', label: '1열', cols: 1 },
+  { value: 'col-span-2', label: '2열', cols: 2 },
+  { value: 'col-span-3', label: '3열', cols: 3 },
+  { value: 'col-span-4', label: '4열', cols: 4 },
+  { value: 'col-span-5', label: '5열', cols: 5 },
   { value: 'col-span-6', label: '전체', cols: 6 },
 ]
 
 const WIDGET_META = {
-  kpi:        { icon: '💳', label: 'KPI 카드',      desc: '핵심 지표를 강조 표시' },
-  timeseries: { icon: '📈', label: '시계열 차트',   desc: '날짜별 트렌드 시각화' },
-  bar:        { icon: '📊', label: '바 차트',       desc: '채널 / 캠페인별 비교' },
-  donut:      { icon: '🍩', label: '도넛 차트',     desc: '구성 비율 시각화' },
-  table:      { icon: '📋', label: '데이터 테이블', desc: '상세 수치 비교' },
+  kpi: { icon: '💳', label: 'KPI 카드', desc: '핵심 지표를 강조 표시' },
+  timeseries: { icon: '📈', label: '시계열 차트', desc: '날짜별 트렌드 시각화' },
+  bar: { icon: '📊', label: '바 차트', desc: '채널 / 캠페인별 비교' },
+  donut: { icon: '🍩', label: '도넛 차트', desc: '구성 비율 시각화' },
+  table: { icon: '📋', label: '데이터 테이블', desc: '상세 수치 비교' },
 }
 
 /* ── 구 포맷 → slots 배열로 정규화 ── */
@@ -993,11 +1001,11 @@ function normalizeDashboard(d) {
   return {
     dataSource: d.dataSource,
     slots: tpl.slots.map(s => {
-      const w    = d.widgets?.[s.id]
+      const w = d.widgets?.[s.id]
       const type = w?.type || s.defaultType
       return {
-        id:     s.id,
-        span:   w?.config?.span || s.span,
+        id: s.id,
+        span: w?.config?.span || s.span,
         type,
         config: { ...(DEFAULT_WIDGET_CONFIG[type] || {}), ...(w?.config || {}) },
       }
@@ -1009,9 +1017,9 @@ function normalizeDashboard(d) {
    카드 추가 모달
 ══════════════════════════════════════════ */
 function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
-  const [step,    setStep]    = useState(1)   // 1:타입 선택  2:설정
-  const [type,    setType]    = useState('kpi')
-  const [config,  setConfig]  = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
+  const [step, setStep] = useState(1)   // 1:타입 선택  2:설정
+  const [type, setType] = useState('kpi')
+  const [config, setConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
   const [filters, setFilters] = useState({})
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
@@ -1031,8 +1039,8 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
   const S = {
     card: (on) => `flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
       ${on ? 'border-indigo-500 bg-indigo-500/10'
-           : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
-                  : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
+        : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
+          : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -1040,7 +1048,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`,
     btn: (on) => `text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
       ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
-           : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
+        : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
   }
 
   const STEPS = ['타입 선택', '설정']
@@ -1059,13 +1067,13 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
               {STEPS.map((s, i) => (
                 <div key={s} className="flex items-center gap-1">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
-                    ${step === i+1 ? 'bg-indigo-500 text-white'
-                      : step > i+1 ? 'bg-emerald-500 text-white'
-                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
-                    {step > i+1 ? '✓' : i+1}
+                    ${step === i + 1 ? 'bg-indigo-500 text-white'
+                      : step > i + 1 ? 'bg-emerald-500 text-white'
+                        : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
+                    {step > i + 1 ? '✓' : i + 1}
                   </div>
                   <span className={`text-[10px] font-medium
-                    ${step === i+1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
+                    ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
                     {s}
                   </span>
                   {i < 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>›</span>}
@@ -1075,7 +1083,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
           </div>
           <button onClick={onClose}
             className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
-            <X size={16}/>
+            <X size={16} />
           </button>
         </div>
 
@@ -1123,7 +1131,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   <div>
                     <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
                     <input className={S.inp} value={config.label || ''}
-                      onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용"/>
+                      onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용" />
                   </div>
                 </>
               )}
@@ -1133,7 +1141,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   <div>
                     <p className={`${S.lab} mb-1.5`}>제목</p>
                     <input className={S.inp} value={config.title || ''}
-                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목"/>
+                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
@@ -1165,7 +1173,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   <div>
                     <p className={`${S.lab} mb-1.5`}>제목</p>
                     <input className={S.inp} value={config.title || ''}
-                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목"/>
+                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
@@ -1201,7 +1209,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                   <div>
                     <p className={`${S.lab} mb-1.5`}>제목</p>
                     <input className={S.inp} value={config.title || ''}
-                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목"/>
+                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
@@ -1245,7 +1253,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
                 data={data}
                 dark={dark}
                 onChange={setFilters}
-                onGroupByChange={['bar','donut','table'].includes(type)
+                onGroupByChange={['bar', 'donut', 'table'].includes(type)
                   ? (dim) => upd('groupBy', dim ?? 'channel')
                   : undefined}
               />
@@ -1260,7 +1268,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
             onClick={() => step > 1 ? setStep(s => s - 1) : onClose()}
             className={`text-xs px-4 py-2 rounded-xl border transition-colors
               ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600'
-                     : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
             {step > 1 ? '← 이전' : '취소'}
           </button>
           {step < 2 ? (
@@ -1271,7 +1279,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
           ) : (
             <button onClick={handleAdd}
               className="flex items-center gap-1.5 text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-              <Plus size={12}/> 카드 추가
+              <Plus size={12} /> 카드 추가
             </button>
           )}
         </div>
@@ -1284,8 +1292,8 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
 function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd }) {
-  const [editSlot,   setEditSlot]   = useState(null)   // 편집 모달 대상 slotId
-  const [activeId,   setActiveId]   = useState(null)   // 드래그 중인 slotId
+  const [editSlot, setEditSlot] = useState(null)   // 편집 모달 대상 slotId
+  const [activeId, setActiveId] = useState(null)   // 드래그 중인 slotId
   const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
 
   // 탭 전환 시 에디터 초기화
@@ -1299,7 +1307,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
   }, [editMode])
 
   // 정규화된 슬롯 배열
-  const norm  = useMemo(() => normalizeDashboard(dashboard), [dashboard])
+  const norm = useMemo(() => normalizeDashboard(dashboard), [dashboard])
   const slots = norm.slots || []
 
   // dnd-kit sensors — 5px 이상 움직여야 드래그 시작 (클릭과 구분)
@@ -1361,7 +1369,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
           </div>
           <button onClick={onOpenAdd}
             className="flex items-center gap-2 text-xs px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-            <Plus size={13}/> 첫 번째 카드 추가
+            <Plus size={13} /> 첫 번째 카드 추가
           </button>
         </div>
       ) : (
@@ -1396,7 +1404,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
                     ${dark
                       ? 'border-[#252836] text-slate-600 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
                       : 'border-slate-200 text-slate-300 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
-                  <Plus size={16}/>
+                  <Plus size={16} />
                   <span className="text-[10px] font-semibold">카드 추가</span>
                 </div>
               )}
@@ -1417,7 +1425,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd}/>
+        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} />
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
@@ -1459,9 +1467,9 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     if (!activeTab) return makeDashboard()
     return tabsConfig?.getDashboard(activeTab.id) ?? makeDashboard()
   })
-  const [saved,    setSaved]    = useState(false)
+  const [saved, setSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
-  const [showAdd,  setShowAdd]  = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
   const tabBarAddRef = useRef(null)
 
   const currentTable = dashboard.dataSource?.table || 'marketing_data'
@@ -1485,11 +1493,11 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   const tableName = subDataSource?.table
     || dashboard.dataSource?.table
     || 'marketing_data'
-  const fieldMap  = subDataSource?.fieldMap || {}
+  const fieldMap = subDataSource?.fieldMap || {}
 
   const { data: rawData, loading, error } = useTableData(tableName)
   const data = useMemo(() => {
-    const filtered  = filterByDate ? filterByDate(rawData) : rawData
+    const filtered = filterByDate ? filterByDate(rawData) : rawData
     return applyFieldMap(filtered, fieldMap)
   }, [rawData, filterByDate, fieldMap])
 
@@ -1515,7 +1523,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     setTimeout(() => setSaved(false), 2000)
   }
 
-  if (loading) return <Spinner dark={dark}/>
+  if (loading) return <Spinner dark={dark} />
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1537,9 +1545,9 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
               <button onClick={() => setShowAdd(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
                   bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
-                <Plus size={12}/> 카드 추가
+                <Plus size={12} /> 카드 추가
               </button>
-              <DataSourceSelector tableName={currentTable} onChange={handleTableChange} dark={dark}/>
+              <DataSourceSelector tableName={currentTable} onChange={handleTableChange} dark={dark} />
               <button onClick={() => { setEditMode(false); setShowAdd(false) }}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -1548,14 +1556,14 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
               <button onClick={() => { handleSave(); setEditMode(false) }}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
                   ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-                <Check size={12}/> {saved ? '저장됨' : '저장'}
+                <Check size={12} /> {saved ? '저장됨' : '저장'}
               </button>
             </>
           ) : (
             <button onClick={() => setEditMode(true)}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                 ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-              <Settings2 size={12}/> 대시보드 편집
+              <Settings2 size={12} /> 대시보드 편집
             </button>
           )
         ) : null}
@@ -1595,7 +1603,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             ${dark
               ? 'bg-[#1A1D27] group-hover:bg-indigo-600/20'
               : 'bg-slate-50 group-hover:bg-indigo-50'}`}>
-            <Plus size={32} className="text-indigo-400 group-hover:text-indigo-500"/>
+            <Plus size={32} className="text-indigo-400 group-hover:text-indigo-500" />
           </div>
           <div className="text-center">
             <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
