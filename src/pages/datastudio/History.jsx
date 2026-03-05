@@ -38,7 +38,7 @@ export default function History({ dark }) {
     try { setHistory(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')) } catch {}
   }
 
-  const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`
+  const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`
   const td = `px-4 py-3 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   const modeLabel = (h) => {
@@ -51,14 +51,14 @@ export default function History({ dark }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>업로드 기록</h2>
-          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             Data Studio에서 업로드한 CSV 기록이에요 · 최근 200건 보관
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={refresh}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors
-              ${dark ? 'text-slate-400 hover:bg-[#1A1D27]' : 'text-slate-500 hover:bg-slate-100'}`}>
+              ${dark ? 'text-slate-400 hover:bg-[#1A1D27]' : 'text-slate-700 hover:bg-slate-100'}`}>
             <RefreshCw size={12}/> 새로고침
           </button>
           {history.length > 0 && (
@@ -73,11 +73,11 @@ export default function History({ dark }) {
       <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
         {history.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16">
-            <FileText size={32} className={dark ? 'text-slate-400' : 'text-slate-500'} />
-            <p className={`text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <FileText size={32} className={dark ? 'text-slate-400' : 'text-slate-700'} />
+            <p className={`text-sm ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               아직 업로드 기록이 없어요
             </p>
-            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               CSV 업로드 탭에서 데이터를 업로드하면 여기에 기록돼요
             </p>
           </div>
@@ -110,7 +110,7 @@ export default function History({ dark }) {
                         ? <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${dark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-500'}`}>전체 초기화</span>
                         : h.mode === 'overwrite'
                           ? <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${dark ? 'bg-sky-500/10 text-sky-400' : 'bg-sky-50 text-sky-600'}`}>날짜 덮어쓰기</span>
-                          : <span className={`text-[11px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>—</span>
+                          : <span className={`text-[11px] ${dark ? 'text-slate-400' : 'text-slate-700'}`}>—</span>
                       }
                     </td>
                     <td className={`${td} font-mono text-[11px]`}>

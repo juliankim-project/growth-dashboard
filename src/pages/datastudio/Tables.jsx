@@ -44,13 +44,13 @@ export default function Tables({ dark }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>테이블 관리</h2>
-          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             Supabase 테이블 구조 및 데이터 현황
           </p>
         </div>
         <button onClick={loadTables}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-colors
-            ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
           <RefreshCw size={13} /> 새로고침
         </button>
       </div>
@@ -75,8 +75,8 @@ export default function Tables({ dark }) {
                 </span>
               )}
               {info ? (
-                isOpen ? <ChevronDown size={14} className={dark ? 'text-slate-500' : 'text-slate-300'} />
-                       : <ChevronRight size={14} className={dark ? 'text-slate-500' : 'text-slate-300'} />
+                isOpen ? <ChevronDown size={14} className={dark ? 'text-slate-500' : 'text-slate-700'} />
+                       : <ChevronRight size={14} className={dark ? 'text-slate-500' : 'text-slate-700'} />
               ) : (
                 <span className="text-xs text-red-400">연결 없음</span>
               )}
@@ -102,7 +102,7 @@ export default function Tables({ dark }) {
                         <tr className={dark ? 'bg-[#0F1117]' : 'bg-slate-50'}>
                           {info.columns.slice(0, 8).map(c => (
                             <th key={c} className={`px-3 py-2 text-left font-semibold border-r whitespace-nowrap
-                              ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-100 text-slate-400'}`}>
+                              ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-100 text-slate-600'}`}>
                               {c}
                             </th>
                           ))}

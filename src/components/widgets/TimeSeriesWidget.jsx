@@ -11,7 +11,7 @@ function Tip({ active, payload, label, dark }) {
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2 mt-0.5">
           <span style={{ color: p.color }}>●</span>
-          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>{p.name}</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-700'}>{p.name}</span>
           <span className="font-bold">{typeof p.value === 'number' ? fmtW(p.value) : p.value}</span>
         </div>
       ))}
@@ -23,7 +23,7 @@ export default function TimeSeriesWidget({ data, config, dark }) {
   const { metrics = ['cost','revenue'], title = '일별 트렌드' } = config
 
   const chartData = useMemo(() => dailyData(data, metrics), [data, metrics])
-  const tick  = dark ? '#64748B' : '#94A3B8'
+  const tick  = dark ? '#64748B' : '#475569'
   const grid  = dark ? '#1E2130' : '#F1F5F9'
 
   return (

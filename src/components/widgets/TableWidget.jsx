@@ -17,7 +17,7 @@ export default function TableWidget({ data, config, dark }) {
 
   const toggle = key => setSort(s => s.key === key ? { key, dir: -s.dir } : { key, dir: -1 })
 
-  const th = `px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide cursor-pointer select-none ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`
+  const th = `px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide cursor-pointer select-none ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}`
   const td = `px-3 py-2.5 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   return (
@@ -60,7 +60,7 @@ export default function TableWidget({ data, config, dark }) {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={metrics.length + 1} className="px-4 py-8 text-center text-xs text-slate-400">데이터 없음</td></tr>
+              <tr><td colSpan={metrics.length + 1} className="px-4 py-8 text-center text-xs text-slate-500">데이터 없음</td></tr>
             )}
           </tbody>
         </table>

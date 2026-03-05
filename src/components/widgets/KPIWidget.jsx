@@ -44,7 +44,7 @@ export default function KPIWidget({ data, config, dark }) {
       ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
     `}>
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-[10px] font-bold uppercase tracking-widest truncate ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span className={`text-[10px] font-bold uppercase tracking-widest truncate ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           {title}
         </span>
         <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs shrink-0 ${colorCls}`}>

@@ -26,7 +26,7 @@ export default function BarWidget({ data, config, dark }) {
     return grouped.sort((a, b) => (b[metric] || 0) - (a[metric] || 0)).slice(0, 10)
   }, [data, metric, groupBy])
 
-  const tick = dark ? '#64748B' : '#94A3B8'
+  const tick = dark ? '#64748B' : '#475569'
   const grid = dark ? '#1E2130' : '#F1F5F9'
   const meta = METRICS.find(x => x.id === metric)
 

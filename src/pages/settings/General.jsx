@@ -40,22 +40,22 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
 
   const inp = `w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors
     ${dark ? 'bg-[#13151C] border-[#252836] text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-indigo-400'}`
-  const label = `block text-xs font-semibold mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`
+  const label = `block text-xs font-semibold mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`
 
   return (
     <div className="p-6 max-w-lg flex flex-col gap-5">
       <div>
         <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>일반 설정</h2>
-        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>프로젝트 기본 설정</p>
+        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>프로젝트 기본 설정</p>
       </div>
 
       {/* ── 브랜딩 ── */}
       <div className={`rounded-xl border p-5 flex flex-col gap-5 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
-        <p className={`text-xs font-bold uppercase tracking-wider ${dark ? 'text-slate-400' : 'text-slate-500'}`}>브랜딩</p>
+        <p className={`text-xs font-bold uppercase tracking-wider ${dark ? 'text-slate-400' : 'text-slate-700'}`}>브랜딩</p>
 
         {/* 프로젝트명 */}
         <div>
-          <label className={label}>프로젝트 이름 <span className={`normal-case font-normal ${dark ? 'text-slate-600' : 'text-slate-400'}`}>(변경 즉시 반영)</span></label>
+          <label className={label}>프로젝트 이름 <span className={`normal-case font-normal ${dark ? 'text-slate-600' : 'text-slate-600'}`}>(변경 즉시 반영)</span></label>
           <input
             value={localName}
             onChange={e => handleNameChange(e.target.value)}
@@ -66,7 +66,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
 
         {/* 로고 */}
         <div>
-          <label className={label}>로고 이미지 <span className={`normal-case font-normal ${dark ? 'text-slate-600' : 'text-slate-400'}`}>(PNG · JPG · SVG · 500KB 이하)</span></label>
+          <label className={label}>로고 이미지 <span className={`normal-case font-normal ${dark ? 'text-slate-600' : 'text-slate-600'}`}>(PNG · JPG · SVG · 500KB 이하)</span></label>
 
           <div className="flex items-center gap-3">
             {/* 현재 로고 미리보기 */}
@@ -75,7 +75,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
               {logoUrl ? (
                 <img src={logoUrl} alt="logo" className="w-full h-full rounded-xl object-cover"/>
               ) : (
-                <Image size={22} className={dark ? 'text-slate-400' : 'text-slate-500'}/>
+                <Image size={22} className={dark ? 'text-slate-400' : 'text-slate-700'}/>
               )}
             </div>
 
@@ -109,7 +109,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
 
       {/* ── 기타 설정 ── */}
       <div className={`rounded-xl border p-5 flex flex-col gap-4 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
-        <p className={`text-xs font-bold uppercase tracking-wider ${dark ? 'text-slate-400' : 'text-slate-500'}`}>표시 설정</p>
+        <p className={`text-xs font-bold uppercase tracking-wider ${dark ? 'text-slate-400' : 'text-slate-700'}`}>표시 설정</p>
         <div>
           <label className={label}>통화</label>
           <select value={currency} onChange={e => setCurrency(e.target.value)} className={inp}>

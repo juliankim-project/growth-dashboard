@@ -23,7 +23,7 @@ export default function KPICard({ label, value, sub, change, dark, icon: Icon, c
     `}>
       {/* 상단: 라벨 + 아이콘 */}
       <div className="flex items-center justify-between">
-        <span className={`text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           {label}
         </span>
         {Icon && (
@@ -39,7 +39,7 @@ export default function KPICard({ label, value, sub, change, dark, icon: Icon, c
           {value ?? '—'}
         </div>
         {sub && (
-          <div className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <div className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             {sub}
           </div>
         )}

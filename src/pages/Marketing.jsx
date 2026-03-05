@@ -28,7 +28,7 @@ function CustomTooltip({ active, payload, label, dark }) {
       {payload.map(p => (
         <div key={p.name} className="flex items-center gap-2 mt-0.5">
           <span style={{ color: p.color }}>●</span>
-          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>{p.name}</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-700'}>{p.name}</span>
           <span className="font-bold ml-1">{typeof p.value === 'number' ? fmtW(p.value) : p.value}</span>
         </div>
       ))}
@@ -95,7 +95,7 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
                   className={`
                     px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-pointer
                     select-none whitespace-nowrap
-                    ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}
+                    ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}
                   `}
                 >
                   <span className="flex items-center gap-1">
@@ -144,7 +144,7 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-xs">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500 text-xs">
                   선택한 기간에 데이터가 없습니다
                 </td>
               </tr>
@@ -210,7 +210,7 @@ export default function Marketing({ dark, filterByDate }) {
     return Object.values(byDate).sort((a, b) => a.label.localeCompare(b.label))
   }, [chanData])
 
-  const tick = dark ? '#64748B' : '#94A3B8'
+  const tick = dark ? '#64748B' : '#475569'
   const grid = dark ? '#1E2130' : '#F1F5F9'
 
   /* 드릴 레벨 */
@@ -234,7 +234,7 @@ export default function Marketing({ dark, filterByDate }) {
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : dark
                   ? 'bg-[#1A1D27] text-slate-400 hover:text-white border border-[#252836]'
-                  : 'bg-white text-slate-500 hover:text-slate-700 border border-slate-200 shadow-sm'
+                  : 'bg-white text-slate-700 hover:text-slate-700 border border-slate-200 shadow-sm'
               }
             `}
           >
@@ -242,7 +242,7 @@ export default function Marketing({ dark, filterByDate }) {
           </button>
         ))}
         {channels.length === 0 && (
-          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             선택한 기간에 데이터가 없습니다
           </p>
         )}
@@ -252,7 +252,7 @@ export default function Marketing({ dark, filterByDate }) {
       {(selCampaign || selAdgroup) && (
         <div className={`
           flex items-center gap-2 text-xs px-4 py-2.5 rounded-lg border
-          ${dark ? 'bg-[#1A1D27] border-[#252836] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}
+          ${dark ? 'bg-[#1A1D27] border-[#252836] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700'}
         `}>
           <button onClick={() => { setSelCampaign(null); setSelAdgroup(null) }}
             className="text-indigo-500 hover:underline font-medium">{selChannel}</button>
@@ -282,7 +282,7 @@ export default function Marketing({ dark, filterByDate }) {
             rounded-xl px-4 py-3 border
             ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
           `}>
-            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{k.label}</p>
+            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{k.label}</p>
             <p className={`text-lg font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>{k.value}</p>
           </div>
         ))}
@@ -325,7 +325,7 @@ export default function Marketing({ dark, filterByDate }) {
           <div className="flex items-center gap-3">
             <button onClick={() => { setSelCampaign(null); setSelAdgroup(null) }}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#13151C]' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#13151C]' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
               <ChevronLeft size={13} /> 채널로
             </button>
             <h3 className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -342,7 +342,7 @@ export default function Marketing({ dark, filterByDate }) {
           <div className="flex items-center gap-3">
             <button onClick={() => setSelAdgroup(null)}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#13151C]' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#13151C]' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
               <ChevronLeft size={13} /> 광고그룹으로
             </button>
             <h3 className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>

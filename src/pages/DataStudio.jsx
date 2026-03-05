@@ -247,7 +247,7 @@ export default function DataStudio({ dark }) {
   /* 스타일 헬퍼 */
   const card = `rounded-xl border p-6 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`
   const txt  = dark ? 'text-white' : 'text-slate-800'
-  const sub  = dark ? 'text-slate-400' : 'text-slate-500'
+  const sub  = dark ? 'text-slate-400' : 'text-slate-700'
 
   return (
     <div className="p-6 flex flex-col gap-6 max-w-3xl mx-auto">
@@ -296,7 +296,7 @@ export default function DataStudio({ dark }) {
 
           {/* 안내 박스 */}
           <div className={`mt-4 rounded-lg px-4 py-3 text-xs flex gap-3 items-start
-            ${dark ? 'bg-indigo-500/5 border border-indigo-500/15 text-slate-400' : 'bg-indigo-50 border border-indigo-100 text-slate-500'}`}>
+            ${dark ? 'bg-indigo-500/5 border border-indigo-500/15 text-slate-400' : 'bg-indigo-50 border border-indigo-100 text-slate-700'}`}>
             <Info size={13} className="text-indigo-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold text-indigo-400 mb-1">필수 컬럼</p>
@@ -388,7 +388,7 @@ export default function DataStudio({ dark }) {
               ))}
               {unmatchedCols.map(col => (
                 <span key={col} className={`text-[11px] px-2 py-1 rounded font-mono border
-                  ${dark ? 'bg-[#13151C] text-slate-600 border-[#252836]' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                  ${dark ? 'bg-[#13151C] text-slate-600 border-[#252836]' : 'bg-slate-50 text-slate-700 border-slate-100'}`}>
                   — {col}
                 </span>
               ))}
@@ -422,7 +422,7 @@ export default function DataStudio({ dark }) {
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center
                     ${uploadMode === 'overwrite'
                       ? 'bg-indigo-500 text-white'
-                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-400'}`}>
+                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-600'}`}>
                     <RefreshCw size={14} />
                   </div>
                   <span className={`text-xs font-bold ${uploadMode === 'overwrite' ? 'text-indigo-400' : sub}`}>
@@ -434,7 +434,7 @@ export default function DataStudio({ dark }) {
                     </span>
                   )}
                 </div>
-                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   CSV의 날짜 범위 내 기존 데이터만 삭제 후 교체합니다.
                   범위 밖 데이터는 그대로 유지됩니다.
                 </p>
@@ -465,14 +465,14 @@ export default function DataStudio({ dark }) {
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center
                     ${uploadMode === 'clear_all'
                       ? 'bg-red-500 text-white'
-                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-400'}`}>
+                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-600'}`}>
                     <Trash2 size={14} />
                   </div>
                   <span className={`text-xs font-bold ${uploadMode === 'clear_all' ? 'text-red-400' : sub}`}>
                     전체 초기화
                   </span>
                 </div>
-                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   테이블의 모든 데이터를 삭제하고 CSV 데이터로 새로 채웁니다.
                   되돌릴 수 없습니다.
                 </p>
@@ -557,16 +557,16 @@ export default function DataStudio({ dark }) {
                     <span className="font-mono font-semibold text-indigo-400">{TARGET_TABLE}</span>에 저장되었습니다.
                   </p>
                   {result.mode === 'overwrite' && result.dateRange && (
-                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                       적용 범위: {result.dateRange.start} ~ {result.dateRange.end}
                     </p>
                   )}
                   {result.mode === 'clear_all' && (
-                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                       기존 데이터 전체 삭제 후 새로 저장
                     </p>
                   )}
-                  <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                     대시보드를 새로고침하면 반영됩니다.
                   </p>
                 </div>

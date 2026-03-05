@@ -16,7 +16,7 @@ export default function ComingSoon({ dark, nav }) {
         <p className={`font-bold text-base ${dark ? 'text-white' : 'text-slate-800'}`}>
           {sub?.label || '준비 중'}
         </p>
-        <p className={`text-xs mt-2 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className={`text-xs mt-2 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           이 페이지는 현재 개발 중이에요.<br />
           Data Studio에서 데이터를 먼저 업로드해주세요.
         </p>

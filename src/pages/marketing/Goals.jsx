@@ -52,7 +52,7 @@ export default function Goals({ dark }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>목표 설정</h2>
-          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             채널별 KPI 목표를 설정하면 대시보드에서 달성률을 확인할 수 있어요
           </p>
         </div>
@@ -69,7 +69,7 @@ export default function Goals({ dark }) {
           <thead>
             <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
               {['채널', '지표', '목표값', '기간', ''].map(h => (
-                <th key={h} className={`px-4 py-3 text-left font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <th key={h} className={`px-4 py-3 text-left font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {h}
                 </th>
               ))}

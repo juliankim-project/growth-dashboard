@@ -55,7 +55,7 @@ export default function Reports({ dark }) {
     const a = document.createElement('a'); a.href = url; a.download = `report_${groupBy}.csv`; a.click()
   }
 
-  const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`
+  const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`
   const td = `px-4 py-3 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   if (loading) return <Spinner dark={dark} />
@@ -70,7 +70,7 @@ export default function Reports({ dark }) {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
                 ${groupBy === v
                   ? 'bg-indigo-600 text-white'
-                  : dark ? 'bg-[#1A1D27] text-slate-400 border border-[#252836]' : 'bg-white text-slate-500 border border-slate-200'}`}>
+                  : dark ? 'bg-[#1A1D27] text-slate-400 border border-[#252836]' : 'bg-white text-slate-700 border border-slate-200'}`}>
               {l}
             </button>
           ))}
@@ -78,7 +78,7 @@ export default function Reports({ dark }) {
 
         <button onClick={exportCSV}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
-            ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
           <Download size={13} /> CSV 내보내기
         </button>
       </div>
@@ -94,7 +94,7 @@ export default function Reports({ dark }) {
           ['ROAS',      totals.cost > 0 ? Math.round(totals.revenue / totals.cost * 100).toLocaleString() + '%' : '—'],
         ].map(([label, value]) => (
           <div key={label} className={`rounded-xl px-4 py-3 border ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
-            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
+            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{label}</p>
             <p className={`text-base font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>{value}</p>
           </div>
         ))}

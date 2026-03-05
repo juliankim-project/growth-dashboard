@@ -38,7 +38,7 @@ function FunnelChart({ stages, stageValues, dark }) {
             </text>
             {/* 값 */}
             <text x={maxW / 2 + w / 2 + 12} y={y + barH / 2 + 1} textAnchor="start"
-              fill={dark ? '#94A3B8' : '#64748B'} fontSize="11">
+              fill={dark ? '#94A3B8' : '#475569'} fontSize="11">
               {fmtMetric(stage.metric, val)}
             </text>
             {/* 전환율 화살표 */}
@@ -89,8 +89,8 @@ function StageEditor({ stages, onChange, dark }) {
           <div key={stage.id}
             className={`flex items-center gap-2 p-2 rounded-lg
             ${dark ? 'bg-[#20232E]' : 'bg-slate-50'}`}>
-            <GripVertical size={12} className={`shrink-0 cursor-grab ${dark ? 'text-slate-400' : 'text-slate-500'}`} />
-            <span className={`text-[10px] w-5 text-center shrink-0 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <GripVertical size={12} className={`shrink-0 cursor-grab ${dark ? 'text-slate-400' : 'text-slate-700'}`} />
+            <span className={`text-[10px] w-5 text-center shrink-0 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               {idx + 1}
             </span>
             <input value={stage.label}
@@ -108,7 +108,7 @@ function StageEditor({ stages, onChange, dark }) {
             </select>
             {stages.length > 2 && (
               <button onClick={() => removeStage(stage.id)}
-                className={`p-1 rounded ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}>
+                className={`p-1 rounded ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-600 hover:text-red-500'}`}>
                 <Trash2 size={10} />
               </button>
             )}
@@ -117,7 +117,7 @@ function StageEditor({ stages, onChange, dark }) {
       </div>
       <button onClick={addStage}
         className={`flex items-center gap-1.5 text-[10px] mt-2 px-3 py-1.5 rounded-lg border border-dashed
-        ${dark ? 'border-[#2E3450] text-slate-400 hover:text-slate-200' : 'border-slate-300 text-slate-500 hover:text-slate-700'}`}>
+        ${dark ? 'border-[#2E3450] text-slate-400 hover:text-slate-200' : 'border-slate-300 text-slate-700 hover:text-slate-700'}`}>
         <Plus size={10} /> 단계 추가
       </button>
     </div>
@@ -140,11 +140,11 @@ function BreakdownTable({ data, stages, dark }) {
         <table className="w-full text-xs">
           <thead>
             <tr className={dark ? 'bg-[#20232E]' : 'bg-slate-50'}>
-              <th className={`text-left px-3 py-2.5 font-semibold ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <th className={`text-left px-3 py-2.5 font-semibold ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                 채널
               </th>
               {stages.map(s => (
-                <th key={s.id} className={`text-right px-3 py-2.5 font-semibold ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <th key={s.id} className={`text-right px-3 py-2.5 font-semibold ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {s.label}
                 </th>
               ))}
@@ -173,7 +173,7 @@ function BreakdownTable({ data, stages, dark }) {
                   const rate = prev > 0 ? ((cur / prev) * 100).toFixed(1) : '—'
                   return (
                     <td key={`cr_${s.id}`} className={`text-right px-3 py-2 font-medium
-                      ${typeof rate === 'string' ? (dark ? 'text-slate-400' : 'text-slate-500')
+                      ${typeof rate === 'string' ? (dark ? 'text-slate-400' : 'text-slate-700')
                         : parseFloat(rate) >= 50 ? 'text-emerald-500' : parseFloat(rate) >= 20 ? 'text-amber-500' : 'text-red-500'}`}>
                       {rate === '—' ? rate : rate + '%'}
                     </td>
@@ -214,7 +214,7 @@ export default function FunnelPage({ dashboard, setDashboard, data, dark, editMo
       )}
 
       {stages.length === 0 ? (
-        <div className={`text-center py-16 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-center py-16 text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           편집 버튼을 눌러 퍼널 단계를 설정해주세요
         </div>
       ) : (
@@ -223,13 +223,13 @@ export default function FunnelPage({ dashboard, setDashboard, data, dark, editMo
           <div className="flex gap-3 flex-wrap">
             <div className={`rounded-xl border px-4 py-3 min-w-[120px]
               ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>단계 수</p>
+              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>단계 수</p>
               <p className={`text-lg font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{stages.length}</p>
             </div>
             {stageValues[0] > 0 && (
               <div className={`rounded-xl border px-4 py-3 min-w-[120px]
                 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {stages[0]?.label}
                 </p>
                 <p className={`text-lg font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
@@ -240,7 +240,7 @@ export default function FunnelPage({ dashboard, setDashboard, data, dark, editMo
             {totalConv && (
               <div className={`rounded-xl border px-4 py-3 min-w-[120px]
                 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>전체 전환율</p>
+                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>전체 전환율</p>
                 <p className={`text-lg font-bold ${parseFloat(totalConv) >= 5 ? 'text-emerald-500' : 'text-amber-500'}`}>
                   {totalConv}%
                 </p>

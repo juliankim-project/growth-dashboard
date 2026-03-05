@@ -42,7 +42,7 @@ function CustomTooltip({ active, payload, label, dark }) {
       {payload.map(p => (
         <div key={p.name} className="flex items-center gap-2 mt-0.5">
           <span style={{ color: p.color }}>●</span>
-          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>{p.name}</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-700'}>{p.name}</span>
           <span className="font-bold ml-1">{typeof p.value === 'number' ? p.value.toLocaleString() : p.value}</span>
         </div>
       ))}
@@ -108,7 +108,7 @@ export default function Overview({ dark, filterByDate }) {
     }
   }, [data])
 
-  const tick = dark ? '#64748B' : '#94A3B8'
+  const tick = dark ? '#64748B' : '#475569'
   const grid = dark ? '#1E2130' : '#F1F5F9'
 
   if (loading) return <Spinner dark={dark} />
@@ -204,7 +204,7 @@ export default function Overview({ dark, filterByDate }) {
                 {['채널', '광고비', '인스톨', '구매', '매출', 'ROAS'].map(h => (
                   <th key={h} className={`
                     px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide
-                    ${dark ? 'text-slate-400' : 'text-slate-500'}
+                    ${dark ? 'text-slate-400' : 'text-slate-700'}
                   `}>{h}</th>
                 ))}
               </tr>
@@ -248,7 +248,7 @@ export default function Overview({ dark, filterByDate }) {
               })}
               {channelData.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={6} className="px-5 py-8 text-center text-slate-500 text-xs">
                     선택한 기간에 데이터가 없습니다
                   </td>
                 </tr>

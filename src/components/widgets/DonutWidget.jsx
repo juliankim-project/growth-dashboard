@@ -38,7 +38,7 @@ export default function DonutWidget({ data, config, dark }) {
                 borderRadius: 10, fontSize: 11, color: dark ? '#e2e8f0' : '#334155'
               }}
             />
-            <Legend wrapperStyle={{ fontSize: 10, color: dark ? '#64748B' : '#94A3B8' }}/>
+            <Legend wrapperStyle={{ fontSize: 10, color: dark ? '#64748B' : '#475569' }}/>
           </PieChart>
         </ResponsiveContainer>
       </div>
