@@ -40,7 +40,7 @@ export default class ErrorBoundary extends Component {
           <p className={`text-xs font-semibold ${dark ? 'text-red-400' : 'text-red-600'}`}>
             {label} 렌더링 오류
           </p>
-          <p className={`text-[10px] mt-1 max-w-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`text-[10px] mt-1 max-w-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             {this.state.error?.message || '알 수 없는 오류가 발생했습니다'}
           </p>
         </div>

@@ -342,7 +342,7 @@ export default function Sidebar({
 
       {/* 네비 */}
       <nav className="flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto">
-        <p className={`px-3 pb-2 text-[9px] font-bold uppercase tracking-widest ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+        <p className={`px-3 pb-2 text-[9px] font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           ≡ 드래그로 순서 변경
         </p>
 
@@ -397,7 +397,7 @@ export default function Sidebar({
                   ${isActive ? dark ? 'text-white' : 'text-slate-800' : `${t.text} ${t.hover}`}`}
               >
                 <GripVertical size={12}
-                  className={`shrink-0 cursor-grab active:cursor-grabbing ${dark ? 'text-slate-700 group-hover/sec:text-slate-500' : 'text-slate-300 group-hover/sec:text-slate-400'}`}/>
+                  className={`shrink-0 cursor-grab active:cursor-grabbing ${dark ? 'text-slate-600 group-hover/sec:text-slate-400' : 'text-slate-400 group-hover/sec:text-slate-500'}`}/>
                 <Icon name={secIcon} size={14} className={isActive ? 'text-indigo-500' : 'opacity-80'}/>
 
                 {isEditingSection ? (
@@ -417,7 +417,7 @@ export default function Sidebar({
                         setSidebarEdit({ type: 'section', key: sec.id, value: secLabel })
                       }}
                       className={`opacity-0 group-hover/sec:opacity-100 p-0.5 rounded transition-opacity shrink-0
-                        ${dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+                        ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}
                       title="이름 변경"
                     >
                       <Pencil size={9}/>
@@ -427,7 +427,7 @@ export default function Sidebar({
 
                 {!isEditingSection && (
                   <ChevronDown size={12}
-                    className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                    className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${dark ? 'text-slate-400' : 'text-slate-500'}`}/>
                 )}
               </button>
 
@@ -466,7 +466,7 @@ export default function Sidebar({
                         >
                           <GripVertical size={10}
                             className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/sub:opacity-100 transition-opacity
-                              ${subActive ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                              ${subActive ? 'text-white/50' : dark ? 'text-slate-400' : 'text-slate-500'}`}/>
                           <Icon name={subIcon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
 
                           {isEditingSub ? (
@@ -492,7 +492,7 @@ export default function Sidebar({
                                   setSidebarEdit({ type: 'sub', key: editKey, value: subLabel })
                                 }}
                                 className={`opacity-0 group-hover/sub:opacity-100 p-0.5 rounded transition-opacity shrink-0
-                                  ${subActive ? 'text-white/50 hover:text-white' : dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+                                  ${subActive ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}
                                 title="이름 변경"
                               >
                                 <Pencil size={8}/>
@@ -503,7 +503,7 @@ export default function Sidebar({
                           {!isEditingSub && hasL3Subs && (
                             <ChevronDown size={10}
                               className={`shrink-0 transition-transform duration-200 ${l3IsOpen ? '' : '-rotate-90'}
-                                ${anyActive ? (subActive ? 'text-white/70' : 'text-indigo-400') : dark ? 'text-slate-600' : 'text-slate-300'}`}
+                                ${anyActive ? (subActive ? 'text-white/70' : 'text-indigo-400') : dark ? 'text-slate-400' : 'text-slate-500'}`}
                             />
                           )}
                         </button>
@@ -534,10 +534,10 @@ export default function Sidebar({
                                   >
                                     <GripVertical size={9}
                                       className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/l3:opacity-100 transition-opacity
-                                        ${l3Active ? 'text-white/50' : dark ? 'text-slate-600' : 'text-slate-300'}`}/>
+                                        ${l3Active ? 'text-white/50' : dark ? 'text-slate-400' : 'text-slate-500'}`}/>
                                     {l3Icon
                                       ? <Icon name={l3Icon} size={10} className={l3Active ? 'text-white' : 'opacity-60'}/>
-                                      : <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-600' : 'text-slate-300'}`}>◆</span>
+                                      : <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-400' : 'text-slate-500'}`}>◆</span>
                                     }
 
                                     {isEditingL3 ? (
@@ -556,7 +556,7 @@ export default function Sidebar({
                                             setSidebarEdit({ type: 'l3sub', key: l3EditKey, value: ls.label })
                                           }}
                                           className={`opacity-0 group-hover/l3:opacity-100 p-0.5 rounded transition-opacity shrink-0
-                                            ${l3Active ? 'text-white/50 hover:text-white' : dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+                                            ${l3Active ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}
                                           title="이름 변경"
                                         >
                                           <Pencil size={8}/>

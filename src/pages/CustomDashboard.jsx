@@ -184,7 +184,7 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                   <div className={`flex items-center justify-between px-2.5 py-1.5 border-b shrink-0
                     ${dark ? 'bg-[#0D0F18] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
                     <span className={`text-[10px] font-bold uppercase tracking-wide truncate
-                      ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{col.label}</span>
+                      ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{col.label}</span>
                     {col.sel.length > 0 && !isGroupByDim && (
                       <button onClick={() => clearDim(col.key)}
                         className="text-[9px] text-indigo-400 hover:text-indigo-300 ml-1 shrink-0">해제</button>
@@ -210,7 +210,7 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                   {/* 옵션 목록 */}
                   <div className="overflow-y-auto flex flex-col" style={{ maxHeight: 164 }}>
                     {col.opts.length === 0
-                      ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>없음</p>
+                      ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>없음</p>
                       : col.opts.map(v => {
                         const lbl = col.labelOf?.[v] ?? v
                         const isOn = col.isTable ? selTable === v : col.sel.includes(v)
@@ -301,7 +301,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
         list="known-tables"
         placeholder="테이블명 입력"
         className={`text-xs outline-none w-36 font-mono bg-transparent
-          ${dark ? 'text-white placeholder:text-slate-600' : 'text-slate-800 placeholder:text-slate-300'}`}
+          ${dark ? 'text-white placeholder:text-slate-500' : 'text-slate-800 placeholder:text-slate-400'}`}
       />
       <datalist id="known-tables">
         {KNOWN_TABLES.map(t => <option key={t} value={t} />)}
@@ -340,8 +340,8 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
-      ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-700'}`,
-    lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`,
+      ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
+    lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`,
     btn: (on) => `text-xs px-2.5 py-2 rounded-lg border text-left transition-colors
       ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
@@ -376,7 +376,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                     ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
                     {s}
                   </span>
-                  {i < 2 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>›</span>}
+                  {i < 2 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>›</span>}
                 </div>
               ))}
             </div>
@@ -426,7 +426,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-3 gap-1.5">
@@ -454,7 +454,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                   <div className="flex flex-col gap-3">
                     {['metric', 'rate'].map(group => (
                       <div key={group}>
-                        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                           {group === 'metric' ? '지표' : '단가'}
                         </p>
                         <div className="grid grid-cols-3 gap-1.5">
@@ -480,7 +480,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-3 gap-1.5">
@@ -511,7 +511,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-3 gap-1.5">
@@ -722,7 +722,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onSpanChange, onRowsCh
               className={`absolute top-1.5 left-1/2 -translate-x-1/2 z-20
                 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
                 ${dark
-                  ? 'bg-[#0F1117]/90 text-slate-500 hover:text-slate-300 border border-[#252836]'
+                  ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]'
                   : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}
             >
               <GripVertical size={11} />
@@ -806,8 +806,8 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
                 <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
                 {current === tpl.id && <span className="text-xs text-indigo-500">현재</span>}
               </div>
-              <p className={`text-xs mb-3 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>
-              <p className={`text-[10px] font-mono ${dark ? 'text-slate-600' : 'text-slate-300'}`}>{tpl.preview}</p>
+              <p className={`text-xs mb-3 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{tpl.desc}</p>
+              <p className={`text-[10px] font-mono ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{tpl.preview}</p>
             </button>
           ))}
         </div>
@@ -958,8 +958,8 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
               placeholder="탭 이름"
               className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
               ${dark
-                  ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-600'
-                  : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-300'}`}
+                  ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500'
+                  : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-400'}`}
             />
             <button onClick={commitAdd}
               className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
@@ -977,8 +977,8 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
             className={`shrink-0 flex items-center gap-1 text-xs px-3 py-2 ml-1
             rounded-t-lg border border-dashed mb-px transition-colors
             ${dark
-                ? 'border-[#2E3450] text-slate-500 hover:text-slate-300 hover:border-slate-500'
-                : 'border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'}`}
+                ? 'border-[#2E3450] text-slate-400 hover:text-slate-200 hover:border-slate-400'
+                : 'border-slate-300 text-slate-500 hover:text-slate-700 hover:border-slate-400'}`}
           >
             <Plus size={10} /> 탭 추가
           </button>
@@ -1027,8 +1027,8 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
                     </div>
-                    <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>
-                    <p className={`text-[10px] mt-1.5 font-mono ${dark ? 'text-slate-600' : 'text-slate-300'}`}>{tpl.preview}</p>
+                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{tpl.desc}</p>
+                    <p className={`text-[10px] mt-1.5 font-mono ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{tpl.preview}</p>
                   </button>
                 ))}
               </div>
@@ -1122,8 +1122,8 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
-      ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-700'}`,
-    lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`,
+      ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
+    lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`,
     btn: (on) => `text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
       ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-500 hover:border-indigo-300'}`,
@@ -1154,7 +1154,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
                     ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-400'}`}>
                     {s}
                   </span>
-                  {i < 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>›</span>}
+                  {i < 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>›</span>}
                 </div>
               ))}
             </div>
@@ -1178,7 +1178,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
                     className={S.card(type === id)}>
                     <span className="text-3xl">{meta.icon}</span>
                     <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
-                    <span className={`text-[10px] leading-tight ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{meta.desc}</span>
+                    <span className={`text-[10px] leading-tight ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{meta.desc}</span>
                   </button>
                 ))}
               </div>
@@ -1195,7 +1195,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-2 gap-1.5">
@@ -1229,7 +1229,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-2 gap-1.5">
@@ -1261,7 +1261,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-2 gap-1.5">
@@ -1297,7 +1297,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' })
                     <div className="flex flex-col gap-3">
                       {['metric', 'rate'].map(group => (
                         <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {group === 'metric' ? '지표' : '단가'}
                           </p>
                           <div className="grid grid-cols-2 gap-1.5">
@@ -1483,7 +1483,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
                   className={`col-span-1 rounded-xl border-2 border-dashed cursor-pointer
                     flex flex-col items-center justify-center gap-1.5 transition-colors select-none
                     ${dark
-                      ? 'border-[#252836] text-slate-600 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
+                      ? 'border-[#252836] text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
                       : 'border-slate-200 text-slate-300 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
                   <Plus size={16} />
                   <span className="text-[10px] font-semibold">카드 추가</span>
@@ -1746,7 +1746,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
           onClick={() => tabBarAddRef.current?.()}
           className={`flex flex-col items-center justify-center flex-1 gap-5 w-full
             transition-colors group
-            ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+            ${dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
         >
           <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-colors
             ${dark

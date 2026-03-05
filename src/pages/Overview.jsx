@@ -204,7 +204,7 @@ export default function Overview({ dark, filterByDate }) {
                 {['채널', '광고비', '인스톨', '구매', '매출', 'ROAS'].map(h => (
                   <th key={h} className={`
                     px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide
-                    ${dark ? 'text-slate-500' : 'text-slate-400'}
+                    ${dark ? 'text-slate-400' : 'text-slate-500'}
                   `}>{h}</th>
                 ))}
               </tr>

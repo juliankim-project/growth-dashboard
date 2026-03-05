@@ -116,7 +116,7 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
           <p className={`text-xs font-semibold mb-3 ${dark ? 'text-white' : 'text-slate-700'}`}>코호트 설정</p>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <label className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>단위</label>
+              <label className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>단위</label>
               <div className="flex gap-1">
                 <button onClick={() => update({ granularity: 'week' })}
                   className={`text-xs px-2.5 py-1 rounded-lg transition-colors
@@ -131,7 +131,7 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <label className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>코호트 이벤트</label>
+              <label className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>코호트 이벤트</label>
               <select value={cohortEvent} onChange={e => update({ cohortEvent: e.target.value })}
                 className={`text-xs px-2 py-1 rounded-lg border outline-none
                 ${dark ? 'bg-[#1A1D27] border-[#252836] text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
@@ -139,7 +139,7 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>리텐션 이벤트</label>
+              <label className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>리텐션 이벤트</label>
               <select value={retentionEvent} onChange={e => update({ retentionEvent: e.target.value })}
                 className={`text-xs px-2 py-1 rounded-lg border outline-none
                 ${dark ? 'bg-[#1A1D27] border-[#252836] text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
@@ -147,7 +147,7 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>기간 수</label>
+              <label className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>기간 수</label>
               <input type="number" min={2} max={20} value={periods}
                 onChange={e => update({ periods: Number(e.target.value) })}
                 className={`text-xs px-2 py-1 rounded-lg border outline-none w-14
@@ -161,7 +161,7 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
       {cohorts.length === 0 ? (
         <div className={`text-center py-16 rounded-xl border
           ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-          <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             {data?.length ? '설정을 조정해서 코호트 데이터를 확인하세요' : '데이터가 없습니다'}
           </p>
         </div>
@@ -171,14 +171,14 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
           <div className="flex gap-3 flex-wrap">
             <div className={`rounded-xl border px-4 py-3 min-w-[120px]
               ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>코호트 수</p>
+              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>코호트 수</p>
               <p className={`text-lg font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{cohorts.length}</p>
             </div>
             {averages.length >= 2 && (
               <>
                 <div className={`rounded-xl border px-4 py-3 min-w-[120px]
                   ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-                  <p className={`text-[10px] mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {averages[1]?.period} 평균 리텐션
                   </p>
                   <p className={`text-lg font-bold ${averages[1]?.retention >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
@@ -188,7 +188,7 @@ export default function CohortPage({ dashboard, setDashboard, data, dark, editMo
                 {averages.length >= 5 && (
                   <div className={`rounded-xl border px-4 py-3 min-w-[120px]
                     ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-                    <p className={`text-[10px] mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {averages[4]?.period} 평균 리텐션
                     </p>
                     <p className={`text-lg font-bold ${averages[4]?.retention >= 15 ? 'text-emerald-500' : 'text-rose-500'}`}>

@@ -7,7 +7,7 @@ export default function Product({ dark }) {
         <p className={`font-bold text-lg ${dark ? 'text-white' : 'text-slate-800'}`}>
           Product 분석
         </p>
-        <p className={`text-sm mt-2 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <p className={`text-sm mt-2 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           product_rawdata 테이블 연결 후 활성화됩니다
         </p>
       </div>

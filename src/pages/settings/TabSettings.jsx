@@ -63,7 +63,7 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
       <button
         onClick={() => { setDraft(value); setEditing(true) }}
         className={`opacity-0 group-hover/label:opacity-100 p-0.5 rounded transition-opacity
-          ${dark ? 'text-slate-600 hover:text-indigo-400' : 'text-slate-300 hover:text-indigo-500'}`}
+          ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}
       >
         <Pencil size={10}/>
       </button>
@@ -125,7 +125,7 @@ function IconPicker({ value, onChange, dark, size = 12 }) {
           onClick={e => e.stopPropagation()}
         >
           <p className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 px-0.5
-            ${dark ? 'text-slate-600' : 'text-slate-300'}`}>아이콘 선택</p>
+            ${dark ? 'text-slate-400' : 'text-slate-500'}`}>아이콘 선택</p>
           <div className="grid grid-cols-9 gap-0.5">
             {ICON_LIST.map((name, i) => (
               <button
@@ -190,10 +190,10 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
   }
 
   const inp = `px-2 py-1 rounded-lg border text-xs outline-none w-full font-mono
-    ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-600'
-           : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-300'}`
+    ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500'
+           : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400'}`
 
-  const lab = `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`
+  const lab = `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`
 
   return (
     <div className={`mt-1.5 mb-2 mx-3 rounded-xl border p-4 flex flex-col gap-4
@@ -225,9 +225,9 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
           {METRICS.filter(m => !m.derived).map(m => (
             <div key={m.id}>
-              <p className={`text-[9px] mb-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <p className={`text-[9px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {m.label}
-                <span className={`ml-1 font-mono ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+                <span className={`ml-1 font-mono ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   ({m.field})
                 </span>
               </p>
@@ -341,8 +341,8 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
             placeholder="탭 이름"
             className={`text-[10px] px-2 py-0.5 rounded-full border outline-none w-24
               ${dark
-                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-600'
-                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-300'}`}
+                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500'
+                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-400'}`}
           />
           <button onClick={commitAdd}
             className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">확인</button>
@@ -362,7 +362,7 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
       )}
 
       {tabs.length === 0 && !adding && (
-        <span className={`text-[10px] italic ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+        <span className={`text-[10px] italic ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           탭 없음
         </span>
       )}
@@ -391,7 +391,7 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
 
       {/* 헤더 */}
       <div className={`flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-widest
-        ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+        ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
         <Layers size={10} className="text-emerald-400"/> 중위탭 서서브 (L3)
       </div>
 
@@ -428,7 +428,7 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
           <div className={`mx-2 mb-2 px-2 py-1.5 rounded-lg
             ${dark ? 'bg-[#0F1117] border border-[#1E2130]' : 'bg-white border border-slate-100'}`}>
             <div className={`flex items-center gap-1 mb-1 text-[9px] font-bold uppercase tracking-widest
-              ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+              ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
               <Layers size={9} className="text-violet-400"/> 하위탭 (L4)
             </div>
             <L3TabsRow
@@ -459,8 +459,8 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
             placeholder="서서브 이름"
             className={`text-[10px] px-2 py-0.5 rounded-lg border outline-none w-28
               ${dark
-                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-600'
-                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-300'}`}
+                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500'
+                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-400'}`}
           />
           <button onClick={commitAdd}
             className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">확인</button>
@@ -480,7 +480,7 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
       )}
 
       {l3subs.length === 0 && !adding && (
-        <p className={`text-[10px] italic mt-0.5 ${dark ? 'text-slate-700' : 'text-slate-300'}`}>
+        <p className={`text-[10px] italic mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           서서브 없음
         </p>
       )}
@@ -539,7 +539,7 @@ function SubRow({
         {/* L3 확장 토글 */}
         <button
           onClick={() => setOpen(o => !o)}
-          className={`shrink-0 transition-colors ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}
+          className={`shrink-0 transition-colors ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
         >
           {open ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
         </button>
@@ -634,7 +634,7 @@ function SubRow({
           <div className={`ml-10 mr-3 mb-1 px-3 py-2 rounded-lg
             ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
             <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5
-              ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+              ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
               탭 타입
             </p>
             <div className="flex gap-1.5 flex-wrap">
@@ -679,7 +679,7 @@ function SubRow({
           <div className={`ml-10 mr-3 mb-2 px-3 py-2 rounded-lg
             ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
             <div className={`flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-widest
-              ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+              ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
               <Layers size={10} className="text-violet-400"/> 기본 하위탭 (L4, 서서브 없을 때)
             </div>
             <L3TabsRow
@@ -735,7 +735,7 @@ function AddSubRow({ onAdd, dark }) {
           onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setShow(false); setSubType('report') } }}
           placeholder="탭 이름 입력..."
           className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none w-40
-            ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-600' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-300'}`}
+            ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-500' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-400'}`}
         />
         <button onClick={submit}
           className="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">추가</button>
@@ -850,7 +850,7 @@ export default function TabSettings({
       {/* 헤더 */}
       <div>
         <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>탭 설정</h2>
-        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           L1(메인탭) → L2(상위탭) → L3(중위탭/서서브) → L4(하위탭) 4단계 구조를 관리합니다.
           빌트인 탭은 <EyeOff size={10} className="inline"/> 숨기기 / <Eye size={10} className="inline"/> 복원 가능하고,
           커스텀 탭은 <Trash2 size={10} className="inline"/> 으로 완전 삭제할 수 있어요.
@@ -861,28 +861,28 @@ export default function TabSettings({
       <div className={`flex flex-wrap items-center gap-4 px-4 py-2.5 rounded-xl text-[10px]
         ${dark ? 'bg-[#1A1D27] border border-[#252836]' : 'bg-slate-50 border border-slate-100'}`}>
         <div className="flex items-center gap-1.5">
-          <GripVertical size={10} className={dark ? 'text-slate-500' : 'text-slate-400'}/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>드래그로 L1 순서 변경 (사이드바 연동)</span>
+          <GripVertical size={10} className={dark ? 'text-slate-400' : 'text-slate-500'}/>
+          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>드래그로 L1 순서 변경 (사이드바 연동)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <LayoutDashboard size={10} className="text-indigo-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L1 · 메인탭 (사이드바 섹션)</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>L1 · 메인탭 (사이드바 섹션)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <LayoutTemplate size={10} className="text-sky-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L2 · 상위탭 (사이드바 서브)</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>L2 · 상위탭 (사이드바 서브)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Layers size={10} className="text-emerald-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L3 · 중위탭 (사이드바 서서브)</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>L3 · 중위탭 (사이드바 서서브)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Layers size={10} className="text-violet-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>L4 · 하위탭 (페이지 내 탭)</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>L4 · 하위탭 (페이지 내 탭)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Database size={10} className="text-amber-400"/>
-          <span className={dark ? 'text-slate-500' : 'text-slate-400'}>소스 · 테이블 + 필드 매핑</span>
+          <span className={dark ? 'text-slate-400' : 'text-slate-500'}>소스 · 테이블 + 필드 매핑</span>
         </div>
       </div>
 
@@ -927,12 +927,12 @@ export default function TabSettings({
               {/* 드래그 핸들 */}
               <GripVertical size={13}
                 className={`shrink-0 cursor-grab active:cursor-grabbing
-                  ${dark ? 'text-slate-700 group-hover/sec:text-slate-500' : 'text-slate-300 group-hover/sec:text-slate-400'}`}
+                  ${dark ? 'text-slate-600 group-hover/sec:text-slate-400' : 'text-slate-400 group-hover/sec:text-slate-500'}`}
                 onClick={e => e.stopPropagation()}
               />
 
               <span className={`shrink-0 transition-transform duration-200
-                ${dark ? 'text-slate-600' : 'text-slate-300'}
+                ${dark ? 'text-slate-400' : 'text-slate-500'}
                 ${isOpen ? 'rotate-90' : ''}`}>
                 <ChevronRight size={14}/>
               </span>
@@ -968,7 +968,7 @@ export default function TabSettings({
                 </span>
               )}
 
-              <div className={`ml-auto flex items-center gap-2 text-[10px] ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+              <div className={`ml-auto flex items-center gap-2 text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                 <span>L2 · {visibleCount}개</span>
                 {hiddenCount > 0 && (
                   <span className={`px-1.5 py-0.5 rounded text-[9px]
@@ -996,7 +996,7 @@ export default function TabSettings({
             {isOpen && (
               <div className="px-2 py-2 flex flex-col gap-0.5">
                 <p className={`flex items-center gap-1.5 px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest
-                  ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                  ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   <LayoutTemplate size={10} className="text-sky-400"/> 상위탭 (L2)
                 </p>
                 {allSubs.map(sub => (
@@ -1047,7 +1047,7 @@ export default function TabSettings({
               onKeyDown={e => { if (e.key === 'Enter') commitAddSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSecLabel('') } }}
               placeholder="메인탭 이름 입력..."
               className={`flex-1 px-3 py-2 rounded-lg border text-sm outline-none
-                ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-600' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-300'}`}
+                ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-500' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-400'}`}
             />
             <button onClick={commitAddSection}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">추가</button>

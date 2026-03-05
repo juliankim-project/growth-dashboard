@@ -242,7 +242,7 @@ export default function Marketing({ dark, filterByDate }) {
           </button>
         ))}
         {channels.length === 0 && (
-          <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             선택한 기간에 데이터가 없습니다
           </p>
         )}
@@ -282,7 +282,7 @@ export default function Marketing({ dark, filterByDate }) {
             rounded-xl px-4 py-3 border
             ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
           `}>
-            <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{k.label}</p>
+            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{k.label}</p>
             <p className={`text-lg font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>{k.value}</p>
           </div>
         ))}

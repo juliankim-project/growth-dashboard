@@ -48,17 +48,17 @@ function SortableCard({ card, dark, onEdit, onDelete, columnId }) {
         {card.title}
       </p>
       {card.desc && (
-        <p className={`text-[10px] mt-1.5 leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <p className={`text-[10px] mt-1.5 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           {card.desc}
         </p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={(e) => { e.stopPropagation(); onEdit(card) }}
-          className={`p-1 rounded ${dark ? 'hover:bg-[#252836] text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}>
+          className={`p-1 rounded ${dark ? 'hover:bg-[#252836] text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
           <Pencil size={10} />
         </button>
         <button onClick={(e) => { e.stopPropagation(); onDelete(card.id) }}
-          className={`p-1 rounded ${dark ? 'hover:bg-red-500/20 text-slate-500 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`}>
+          className={`p-1 rounded ${dark ? 'hover:bg-red-500/20 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-500 hover:text-red-500'}`}>
           <Trash2 size={10} />
         </button>
       </div>
@@ -98,15 +98,15 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
           placeholder="카드 제목"
           onKeyDown={e => e.key === 'Enter' && handleSave()}
           className={`w-full text-xs px-3 py-2 rounded-lg border outline-none mb-3
-          ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-600'
-                : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
+          ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+                : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-500'}`}
         />
         <textarea value={desc} onChange={e => setDesc(e.target.value)}
           placeholder="설명 (선택)"
           rows={2}
           className={`w-full text-xs px-3 py-2 rounded-lg border outline-none mb-3 resize-none
-          ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-600'
-                : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
+          ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+                : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-500'}`}
         />
 
         <div className="flex items-center gap-1.5 mb-4">
@@ -301,19 +301,19 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
                     {col.title}
                   </span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0
-                    ${dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-500'}`}>
+                    ${dark ? 'bg-[#252836] text-slate-400' : 'bg-slate-200 text-slate-600'}`}>
                     {col.cards.length}
                   </span>
                 </div>
               )}
               <div className="flex items-center gap-0.5 shrink-0">
                 <button onClick={() => { setEditingColId(col.id); setEditingColTitle(col.title) }}
-                  className={`p-1 rounded ${dark ? 'text-slate-600 hover:text-slate-300 hover:bg-[#252836]' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+                  className={`p-1 rounded ${dark ? 'text-slate-500 hover:text-slate-200 hover:bg-[#252836]' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
                   <Pencil size={10} />
                 </button>
                 {columns.length > 1 && (
                   <button onClick={() => deleteColumn(col.id)}
-                    className={`p-1 rounded ${dark ? 'text-slate-600 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}>
+                    className={`p-1 rounded ${dark ? 'text-slate-500 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-500 hover:text-red-500 hover:bg-red-50'}`}>
                     <Trash2 size={10} />
                   </button>
                 )}
@@ -332,7 +332,7 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
                 ))}
               </SortableContext>
               {col.cards.length === 0 && (
-                <div className={`text-center py-6 text-[10px] ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                <div className={`text-center py-6 text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   카드를 드래그하거나 추가하세요
                 </div>
               )}
@@ -376,8 +376,8 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
             }}
             placeholder="컬럼 이름"
             className={`w-full text-xs px-3 py-2 rounded-lg border outline-none mb-2
-            ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-600'
-                  : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
+            ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+                  : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-500'}`}
           />
           <div className="flex gap-1.5">
             <button onClick={addColumn}

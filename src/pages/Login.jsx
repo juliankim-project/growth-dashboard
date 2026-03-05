@@ -33,8 +33,8 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
 
   const inp = `w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors
     ${dark
-      ? 'bg-[#13151C] border-[#252836] text-white placeholder:text-slate-600 focus:border-indigo-500'
-      : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 focus:border-indigo-400'}`
+      ? 'bg-[#13151C] border-[#252836] text-white placeholder:text-slate-500 focus:border-indigo-500'
+      : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-400'}`
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 ${dark ? 'bg-[#0F1117]' : 'bg-[#F4F6FA]'}`}>
@@ -48,7 +48,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
           <h1 className={`text-xl font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
             Growth Dashboard
           </h1>
-          <p className={`text-xs mt-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             내부 구성원만 접근 가능합니다
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
                 <p className={`text-sm font-semibold mb-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
                   로그인
                 </p>
-                <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   이메일 주소를 입력하면 로그인 링크를 보내드려요
                 </p>
               </div>
@@ -137,7 +137,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
           )}
         </div>
 
-        <p className={`text-center text-xs mt-4 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+        <p className={`text-center text-xs mt-4 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           접근 권한이 없다면 관리자에게 문의하세요
         </p>
       </div>

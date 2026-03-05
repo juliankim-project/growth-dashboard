@@ -247,7 +247,7 @@ export default function DataStudio({ dark }) {
   /* 스타일 헬퍼 */
   const card = `rounded-xl border p-6 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`
   const txt  = dark ? 'text-white' : 'text-slate-800'
-  const sub  = dark ? 'text-slate-500' : 'text-slate-400'
+  const sub  = dark ? 'text-slate-400' : 'text-slate-500'
 
   return (
     <div className="p-6 flex flex-col gap-6 max-w-3xl mx-auto">
@@ -434,7 +434,7 @@ export default function DataStudio({ dark }) {
                     </span>
                   )}
                 </div>
-                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   CSV의 날짜 범위 내 기존 데이터만 삭제 후 교체합니다.
                   범위 밖 데이터는 그대로 유지됩니다.
                 </p>
@@ -472,7 +472,7 @@ export default function DataStudio({ dark }) {
                     전체 초기화
                   </span>
                 </div>
-                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`text-[11px] leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   테이블의 모든 데이터를 삭제하고 CSV 데이터로 새로 채웁니다.
                   되돌릴 수 없습니다.
                 </p>
@@ -557,16 +557,16 @@ export default function DataStudio({ dark }) {
                     <span className="font-mono font-semibold text-indigo-400">{TARGET_TABLE}</span>에 저장되었습니다.
                   </p>
                   {result.mode === 'overwrite' && result.dateRange && (
-                    <p className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                       적용 범위: {result.dateRange.start} ~ {result.dateRange.end}
                     </p>
                   )}
                   {result.mode === 'clear_all' && (
-                    <p className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                       기존 데이터 전체 삭제 후 새로 저장
                     </p>
                   )}
-                  <p className={`text-xs mt-1 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+                  <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                     대시보드를 새로고침하면 반영됩니다.
                   </p>
                 </div>

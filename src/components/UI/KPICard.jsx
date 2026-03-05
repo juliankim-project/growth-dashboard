@@ -39,7 +39,7 @@ export default function KPICard({ label, value, sub, change, dark, icon: Icon, c
           {value ?? '—'}
         </div>
         {sub && (
-          <div className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <div className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             {sub}
           </div>
         )}

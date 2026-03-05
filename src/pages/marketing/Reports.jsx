@@ -55,7 +55,7 @@ export default function Reports({ dark }) {
     const a = document.createElement('a'); a.href = url; a.download = `report_${groupBy}.csv`; a.click()
   }
 
-  const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-500' : 'text-slate-400'}`
+  const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-500'}`
   const td = `px-4 py-3 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   if (loading) return <Spinner dark={dark} />
@@ -94,7 +94,7 @@ export default function Reports({ dark }) {
           ['ROAS',      totals.cost > 0 ? Math.round(totals.revenue / totals.cost * 100).toLocaleString() + '%' : '—'],
         ].map(([label, value]) => (
           <div key={label} className={`rounded-xl px-4 py-3 border ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
-            <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+            <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
             <p className={`text-base font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>{value}</p>
           </div>
         ))}

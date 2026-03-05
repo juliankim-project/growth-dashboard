@@ -46,7 +46,7 @@ function BudgetSlider({ channel, pct, onChange, dark, efficiency }) {
         {pct}%
       </span>
       {efficiency && (
-        <span className={`text-[10px] w-16 text-right ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span className={`text-[10px] w-16 text-right ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           ROAS {(efficiency.roas * 100).toFixed(0)}%
         </span>
       )}
@@ -197,7 +197,7 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
             </div>
 
             <div className="flex items-center gap-2">
-              <label className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <label className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {mode === 'budget' ? '총 예산' : '목표값'}
               </label>
               <input type="number"
@@ -211,7 +211,7 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
             </div>
 
             <div className="flex items-center gap-2">
-              <label className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>목표 지표</label>
+              <label className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>목표 지표</label>
               <select value={targetMetric}
                 onChange={e => update({ targetMetric: e.target.value })}
                 className={`text-xs px-2 py-1.5 rounded-lg border outline-none
@@ -229,7 +229,7 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
       {scenarios.length === 0 ? (
         <div className={`text-center py-16 rounded-xl border
           ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-          <p className={`text-xs mb-3 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`text-xs mb-3 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             시나리오를 추가하여 예산 배분을 시뮬레이션하세요
           </p>
           <button onClick={addScenario}
@@ -252,7 +252,7 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
                 </button>
                 {scenarios.length > 1 && (
                   <button onClick={() => removeScenario(i)}
-                    className={`p-1 rounded ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}>
+                    className={`p-1 rounded ${dark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}>
                     <Trash2 size={10} />
                   </button>
                 )}
@@ -261,7 +261,7 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
             {scenarios.length < 3 && (
               <button onClick={addScenario}
                 className={`text-xs px-3 py-1.5 rounded-lg border border-dashed
-                ${dark ? 'border-[#2E3450] text-slate-500 hover:text-slate-300' : 'border-slate-200 text-slate-400 hover:text-slate-600'}`}>
+                ${dark ? 'border-[#2E3450] text-slate-400 hover:text-slate-200' : 'border-slate-300 text-slate-500 hover:text-slate-700'}`}>
                 <Plus size={10} className="inline mr-1" /> 시나리오
               </button>
             )}
@@ -271,21 +271,21 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
           <div className="flex gap-3 flex-wrap">
             <div className={`rounded-xl border px-4 py-3 min-w-[130px]
               ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>배분 예산</p>
+              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>배분 예산</p>
               <p className={`text-lg font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
                 {fmtMetric('cost', totalProjected.budget)}
               </p>
             </div>
             <div className={`rounded-xl border px-4 py-3 min-w-[130px]
               ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>예상 매출</p>
+              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>예상 매출</p>
               <p className={`text-lg font-bold text-emerald-500`}>
                 {fmtMetric('revenue', totalProjected.revenue)}
               </p>
             </div>
             <div className={`rounded-xl border px-4 py-3 min-w-[130px]
               ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
-              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>예상 ROAS</p>
+              <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>예상 ROAS</p>
               <p className={`text-lg font-bold ${dark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                 {totalProjected.budget > 0 ? ((totalProjected.revenue / totalProjected.budget) * 100).toFixed(0) + '%' : '—'}
               </p>
@@ -311,7 +311,7 @@ export default function SimulationPage({ dashboard, setDashboard, data, dark, ed
               </div>
               <div className={`flex items-center justify-between mt-3 pt-3 border-t
                 ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-                <span className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>총 배분율</span>
+                <span className={`text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>총 배분율</span>
                 <span className={`text-xs font-bold
                   ${(() => {
                     const total = channelsToUse.reduce((s, ch) => s + (activeSc.allocations?.[ch] || 0), 0)

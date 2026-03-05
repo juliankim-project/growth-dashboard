@@ -67,13 +67,13 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
       >
         <CalendarDays size={13} className={dark ? 'text-indigo-400' : 'text-indigo-500'} />
         <span className="font-semibold">{displayLabel}</span>
-        <span className={`hidden sm:inline text-[11px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span className={`hidden sm:inline text-[11px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           {fmtMD(dateRange.start)} – {fmtMD(dateRange.end)}
         </span>
         <ChevronDown
           size={12}
           className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}
-            ${dark ? 'text-slate-500' : 'text-slate-400'}`}
+            ${dark ? 'text-slate-400' : 'text-slate-500'}`}
         />
       </button>
 
@@ -106,12 +106,12 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
 
           {/* 직접 날짜 설정 */}
           <div className="p-3 flex flex-col gap-2.5">
-            <p className={`text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
               직접 설정
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>시작일</p>
+                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>시작일</p>
                 <input
                   type="date"
                   value={customStart}
@@ -121,7 +121,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
                 />
               </div>
               <div>
-                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>종료일</p>
+                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>종료일</p>
                 <input
                   type="date"
                   value={customEnd}
@@ -147,7 +147,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
 
           {/* 선택된 기간 요약 */}
           {dateRange.preset === 'custom' && (
-            <div className={`px-3 pb-3 text-[10px] ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+            <div className={`px-3 pb-3 text-[10px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
               현재: {fmtFull(dateRange.start)} ~ {fmtFull(dateRange.end)}
             </div>
           )}
@@ -208,7 +208,7 @@ function UserMenu({ user, onSignOut, dark }) {
               }
               <div className="min-w-0">
                 <p className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{name}</p>
-                <p className={`text-[10px] truncate ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{email}</p>
+                <p className={`text-[10px] truncate ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{email}</p>
               </div>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function Header({ nav, dark, config, getL3Subs, dateRange, setPre
 
   const title = l3subLabel || subLabel || sectionLabel
 
-  const slash = <span className={`text-xs ${dark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
+  const slash = <span className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>/</span>
 
   return (
     <header className={`
@@ -271,7 +271,7 @@ export default function Header({ nav, dark, config, getL3Subs, dateRange, setPre
       {/* 좌측: 타이틀 + 브레드크럼 */}
       <div>
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-medium ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <span className={`text-xs font-medium ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             {sectionLabel}
           </span>
           {subLabel && (
@@ -294,7 +294,7 @@ export default function Header({ nav, dark, config, getL3Subs, dateRange, setPre
         <h1 className={`text-xl font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>
           {title}
         </h1>
-        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-600' : 'text-slate-300'}`}>{today}</p>
+        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{today}</p>
       </div>
 
       {/* 우측: 날짜 필터 + 서치 + 알림 + 아바타 */}

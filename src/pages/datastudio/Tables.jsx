@@ -44,7 +44,7 @@ export default function Tables({ dark }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>테이블 관리</h2>
-          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
             Supabase 테이블 구조 및 데이터 현황
           </p>
         </div>
