@@ -621,24 +621,22 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
   const [sizeTooltip, setSizeTooltip] = useState(null)  // { w, h } 리사이즈 중 표시
   const [snapping, setSnapping] = useState(false)        // 스냅 시 핸들 색상 변경
 
-  /* 이웃 카드 너비(px) 수집 */
-  const getNeighborWidths = useCallback(() => {
+  /* 이웃 카드 오른쪽 가장자리 x좌표 수집 (너비 스냅용) */
+  const getNeighborRightEdges = useCallback(() => {
     const grid = gridRef?.current
     if (!grid) return []
     return [...grid.querySelectorAll('[data-slot-id]')]
       .filter(c => c.dataset.slotId !== slot.id)
-      .map(c => c.getBoundingClientRect().width)
-      .filter(w => w > 0)
+      .map(c => c.getBoundingClientRect().right)
   }, [gridRef, slot.id])
 
-  /* 이웃 카드 높이(px) 수집 */
-  const getNeighborHeights = useCallback(() => {
+  /* 이웃 카드 아래쪽 가장자리 y좌표 수집 (높이 스냅용) */
+  const getNeighborBottomEdges = useCallback(() => {
     const grid = gridRef?.current
     if (!grid) return []
     return [...grid.querySelectorAll('[data-slot-id]')]
       .filter(c => c.dataset.slotId !== slot.id)
-      .map(c => c.getBoundingClientRect().height)
-      .filter(h => h > 0)
+      .map(c => c.getBoundingClientRect().bottom)
   }, [gridRef, slot.id])
 
   /* ── 통합 리사이즈 핸들러 (right / bottom / corner) ── */
@@ -652,8 +650,11 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
     const gridW = grid.getBoundingClientRect().width
     const startX = e.clientX
     const startY = e.clientY
-    const startW = el.getBoundingClientRect().width
-    const startH = el.getBoundingClientRect().height
+    const elRect = el.getBoundingClientRect()
+    const startW = elRect.width
+    const startH = elRect.height
+    const startLeft = elRect.left
+    const startTop = elRect.top
     setResizing(true)
 
     const onMove = (ev) => {
@@ -663,17 +664,20 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
 
       if (direction === 'right' || direction === 'corner') {
         newW = Math.max(gridW * MIN_W_PCT / 100, startW + (ev.clientX - startX))
-        const snapW = findSnap(newW, getNeighborWidths())
-        if (snapW !== null) { newW = snapW; snapped = true }
-        // px → % 변환: pct = (pixelW + gapAdj) / gridW * 100
+        // 오른쪽 가장자리 위치 기반 스냅 (시각적 정렬)
+        const myRight = startLeft + newW
+        const snapRight = findSnap(myRight, getNeighborRightEdges())
+        if (snapRight !== null) { newW = snapRight - startLeft; snapped = true }
         const pct = Math.min(100, Math.max(MIN_W_PCT, (newW + MGAP) / (gridW + MGAP) * 100))
         onWidthChange(slot.id, Math.round(pct * 100) / 100)
       }
 
       if (direction === 'bottom' || direction === 'corner') {
         newH = Math.max(MIN_H_PX, startH + (ev.clientY - startY))
-        const snapH = findSnap(newH, getNeighborHeights())
-        if (snapH !== null) { newH = snapH; snapped = true }
+        // 아래쪽 가장자리 위치 기반 스냅 (시각적 정렬)
+        const myBottom = startTop + newH
+        const snapBottom = findSnap(myBottom, getNeighborBottomEdges())
+        if (snapBottom !== null) { newH = snapBottom - startTop; snapped = true }
         onHeightChange(slot.id, Math.round(newH))
       }
 
@@ -697,7 +701,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
 
   const cardStyle = {
     width: pctToWidth(widthPct),
-    ...(heightPx ? { height: `${heightPx}px`, overflow: 'hidden' } : {}),
+    ...(heightPx ? { height: `${heightPx}px` } : {}),
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
@@ -782,7 +786,9 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
           )}
         </>
       )}
-      {renderWidget(slot.type, applyWidgetFilters(data, slot.config.filters), slot.config, dark)}
+      <div className={heightPx ? 'h-full overflow-hidden rounded-xl' : ''}>
+        {renderWidget(slot.type, applyWidgetFilters(data, slot.config.filters), slot.config, dark)}
+      </div>
     </div>
   )
 }
