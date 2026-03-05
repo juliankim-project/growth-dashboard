@@ -163,6 +163,21 @@ export const SUB_TYPES = {
     },
     widgetTypes: ['kpi', 'timeseries', 'table'],
   },
+  kanban: {
+    id: 'kanban',
+    label: '칸반',
+    icon: '📋',
+    desc: '캠페인/태스크 칸반 보드',
+    colorClasses: {
+      badge:     'bg-rose-500/15 text-rose-400',
+      badgeLight:'bg-rose-50 text-rose-600',
+      dot:       'bg-rose-400',
+      btnActive: 'bg-rose-600 text-white',
+      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-rose-500/10',
+      btnIdleLight: 'bg-slate-50 text-slate-500 hover:bg-rose-50',
+    },
+    widgetTypes: [],
+  },
 }
 
 export const DEFAULT_SUB_TYPE = 'report'
@@ -214,9 +229,72 @@ export const DEFAULT_WIDGET_CONFIG = {
 }
 
 /* ──────────────────────────────────────────
-   대시보드 초기값 생성 (빈 슬롯 배열)
+   타입별 템플릿 정의
 ─────────────────────────────────────────── */
-export function makeDashboard() {
+export const TYPE_TEMPLATES = {
+  report: Object.values(TEMPLATES).map(t => ({ id: t.id, name: t.name, desc: t.desc, preview: t.preview })),
+  simulation: [
+    { id: 'SIM_BUDGET', name: '예산 배분', desc: '채널별 예산 최적화 시뮬레이션', preview: '📊 예산 → 성과 예측' },
+    { id: 'SIM_TARGET', name: '목표 역산', desc: '목표 매출/전환에서 필요 예산 역산', preview: '🎯 목표 → 필요 예산' },
+  ],
+  funnel: [
+    { id: 'FNL_MARKETING', name: '마케팅 퍼널', desc: '노출 → 클릭 → 조회 → 가입 → 구매', preview: '🔻 노출 ▸ 클릭 ▸ 가입 ▸ 구매' },
+    { id: 'FNL_CUSTOM', name: '커스텀 퍼널', desc: '직접 단계를 정의합니다', preview: '✏️ 단계 직접 설정' },
+  ],
+  cohort: [
+    { id: 'COH_WEEKLY', name: '주간 코호트', desc: '주 단위 가입 → 리텐션 분석', preview: '📅 주간 가입 코호트' },
+    { id: 'COH_MONTHLY', name: '월간 코호트', desc: '월 단위 가입 → 리텐션 분석', preview: '📅 월간 가입 코호트' },
+  ],
+  kanban: [
+    { id: 'KAN_CAMPAIGN', name: '캠페인 관리', desc: '기획 → 진행중 → 분석 → 완료', preview: '📋 기획 | 진행중 | 분석 | 완료' },
+    { id: 'KAN_SIMPLE', name: '심플 보드', desc: 'To Do → Doing → Done', preview: '📋 To Do | Doing | Done' },
+  ],
+}
+
+/* ──────────────────────────────────────────
+   대시보드 초기값 생성 (타입별)
+─────────────────────────────────────────── */
+export function makeDashboard(subType = 'report', templateId = null) {
+  if (subType === 'report' || !subType) return { slots: [] }
+
+  if (subType === 'simulation') {
+    const mode = templateId === 'SIM_TARGET' ? 'target' : 'budget'
+    return { type: 'simulation', mode, channels: [], totalBudget: 0, targetMetric: 'revenue', targetValue: 0, scenarios: [] }
+  }
+  if (subType === 'funnel') {
+    if (templateId === 'FNL_CUSTOM') {
+      return { type: 'funnel', stages: [
+        { id: 's1', label: '단계 1', metric: 'impr' },
+        { id: 's2', label: '단계 2', metric: 'clicks' },
+      ]}
+    }
+    return { type: 'funnel', stages: [
+      { id: 's1', label: '노출', metric: 'impr' },
+      { id: 's2', label: '클릭', metric: 'clicks' },
+      { id: 's3', label: '상세조회', metric: 'view_content' },
+      { id: 's4', label: '가입', metric: 'signup' },
+      { id: 's5', label: '구매', metric: 'conv' },
+    ]}
+  }
+  if (subType === 'cohort') {
+    const granularity = templateId === 'COH_MONTHLY' ? 'month' : 'week'
+    return { type: 'cohort', granularity, cohortEvent: 'signup', retentionEvent: 'conv', periods: granularity === 'month' ? 6 : 8 }
+  }
+  if (subType === 'kanban') {
+    if (templateId === 'KAN_CAMPAIGN') {
+      return { type: 'kanban', columns: [
+        { id: 'c1', title: '기획', cards: [] },
+        { id: 'c2', title: '진행중', cards: [] },
+        { id: 'c3', title: '분석', cards: [] },
+        { id: 'c4', title: '완료', cards: [] },
+      ]}
+    }
+    return { type: 'kanban', columns: [
+      { id: 'c1', title: 'To Do', cards: [] },
+      { id: 'c2', title: 'In Progress', cards: [] },
+      { id: 'c3', title: 'Done', cards: [] },
+    ]}
+  }
   return { slots: [] }
 }
 
@@ -491,10 +569,10 @@ export function useConfig() {
   const getL3Tabs = (sid, sub, l3sub = null) =>
     config.l3tabs[_tabsScope(sid, sub, l3sub)] || []
 
-  const addL3Tab = (sid, sub, label, l3sub = null) => {
+  const addL3Tab = (sid, sub, label, l3sub = null, subType = 'report', templateId = null) => {
     const id = `t3_${Date.now()}`
     const scope = _tabsScope(sid, sub, l3sub)
-    const dash = makeDashboard('A')
+    const dash = makeDashboard(subType, templateId)
     persist(prev => {
       const cur = prev.l3tabs[scope] || []
       return {

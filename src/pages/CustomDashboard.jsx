@@ -3,8 +3,12 @@ import { Settings2, Check, X, Plus, Database, GripVertical } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
-  SUB_TYPES, DEFAULT_SUB_TYPE,
+  SUB_TYPES, DEFAULT_SUB_TYPE, TYPE_TEMPLATES,
 } from '../store/useConfig'
+import KanbanBoard from '../components/pages/KanbanBoard'
+import FunnelPage from '../components/pages/FunnelPage'
+import SimulationPage from '../components/pages/SimulationPage'
+import CohortPage from '../components/pages/CohortPage'
 import { useTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
@@ -819,9 +823,11 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
    - 호버 ×: 탭 삭제
    - + 탭 추가 버튼 (추가 후 자동 이동 없음)
 ══════════════════════════════════════════ */
-function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef }) {
+function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef, subType = 'report' }) {
   const [addingTab, setAddingTab] = useState(false)
   const [newLabel, setNewLabel] = useState('')
+  const [showTemplates, setShowTemplates] = useState(false) // 템플릿 선택 단계
+  const [pendingLabel, setPendingLabel] = useState('')       // 이름 확정 후 대기
 
   /* 외부(빈 상태 버튼 등)에서 탭 추가 폼 열기용 */
   useEffect(() => {
@@ -850,9 +856,24 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
 
   const commitAdd = () => {
     if (!newLabel.trim()) { setAddingTab(false); return }
-    onAdd(newLabel.trim())
-    setAddingTab(false)
-    setNewLabel('')
+    const templates = TYPE_TEMPLATES[subType]
+    if (templates && templates.length > 0 && subType !== 'report') {
+      // 비-report: 이름 확정 후 템플릿 선택
+      setPendingLabel(newLabel.trim())
+      setShowTemplates(true)
+      setAddingTab(false)
+      setNewLabel('')
+    } else {
+      onAdd(newLabel.trim())
+      setAddingTab(false)
+      setNewLabel('')
+    }
+  }
+
+  const handleTemplateSelect = (templateId) => {
+    onAdd(pendingLabel, templateId)
+    setShowTemplates(false)
+    setPendingLabel('')
   }
 
   const commitRename = () => {
@@ -972,6 +993,49 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
           {rightSlot}
         </div>
       )}
+
+      {/* 템플릿 선택 팝오버 (비-report 타입) */}
+      {showTemplates && (() => {
+        const templates = TYPE_TEMPLATES[subType] || []
+        const typeInfo = SUB_TYPES[subType]
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => { setShowTemplates(false); setPendingLabel('') }}>
+            <div onClick={e => e.stopPropagation()}
+              className={`rounded-2xl border w-full max-w-md p-5
+              ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${typeInfo?.colorClasses?.badge || ''}`}>
+                    {typeInfo?.icon} {typeInfo?.label}
+                  </span>
+                  <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+                    "{pendingLabel}" 템플릿 선택
+                  </p>
+                </div>
+                <button onClick={() => { setShowTemplates(false); setPendingLabel('') }}
+                  className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-400 hover:bg-slate-100'}`}>
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {templates.map(tpl => (
+                  <button key={tpl.id} onClick={() => handleTemplateSelect(tpl.id)}
+                    className={`p-3.5 rounded-xl border text-left transition-all
+                    ${dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/50'
+                          : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
+                    </div>
+                    <p className={`text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>
+                    <p className={`text-[10px] mt-1.5 font-mono ${dark ? 'text-slate-600' : 'text-slate-300'}`}>{tpl.preview}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -1007,6 +1071,7 @@ function getFilteredWidgetMeta(subType) {
 /* ── 구 포맷 → slots 배열로 정규화 ── */
 function normalizeDashboard(d) {
   if (!d) return { slots: [] }
+  if (d.type && d.type !== 'report') return d   // 비-report 타입은 그대로 반환
   if (Array.isArray(d.slots)) return d
   // 구 템플릿 포맷 마이그레이션
   const tpl = TEMPLATES[d.template]
@@ -1519,8 +1584,8 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   }, [rawData, filterByDate, fieldMap])
 
   /* 탭 추가 — 자동 이동 없음 */
-  const handleAddTab = (label) => {
-    tabsConfig?.addTab(label)
+  const handleAddTab = (label, templateId = null) => {
+    tabsConfig?.addTab(label, templateId)
     // setActiveTabId 호출하지 않음 — 탭설정 페이지에서 확인
   }
 
@@ -1556,8 +1621,38 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         onReorder={(from, to) => tabsConfig?.reorderTabs?.(from, to)}
         dark={dark}
         addRef={tabBarAddRef}
+        subType={subType}
         rightSlot={activeTab ? (
-          editMode ? (
+          subType === 'kanban' ? (
+            /* 칸반: 항상 인터랙티브, 저장 버튼만 */
+            <button onClick={handleSave}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
+                ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+              <Check size={12} /> {saved ? '저장됨' : '저장'}
+            </button>
+          ) : subType !== 'report' ? (
+            /* 시뮬레이션/퍼널/코호트: 편집 + 저장 */
+            editMode ? (
+              <>
+                <button onClick={() => { setEditMode(false) }}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
+                    ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                  닫기
+                </button>
+                <button onClick={() => { handleSave(); setEditMode(false) }}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
+                    ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                  <Check size={12} /> {saved ? '저장됨' : '저장'}
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setEditMode(true)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                <Settings2 size={12} /> 설정
+              </button>
+            )
+          ) : editMode ? (
             <>
               <button onClick={() => setShowAdd(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
@@ -1595,19 +1690,55 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
               ⚠️ 데이터 조회 오류 ({tableName}): {error}
             </div>
           )}
-          <DashboardGrid
-            key={activeTab.id}
-            tabId={activeTab.id}
-            dashboard={dashboard}
-            setDashboard={setDashboard}
-            data={data}
-            dark={dark}
-            editMode={editMode}
-            showAdd={showAdd}
-            onOpenAdd={() => setShowAdd(true)}
-            onCloseAdd={() => setShowAdd(false)}
-            subType={subType}
-          />
+          {subType === 'kanban' ? (
+            <KanbanBoard
+              key={activeTab.id}
+              dashboard={dashboard}
+              setDashboard={setDashboard}
+              dark={dark}
+            />
+          ) : subType === 'funnel' ? (
+            <FunnelPage
+              key={activeTab.id}
+              dashboard={dashboard}
+              setDashboard={setDashboard}
+              data={data}
+              dark={dark}
+              editMode={editMode}
+            />
+          ) : subType === 'simulation' ? (
+            <SimulationPage
+              key={activeTab.id}
+              dashboard={dashboard}
+              setDashboard={setDashboard}
+              data={data}
+              dark={dark}
+              editMode={editMode}
+            />
+          ) : subType === 'cohort' ? (
+            <CohortPage
+              key={activeTab.id}
+              dashboard={dashboard}
+              setDashboard={setDashboard}
+              data={data}
+              dark={dark}
+              editMode={editMode}
+            />
+          ) : (
+            <DashboardGrid
+              key={activeTab.id}
+              tabId={activeTab.id}
+              dashboard={dashboard}
+              setDashboard={setDashboard}
+              data={data}
+              dark={dark}
+              editMode={editMode}
+              showAdd={showAdd}
+              onOpenAdd={() => setShowAdd(true)}
+              onCloseAdd={() => setShowAdd(false)}
+              subType={subType}
+            />
+          )}
         </div>
       ) : (
         /* 빈 상태 — 클릭하면 탭 추가 폼 오픈 */

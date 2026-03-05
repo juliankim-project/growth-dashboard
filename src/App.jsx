@@ -83,9 +83,10 @@ function Dashboard({ dark, setDark, user, signOut }) {
   }, [nav.section, nav.sub, nav.l3sub, cfg.config.l3subs])
 
   /* ── tabsConfig 생성 헬퍼 (l3sub 지원) ── */
+  const subType = cfg.getSubType(nav.section, nav.sub)
   const makeTabsConfig = (section, sub, l3sub = null) => ({
     tabs: cfg.getL3Tabs(section, sub, l3sub),
-    addTab: (label) => cfg.addL3Tab(section, sub, label, l3sub),
+    addTab: (label, templateId) => cfg.addL3Tab(section, sub, label, l3sub, subType, templateId),
     removeTab: (tabId) => cfg.removeL3Tab(section, sub, tabId, l3sub),
     renameTab: (tabId, label) => cfg.renameL3Tab(section, sub, tabId, label, l3sub),
     reorderTabs: (fromIdx, toIdx) => cfg.reorderL3Tabs(section, sub, fromIdx, toIdx, l3sub),
@@ -156,7 +157,6 @@ function Dashboard({ dark, setDark, user, signOut }) {
   } else {
     /* Overview · Marketing · Product · 커스텀 서브탭 → 모두 CustomDashboard */
     const subDataSource = cfg.getSubDataSource(nav.section, nav.sub)
-    const subType = cfg.getSubType(nav.section, nav.sub)
     PageContent = (
       <CustomDashboard
         key={key}
