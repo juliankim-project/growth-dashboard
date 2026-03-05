@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { Table2, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
 
-const TABLES = ['marketing_data']
+const TABLES = ['marketing_data', 'product_revenue_raw']
 
 export default function Tables({ dark }) {
   const [tables, setTables]   = useState({}) // { tableName: { count, columns, sample } }
