@@ -15,6 +15,7 @@ export const DEFAULT_CONFIG = {
   l3subs: {},  // { 'section.sub': [{id, label}] }  ← 새 L3 사이드바 서서브
   deletedBuiltinSubs: {},  // { 'overview': ['dashboard'], 'product': ['funnel'] }
   subDataSources: {},  // { 'section.sub': { table, fieldMap: { metricId: 'colName' } } }
+  subTypes: {},  // { 'section.sub': 'report' | 'simulation' | 'funnel' | 'cohort' }
   /* ── 앱 설정 ── */
   projectName: 'Growth HQ',
   logoUrl: null,      // base64 이미지 or null
@@ -99,6 +100,74 @@ export const WIDGET_TYPES = [
 ]
 
 /* ──────────────────────────────────────────
+   서브탭 타입 (L2 용도별 카테고리)
+─────────────────────────────────────────── */
+export const SUB_TYPES = {
+  report: {
+    id: 'report',
+    label: '리포트',
+    icon: '📊',
+    desc: 'KPI, 차트, 테이블 기반 리포트',
+    colorClasses: {
+      badge:     'bg-indigo-500/15 text-indigo-400',
+      badgeLight:'bg-indigo-50 text-indigo-600',
+      dot:       'bg-indigo-400',
+      btnActive: 'bg-indigo-600 text-white',
+      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-indigo-500/10',
+      btnIdleLight: 'bg-slate-50 text-slate-500 hover:bg-indigo-50',
+    },
+    widgetTypes: ['kpi', 'timeseries', 'bar', 'donut', 'table'],
+  },
+  simulation: {
+    id: 'simulation',
+    label: '시뮬레이션',
+    icon: '🎯',
+    desc: '목표 설정, 예산 배분, 시나리오 비교',
+    colorClasses: {
+      badge:     'bg-amber-500/15 text-amber-400',
+      badgeLight:'bg-amber-50 text-amber-600',
+      dot:       'bg-amber-400',
+      btnActive: 'bg-amber-600 text-white',
+      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-amber-500/10',
+      btnIdleLight: 'bg-slate-50 text-slate-500 hover:bg-amber-50',
+    },
+    widgetTypes: ['kpi', 'timeseries', 'bar', 'table'],
+  },
+  funnel: {
+    id: 'funnel',
+    label: '퍼널',
+    icon: '🔻',
+    desc: '단계별 전환율 퍼널 시각화',
+    colorClasses: {
+      badge:     'bg-emerald-500/15 text-emerald-400',
+      badgeLight:'bg-emerald-50 text-emerald-600',
+      dot:       'bg-emerald-400',
+      btnActive: 'bg-emerald-600 text-white',
+      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-emerald-500/10',
+      btnIdleLight: 'bg-slate-50 text-slate-500 hover:bg-emerald-50',
+    },
+    widgetTypes: ['kpi', 'bar', 'table'],
+  },
+  cohort: {
+    id: 'cohort',
+    label: '코호트',
+    icon: '🔷',
+    desc: '코호트/리텐션 분석',
+    colorClasses: {
+      badge:     'bg-violet-500/15 text-violet-400',
+      badgeLight:'bg-violet-50 text-violet-600',
+      dot:       'bg-violet-400',
+      btnActive: 'bg-violet-600 text-white',
+      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-violet-500/10',
+      btnIdleLight: 'bg-slate-50 text-slate-500 hover:bg-violet-50',
+    },
+    widgetTypes: ['kpi', 'timeseries', 'table'],
+  },
+}
+
+export const DEFAULT_SUB_TYPE = 'report'
+
+/* ──────────────────────────────────────────
    지표 목록
    group: 'metric' = 원시 지표 / 'rate' = 단가·비율 파생지표
 ─────────────────────────────────────────── */
@@ -162,6 +231,7 @@ const OLD_TABLE_NAMES = new Set([
 
 function migrateConfig(raw) {
   const merged = { ...DEFAULT_CONFIG, ...raw }
+  if (!merged.subTypes) merged.subTypes = {}
   if (!merged.subDataSources) return merged
   let changed = false
   const newDS = Object.fromEntries(
@@ -246,6 +316,16 @@ export function useConfig() {
   const isBuiltinSubHidden = (sectionId, subId) =>
     (config.deletedBuiltinSubs[sectionId] || []).includes(subId)
 
+  /* ── L2 서브 타입 ── */
+  const getSubType = (sectionId, subId) =>
+    config.subTypes?.[`${sectionId}.${subId}`] || DEFAULT_SUB_TYPE
+
+  const setSubType = (sectionId, subId, subType) =>
+    persist(prev => ({
+      ...prev,
+      subTypes: { ...(prev.subTypes || {}), [`${sectionId}.${subId}`]: subType },
+    }))
+
   /* ── L2 서브 데이터 소스 ── */
   const getSubDataSource = (sectionId, subId) =>
     config.subDataSources[`${sectionId}.${subId}`] || { table: 'marketing_data', fieldMap: {} }
@@ -288,18 +368,20 @@ export function useConfig() {
         l3tabs: filterOut(prev.l3tabs),
         dashboards: filterOut(prev.dashboards),
         subDataSources: filterOut(prev.subDataSources),
+        subTypes: filterOut(prev.subTypes),
       }
     })
   }
 
   /* ── L2 커스텀 서브탭 ── */
-  const addCustomSub = (sectionId, label) => {
+  const addCustomSub = (sectionId, label, subType = 'report') => {
     const id = `cx_${Date.now()}`
     persist(prev => {
       const cur = prev.customSubs[sectionId] || []
       return {
         ...prev,
         customSubs: { ...prev.customSubs, [sectionId]: [...cur, { id, label }] },
+        subTypes: { ...(prev.subTypes || {}), [`${sectionId}.${id}`]: subType },
       }
     })
     return id
@@ -330,6 +412,8 @@ export function useConfig() {
 
       const ds = { ...prev.subDataSources }
       delete ds[l3Key]
+      const st = { ...(prev.subTypes || {}) }
+      delete st[l3Key]
       return {
         ...prev,
         customSubs: { ...prev.customSubs, [sectionId]: cur.filter(s => s.id !== subId) },
@@ -337,6 +421,7 @@ export function useConfig() {
         l3tabs: l3t,
         l3subs: l3s,
         subDataSources: ds,
+        subTypes: st,
       }
     })
   }
@@ -487,6 +572,7 @@ export function useConfig() {
     getCustomSections, addCustomSection, removeCustomSection,
     addCustomSub, removeCustomSub,
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
+    getSubType, setSubType,
     getSubDataSource, setSubDataSource,
     getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, reorderL3Subs,
     getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, reorderL3Tabs,

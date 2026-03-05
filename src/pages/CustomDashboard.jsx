@@ -3,6 +3,7 @@ import { Settings2, Check, X, Plus, Database, GripVertical } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
+  SUB_TYPES, DEFAULT_SUB_TYPE,
 } from '../store/useConfig'
 import { useTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
@@ -317,7 +318,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
    위젯 에디터 모달 — 3스텝 퍼널
    Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
 ══════════════════════════════════════════ */
-function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
+function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subType = 'report' }) {
   const [step, setStep] = useState(1)
   const [type, setType] = useState(widget.type)
   const [config, setConfig] = useState({ ...widget.config })
@@ -386,18 +387,22 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose }) {
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 min-h-0">
 
           {/* Step 1: 타입 선택 */}
-          {step === 1 && (
-            <div className="grid grid-cols-5 gap-3">
-              {Object.entries(WIDGET_META).map(([id, m]) => (
-                <button key={id} onClick={() => changeType(id)} className={S.typeCard(type === id)}>
-                  <span className="text-2xl">{m.icon}</span>
-                  <span className={`text-[10px] font-semibold leading-tight ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {m.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          {step === 1 && (() => {
+            const filtered = getFilteredWidgetMeta(subType)
+            const cols = Object.keys(filtered).length
+            return (
+              <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${Math.min(cols, 5)}, 1fr)` }}>
+                {Object.entries(filtered).map(([id, m]) => (
+                  <button key={id} onClick={() => changeType(id)} className={S.typeCard(type === id)}>
+                    <span className="text-2xl">{m.icon}</span>
+                    <span className={`text-[10px] font-semibold leading-tight ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {m.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* Step 2: 위젯별 설정 */}
           {step === 2 && (
@@ -991,6 +996,14 @@ const WIDGET_META = {
   table: { icon: '📋', label: '데이터 테이블', desc: '상세 수치 비교' },
 }
 
+/** subType에 허용된 위젯만 필터 */
+function getFilteredWidgetMeta(subType) {
+  const allowed = SUB_TYPES[subType]?.widgetTypes || SUB_TYPES[DEFAULT_SUB_TYPE].widgetTypes
+  return Object.fromEntries(
+    Object.entries(WIDGET_META).filter(([id]) => allowed.includes(id))
+  )
+}
+
 /* ── 구 포맷 → slots 배열로 정규화 ── */
 function normalizeDashboard(d) {
   if (!d) return { slots: [] }
@@ -1016,7 +1029,7 @@ function normalizeDashboard(d) {
 /* ══════════════════════════════════════════
    카드 추가 모달
 ══════════════════════════════════════════ */
-function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
+function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report' }) {
   const [step, setStep] = useState(1)   // 1:타입 선택  2:설정
   const [type, setType] = useState('kpi')
   const [config, setConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
@@ -1091,18 +1104,21 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
         <div className="flex-1 overflow-y-auto p-5 min-h-0">
 
           {/* Step 1: 타입 */}
-          {step === 1 && (
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(WIDGET_META).map(([id, meta]) => (
-                <button key={id} onClick={() => changeType(id)}
-                  className={S.card(type === id)}>
-                  <span className="text-3xl">{meta.icon}</span>
-                  <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
-                  <span className={`text-[10px] leading-tight ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{meta.desc}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {step === 1 && (() => {
+            const filtered = getFilteredWidgetMeta(subType)
+            return (
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(filtered).map(([id, meta]) => (
+                  <button key={id} onClick={() => changeType(id)}
+                    className={S.card(type === id)}>
+                    <span className="text-3xl">{meta.icon}</span>
+                    <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
+                    <span className={`text-[10px] leading-tight ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{meta.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* Step 2: 설정 */}
           {step === 2 && (
@@ -1291,7 +1307,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose }) {
 /* ══════════════════════════════════════════
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd, subType = 'report' }) {
   const [editSlot, setEditSlot] = useState(null)   // 편집 모달 대상 slotId
   const [activeId, setActiveId] = useState(null)   // 드래그 중인 slotId
   const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
@@ -1425,7 +1441,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} />
+        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} subType={subType} />
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
@@ -1437,6 +1453,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
           dark={dark}
           onSave={handleWidgetSave}
           onClose={() => setEditSlot(null)}
+          subType={subType}
         />
       )}
     </div>
@@ -1455,7 +1472,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
      saveDashboard:(dashboard, tabId) => void,
    }
 ══════════════════════════════════════════ */
-export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
+export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource, subType = 'report' }) {
   const tabs = tabsConfig?.tabs || []
 
   /* 활성 탭 */
@@ -1589,6 +1606,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             showAdd={showAdd}
             onOpenAdd={() => setShowAdd(true)}
             onCloseAdd={() => setShowAdd(false)}
+            subType={subType}
           />
         </div>
       ) : (

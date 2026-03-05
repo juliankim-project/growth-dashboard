@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { DEFAULT_SECTIONS, ICON_LIST, Icon } from '../../components/Layout/Sidebar'
-import { METRICS } from '../../store/useConfig'
+import { METRICS, SUB_TYPES, DEFAULT_SUB_TYPE } from '../../store/useConfig'
 import {
   Pencil, Plus, Trash2, Check, X, ChevronRight, ChevronDown,
   LayoutDashboard, LayoutTemplate, Layers, Database, Eye, EyeOff,
@@ -481,6 +481,7 @@ function SubRow({
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
   setSubIcon,
+  getSubType, setSubType,
 }) {
   const [open,    setOpen]    = useState(false)
   const [showDS,  setShowDS]  = useState(false)
@@ -491,6 +492,8 @@ function SubRow({
   const l3Count     = getL3Tabs(sectionId, sub.id).length
   const ds          = getSubDataSource(sectionId, sub.id)
   const hasCustomDS = ds.table !== 'marketing_data' || Object.keys(ds.fieldMap || {}).length > 0
+  const subType     = getSubType?.(sectionId, sub.id) || DEFAULT_SUB_TYPE
+  const typeInfo    = SUB_TYPES[subType]
 
   if (isHidden) {
     /* 숨겨진 빌트인: 흐릿하게 표시 + 복원 버튼 */
@@ -541,6 +544,11 @@ function SubRow({
         />
 
         <div className="flex items-center gap-1.5 ml-auto">
+          {/* 탭 타입 뱃지 */}
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${dark ? typeInfo.colorClasses.badge : typeInfo.colorClasses.badgeLight}`}>
+            {typeInfo.icon} {typeInfo.label}
+          </span>
+
           {/* 데이터 소스 설정 버튼 */}
           <button
             onClick={() => setShowDS(d => !d)}
@@ -604,6 +612,34 @@ function SubRow({
       {/* L3 서서브 + L4 탭 영역 */}
       {open && (
         <>
+          {/* 탭 타입 선택 */}
+          <div className={`ml-10 mr-3 mb-1 px-3 py-2 rounded-lg
+            ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5
+              ${dark ? 'text-slate-600' : 'text-slate-300'}`}>
+              탭 타입
+            </p>
+            <div className="flex gap-1.5 flex-wrap">
+              {Object.values(SUB_TYPES).map(st => (
+                <button key={st.id}
+                  onClick={() => setSubType?.(sectionId, sub.id, st.id)}
+                  className={`flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-lg border transition-colors
+                    ${subType === st.id
+                      ? st.colorClasses.btnActive + ' border-transparent'
+                      : dark
+                        ? 'border-[#252836] ' + st.colorClasses.btnIdle
+                        : 'border-slate-200 ' + st.colorClasses.btnIdleLight}`}
+                >
+                  <span>{st.icon}</span>
+                  <span className="font-medium">{st.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className={`text-[9px] mt-1 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
+              {typeInfo.desc}
+            </p>
+          </div>
+
           {/* L3 서서브 관리 */}
           <L3SubsManager
             sectionId={sectionId}
@@ -651,11 +687,13 @@ function SubRow({
 function AddSubRow({ onAdd, dark }) {
   const [show,  setShow]  = useState(false)
   const [label, setLabel] = useState('')
+  const [subType, setSubType] = useState('report')
 
   const submit = () => {
     if (!label.trim()) return
-    onAdd(label.trim())
+    onAdd(label.trim(), subType)
     setLabel('')
+    setSubType('report')
     setShow(false)
   }
 
@@ -670,20 +708,38 @@ function AddSubRow({ onAdd, dark }) {
   )
 
   return (
-    <div className="flex items-center gap-2 mt-0.5 px-3">
-      <input
-        autoFocus
-        value={label}
-        onChange={e => setLabel(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setShow(false) }}
-        placeholder="탭 이름 입력..."
-        className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none w-40
-          ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-600' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-300'}`}
-      />
-      <button onClick={submit}
-        className="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">추가</button>
-      <button onClick={() => setShow(false)}
-        className={`px-2 py-1.5 text-xs rounded-lg ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>취소</button>
+    <div className="flex flex-col gap-2 mt-0.5 px-3">
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setShow(false); setSubType('report') } }}
+          placeholder="탭 이름 입력..."
+          className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none w-40
+            ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-600' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-300'}`}
+        />
+        <button onClick={submit}
+          className="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">추가</button>
+        <button onClick={() => { setShow(false); setSubType('report') }}
+          className={`px-2 py-1.5 text-xs rounded-lg ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>취소</button>
+      </div>
+      <div className="flex gap-1.5">
+        {Object.values(SUB_TYPES).map(st => (
+          <button key={st.id}
+            onClick={() => setSubType(st.id)}
+            className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border transition-colors
+              ${subType === st.id
+                ? st.colorClasses.btnActive + ' border-transparent'
+                : dark
+                  ? 'border-[#252836] ' + st.colorClasses.btnIdle
+                  : 'border-slate-200 ' + st.colorClasses.btnIdleLight}`}
+          >
+            <span>{st.icon}</span>
+            <span>{st.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -699,6 +755,7 @@ export default function TabSettings({
   getL3Subs, addL3Sub, removeL3Sub, renameL3Sub,
   getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab,
   getSubDataSource, setSubDataSource,
+  getSubType, setSubType,
   customSections = [], addCustomSection, removeCustomSection,
   setSectionIcon, setSubIcon, setL3SubIcon,
 }) {
@@ -948,9 +1005,11 @@ export default function TabSettings({
                     getSubDataSource={getSubDataSource}
                     setSubDataSource={setSubDataSource}
                     setSubIcon={setSubIcon}
+                    getSubType={getSubType}
+                    setSubType={setSubType}
                   />
                 ))}
-                <AddSubRow dark={dark} onAdd={label => onAddSub(section.id, label)} />
+                <AddSubRow dark={dark} onAdd={(label, subType) => onAddSub(section.id, label, subType)} />
               </div>
             )}
           </div>

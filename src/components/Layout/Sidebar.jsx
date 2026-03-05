@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { SUB_TYPES } from '../../store/useConfig'
 import {
   LayoutDashboard, Megaphone, Package, Database,
   Settings, Sun, Moon, BarChart2,
@@ -478,6 +479,13 @@ export default function Sidebar({
                           ) : (
                             <>
                               <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{subLabel}</span>
+                              {(() => {
+                                const stId = config.subTypes?.[`${sec.id}.${sub.id}`]
+                                const stInfo = stId && stId !== 'report' && SUB_TYPES[stId]
+                                return stInfo ? (
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${stInfo.colorClasses.dot}`} title={stInfo.label}/>
+                                ) : null
+                              })()}
                               <button
                                 onClick={e => {
                                   e.stopPropagation()

@@ -103,7 +103,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         config={cfg.config}
         onUpdateSection={cfg.setSectionLabel}
         onUpdateSub={cfg.setSubLabel}
-        onAddSub={(sid, label) => cfg.addCustomSub(sid, label)}
+        onAddSub={(sid, label, subType) => cfg.addCustomSub(sid, label, subType)}
         onRemoveSub={(sid, sub) => {
           cfg.removeCustomSub(sid, sub)
           if (nav.section === sid && nav.sub === sub) {
@@ -132,6 +132,8 @@ function Dashboard({ dark, setDark, user, signOut }) {
           cfg.removeCustomSection(id)
           if (nav.section === id) setNav({ section: 'overview', sub: 'dashboard', l3sub: null })
         }}
+        getSubType={cfg.getSubType}
+        setSubType={cfg.setSubType}
         setSectionIcon={cfg.setSectionIcon}
         setSubIcon={cfg.setSubIcon}
         setL3SubIcon={cfg.setL3SubIcon}
@@ -154,6 +156,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
   } else {
     /* Overview · Marketing · Product · 커스텀 서브탭 → 모두 CustomDashboard */
     const subDataSource = cfg.getSubDataSource(nav.section, nav.sub)
+    const subType = cfg.getSubType(nav.section, nav.sub)
     PageContent = (
       <CustomDashboard
         key={key}
@@ -161,6 +164,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         filterByDate={filterByDate}
         tabsConfig={makeTabsConfig(nav.section, nav.sub, nav.l3sub)}
         subDataSource={subDataSource}
+        subType={subType}
       />
     )
   }
