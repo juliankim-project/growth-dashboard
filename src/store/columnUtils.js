@@ -66,9 +66,31 @@ export function buildTableGroupBy(tableName, columnConfig) {
 
 /* ═══════════════════════════════════════════
    applyComputedColumns — 계산 컬럼 값을 각 row에 추가
-   terms 방식: [{ col, sign, value? }] → 순차 평가
-   col === '__const__' 이면 value 사용 (상수)
+   terms: [{ col, sign, value?, type?, children? }]
+   type === 'group' → 괄호 그룹 (재귀 평가)
+   col === '__const__' → 상수 (value 사용)
    ═══════════════════════════════════════════ */
+function evalTerms(terms, row) {
+  let val = 0
+  ;(terms || []).forEach(term => {
+    let v
+    if (term.type === 'group') {
+      v = evalTerms(term.children, row)
+    } else if (term.col === '__const__') {
+      v = parseFloat(term.value) || 0
+    } else {
+      v = parseFloat(row[term.col]) || 0
+    }
+    switch (term.sign) {
+      case '-': val -= v; break
+      case '*': val *= v; break
+      case '/': val = v !== 0 ? val / v : 0; break
+      default:  val += v; break
+    }
+  })
+  return val
+}
+
 export function applyComputedColumns(rows, tableName, columnConfig) {
   const tCfg = columnConfig?.[tableName]
   const computed = tCfg?.computed
@@ -76,24 +98,9 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
 
   return rows.map(row => {
     const newRow = { ...row }
-
     computed.forEach(cc => {
-      if (!cc.terms || cc.terms.length === 0) { newRow[cc.id] = 0; return }
-      let val = 0
-      cc.terms.forEach(term => {
-        const v = term.col === '__const__'
-          ? (parseFloat(term.value) || 0)
-          : (parseFloat(newRow[term.col]) || 0)
-        switch (term.sign) {
-          case '-': val -= v; break
-          case '*': val *= v; break
-          case '/': val = v !== 0 ? val / v : 0; break
-          default:  val += v; break
-        }
-      })
-      newRow[cc.id] = val
+      newRow[cc.id] = (!cc.terms || cc.terms.length === 0) ? 0 : evalTerms(cc.terms, newRow)
     })
-
     return newRow
   })
 }

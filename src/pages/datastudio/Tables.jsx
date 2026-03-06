@@ -196,6 +196,72 @@ export default function Tables({ dark }) {
     })
   }
 
+  /* 괄호 그룹 추가 */
+  const addGroup = (tableName, ccId) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}) }
+      tCfg.computed = (tCfg.computed || []).map(cc =>
+        cc.id === ccId
+          ? { ...cc, terms: [...cc.terms, { type: 'group', sign: '+', children: [{ col: '', sign: '+' }] }] }
+          : cc
+      )
+      return { ...prev, [tableName]: tCfg }
+    })
+  }
+
+  /* 그룹 내부 term 추가 */
+  const addTermToGroup = (tableName, ccId, groupIdx) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}) }
+      tCfg.computed = (tCfg.computed || []).map(cc => {
+        if (cc.id !== ccId) return cc
+        const terms = cc.terms.map((t, i) =>
+          i === groupIdx && t.type === 'group'
+            ? { ...t, children: [...(t.children || []), { col: '', sign: '+' }] }
+            : t
+        )
+        return { ...cc, terms }
+      })
+      return { ...prev, [tableName]: tCfg }
+    })
+  }
+
+  /* 그룹 내부 term 삭제 */
+  const removeTermFromGroup = (tableName, ccId, groupIdx, childIdx) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}) }
+      tCfg.computed = (tCfg.computed || []).map(cc => {
+        if (cc.id !== ccId) return cc
+        const terms = cc.terms.map((t, i) =>
+          i === groupIdx && t.type === 'group'
+            ? { ...t, children: t.children.filter((_, ci) => ci !== childIdx) }
+            : t
+        )
+        return { ...cc, terms }
+      })
+      debounceSave(tableName, tCfg)
+      return { ...prev, [tableName]: tCfg }
+    })
+  }
+
+  /* 그룹 내부 term 수정 */
+  const updateTermInGroup = (tableName, ccId, groupIdx, childIdx, updates) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}) }
+      tCfg.computed = (tCfg.computed || []).map(cc => {
+        if (cc.id !== ccId) return cc
+        const terms = cc.terms.map((t, i) =>
+          i === groupIdx && t.type === 'group'
+            ? { ...t, children: t.children.map((c, ci) => ci === childIdx ? { ...c, ...updates } : c) }
+            : t
+        )
+        return { ...cc, terms }
+      })
+      debounceSave(tableName, tCfg)
+      return { ...prev, [tableName]: tCfg }
+    })
+  }
+
   /* 즉시 저장 */
   const saveNow = tableName => {
     const cfg = editCfg[tableName]
@@ -383,11 +449,12 @@ export default function Tables({ dark }) {
 
                   <div className="flex flex-col gap-3">
                     {computed.map(cc => {
-                      /* 미리보기 수식 생성 */
+                      /* 미리보기 수식 생성 (괄호 재귀) */
                       const signSymbol = { '+': '+ ', '-': '- ', '*': '× ', '/': '÷ ' }
-                      const preview = cc.terms
-                        .filter(t => t.col)
+                      const buildPv = (terms) => terms
+                        .filter(t => t.type === 'group' ? (t.children || []).some(c => c.col) : t.col)
                         .map(t => {
+                          if (t.type === 'group') return `${signSymbol[t.sign] || '+ '}(${buildPv(t.children || [])})`
                           const label = t.col === '__const__'
                             ? String(t.value ?? '')
                             : (columns[t.col]?.alias || t.col)
@@ -395,6 +462,48 @@ export default function Tables({ dark }) {
                         })
                         .join(' ')
                         .replace(/^\+ /, '')
+                      const preview = buildPv(cc.terms)
+
+                      /* 드롭다운용 헬퍼 */
+                      const visCols = (info?.columns || []).filter(c =>
+                        columns[c]?.visible !== false && !LIKELY_DATE.has(c) && !LIKELY_DIMENSION.has(c))
+                      const ccRefs = computed.filter(o => o.id !== cc.id && o.name)
+
+                      /* 단일 항목 컨트롤 렌더 */
+                      const ctrl = (trm, onUpdate, onRemove, canRemove) => (
+                        <>
+                          <select className={`${sel} w-10 text-center`} value={trm.sign}
+                            onChange={e => onUpdate({ sign: e.target.value })}>
+                            <option value="+">+</option><option value="-">−</option>
+                            <option value="*">×</option><option value="/">÷</option>
+                          </select>
+                          <select className={`${sel} ${trm.col === '__const__' ? 'w-24' : 'flex-1'}`}
+                            value={trm.col}
+                            onChange={e => onUpdate({ col: e.target.value, ...(e.target.value === '__const__' ? { value: trm.value ?? 1 } : {}) })}>
+                            <option value="">컬럼 선택...</option>
+                            <option value="__const__">상수 (직접 입력)</option>
+                            <optgroup label="컬럼">
+                              {visCols.map(c => <option key={c} value={c}>{columns[c]?.alias || c}</option>)}
+                            </optgroup>
+                            {ccRefs.length > 0 && (
+                              <optgroup label="계산 컬럼">
+                                {ccRefs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                              </optgroup>
+                            )}
+                          </select>
+                          {trm.col === '__const__' && (
+                            <input type="number" className={`${inp} w-20 h-7 text-center`}
+                              placeholder="1000" value={trm.value ?? ''}
+                              onChange={e => onUpdate({ value: e.target.value })} />
+                          )}
+                          {canRemove && (
+                            <button onClick={onRemove}
+                              className={`p-0.5 shrink-0 rounded transition-colors ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-300 hover:text-red-400'}`}>
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </>
+                      )
 
                       return (
                         <div key={cc.id}
@@ -427,81 +536,70 @@ export default function Tables({ dark }) {
                             </button>
                           </div>
 
-                          {/* Terms */}
+                          {/* Terms (그룹 지원) */}
                           <div className="flex flex-col gap-1.5 ml-6">
-                            {cc.terms.map((term, idx) => (
-                              <div key={idx} className="flex items-center gap-2">
-                                {/* 부호 */}
-                                <select
-                                  className={`${sel} w-10 text-center`}
-                                  value={term.sign}
-                                  onChange={e => updateTerm(t, cc.id, idx, { sign: e.target.value })}
-                                >
-                                  <option value="+">+</option>
-                                  <option value="-">−</option>
-                                  <option value="*">×</option>
-                                  <option value="/">÷</option>
-                                </select>
-
-                                {/* 컬럼 드롭다운 */}
-                                <select
-                                  className={`${sel} ${term.col === '__const__' ? 'w-24' : 'flex-1'}`}
-                                  value={term.col}
-                                  onChange={e => updateTerm(t, cc.id, idx, { col: e.target.value, ...(e.target.value === '__const__' ? { value: term.value ?? 1 } : {}) })}
-                                >
-                                  <option value="">컬럼 선택...</option>
-                                  <option value="__const__">상수 (직접 입력)</option>
-                                  <optgroup label="컬럼">
-                                    {(info?.columns || [])
-                                      .filter(c => columns[c]?.visible !== false && !LIKELY_DATE.has(c) && !LIKELY_DIMENSION.has(c))
-                                      .map(c => (
-                                        <option key={c} value={c}>{columns[c]?.alias || c}</option>
-                                      ))
-                                    }
-                                  </optgroup>
-                                  {computed.filter(other => other.id !== cc.id && other.name).length > 0 && (
-                                    <optgroup label="계산 컬럼">
-                                      {computed
-                                        .filter(other => other.id !== cc.id && other.name)
-                                        .map(other => (
-                                          <option key={other.id} value={other.id}>{other.name}</option>
-                                        ))
-                                      }
-                                    </optgroup>
+                            {cc.terms.map((term, idx) => {
+                              /* ── 괄호 그룹 ── */
+                              if (term.type === 'group') return (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <select className={`${sel} w-10 text-center mt-2`} value={term.sign}
+                                    onChange={e => updateTerm(t, cc.id, idx, { sign: e.target.value })}>
+                                    <option value="+">+</option><option value="-">−</option>
+                                    <option value="*">×</option><option value="/">÷</option>
+                                  </select>
+                                  <div className={`flex-1 rounded-lg border pl-3 pr-2 py-2 flex flex-col gap-1.5
+                                    ${dark ? 'border-indigo-500/30 bg-indigo-500/5' : 'border-indigo-300/40 bg-indigo-50/50'}`}>
+                                    <span className={`text-[10px] font-bold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>(</span>
+                                    {(term.children || []).map((child, cidx) => (
+                                      <div key={cidx} className="flex items-center gap-2">
+                                        {ctrl(child,
+                                          u => updateTermInGroup(t, cc.id, idx, cidx, u),
+                                          () => removeTermFromGroup(t, cc.id, idx, cidx),
+                                          (term.children || []).length > 1
+                                        )}
+                                      </div>
+                                    ))}
+                                    <button onClick={() => addTermToGroup(t, cc.id, idx)}
+                                      className={`text-[11px] px-2 py-0.5 rounded self-start transition-colors
+                                        ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
+                                      + 항목 추가
+                                    </button>
+                                    <span className={`text-[10px] font-bold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>)</span>
+                                  </div>
+                                  {cc.terms.length > 1 && (
+                                    <button onClick={() => removeTerm(t, cc.id, idx)}
+                                      className={`p-0.5 shrink-0 rounded transition-colors mt-2 ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-300 hover:text-red-400'}`}>
+                                      <Trash2 size={11} />
+                                    </button>
                                   )}
-                                </select>
+                                </div>
+                              )
 
-                                {/* 상수 입력 */}
-                                {term.col === '__const__' && (
-                                  <input
-                                    type="number"
-                                    className={`${inp} w-20 h-7 text-center`}
-                                    placeholder="1000"
-                                    value={term.value ?? ''}
-                                    onChange={e => updateTerm(t, cc.id, idx, { value: e.target.value })}
-                                  />
-                                )}
+                              /* ── 일반 항목 ── */
+                              return (
+                                <div key={idx} className="flex items-center gap-2">
+                                  {ctrl(term,
+                                    u => updateTerm(t, cc.id, idx, u),
+                                    () => removeTerm(t, cc.id, idx),
+                                    cc.terms.length > 1
+                                  )}
+                                </div>
+                              )
+                            })}
 
-                                {/* term 삭제 */}
-                                {cc.terms.length > 1 && (
-                                  <button
-                                    onClick={() => removeTerm(t, cc.id, idx)}
-                                    className={`p-0.5 rounded transition-colors ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-300 hover:text-red-400'}`}
-                                  >
-                                    <Trash2 size={11} />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-
-                            {/* term 추가 */}
-                            <button
-                              onClick={() => addTerm(t, cc.id)}
-                              className={`text-[11px] px-2 py-1 rounded self-start transition-colors
-                                ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}
-                            >
-                              + 항목 추가
-                            </button>
+                            {/* term / 그룹 추가 */}
+                            <div className="flex items-center gap-3">
+                              <button onClick={() => addTerm(t, cc.id)}
+                                className={`text-[11px] px-2 py-1 rounded transition-colors
+                                  ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
+                                + 항목 추가
+                              </button>
+                              <button onClick={() => addGroup(t, cc.id)}
+                                className={`text-[11px] px-2 py-1 rounded transition-colors
+                                  ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
+                                ( ) 그룹 추가
+                              </button>
+                            </div>
                           </div>
 
                           {/* 미리보기 */}
