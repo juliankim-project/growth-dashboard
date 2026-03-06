@@ -300,7 +300,25 @@ export default function DataStudio({ dark }) {
         p_table: selectedTable,
         p_columns: colDefs,
       })
-      if (rpcErr) console.warn('[DataStudio] ensure_table_columns:', rpcErr.message)
+      if (rpcErr) {
+        console.warn('[DataStudio] ensure_table_columns:', rpcErr.message)
+        /* RPC가 없으면 안내 후 중단 */
+        if (rpcErr.message.includes('Could not find the function')) {
+          throw new Error(
+            'ensure_table_columns RPC 함수가 Supabase에 없습니다.\n' +
+            'Supabase SQL Editor에서 해당 함수를 먼저 생성해주세요.'
+          )
+        }
+      }
+
+      /* PostgREST 스키마 캐시 갱신 대기 (새 컬럼 추가 시) */
+      const hasNewCols = colDefs.some(d =>
+        typeof cfg.colMap === 'object' ? !Object.values(cfg.colMap).includes(d.name) : false
+      ) || cfg.colMap === 'auto'
+      if (!rpcErr && hasNewCols) {
+        setProgress(5)
+        await new Promise(r => setTimeout(r, 2000))
+      }
 
       const rawRows = parsed.rows.map(row => {
         const obj = {}
