@@ -83,50 +83,50 @@ export default function Tables({ dark }) {
 
   /* 테이블 열 때 columnConfig 로드 / 자동 초기화 */
   const toggle = t => {
-    setOpen(o => {
-      const next = { ...o, [t]: !o[t] }
-      if (next[t] && !editCfg[t]) {
-        const existing = getColumnConfig(t)
-        const info = tables[t]
-        if (info && (!existing.columns || Object.keys(existing.columns).length === 0)) {
-          const seed = t === 'marketing_data' ? MARKETING_SEED_CONFIG
-                     : t === 'product_revenue_raw' ? PRODUCT_SEED_CONFIG
-                     : null
-          const columns = {}
-          const dimensionColumns = seed ? [...(seed.dimensionColumns || [])] : []
+    const willOpen = !open[t]
+    setOpen(o => ({ ...o, [t]: willOpen }))
+
+    /* 열릴 때 editCfg에 아직 로컬 복사본이 없으면 초기화 */
+    if (willOpen && !editCfg[t]) {
+      const existing = getColumnConfig(t)
+      const info = tables[t]
+      if (info && (!existing.columns || Object.keys(existing.columns).length === 0)) {
+        const seed = t === 'marketing_data' ? MARKETING_SEED_CONFIG
+                   : t === 'product_revenue_raw' ? PRODUCT_SEED_CONFIG
+                   : null
+        const columns = {}
+        const dimensionColumns = seed ? [...(seed.dimensionColumns || [])] : []
+        info.columns.forEach(col => {
+          if (seed?.columns?.[col]) {
+            columns[col] = { ...seed.columns[col] }
+          } else {
+            columns[col] = autoDetect(col)
+            if (!seed && LIKELY_DIMENSION.has(col)) dimensionColumns.push(col)
+          }
+        })
+        const init = {
+          columns,
+          dimensionColumns,
+          computed: seed?.computed || [],
+          ...(seed?.displayName ? { displayName: seed.displayName } : {}),
+        }
+        setEditCfg(prev => ({ ...prev, [t]: init }))
+        setColumnConfig(t, init)
+      } else {
+        const merged = { ...existing, columns: { ...(existing.columns || {}) } }
+        let dirty = false
+        if (info) {
           info.columns.forEach(col => {
-            if (seed?.columns?.[col]) {
-              columns[col] = { ...seed.columns[col] }
-            } else {
-              columns[col] = autoDetect(col)
-              if (!seed && LIKELY_DIMENSION.has(col)) dimensionColumns.push(col)
+            if (!merged.columns[col]) {
+              merged.columns[col] = autoDetect(col)
+              dirty = true
             }
           })
-          const init = {
-            columns,
-            dimensionColumns,
-            computed: seed?.computed || [],
-            ...(seed?.displayName ? { displayName: seed.displayName } : {}),
-          }
-          setEditCfg(prev => ({ ...prev, [t]: init }))
-          setColumnConfig(t, init)
-        } else {
-          const merged = { ...existing, columns: { ...(existing.columns || {}) } }
-          let dirty = false
-          if (info) {
-            info.columns.forEach(col => {
-              if (!merged.columns[col]) {
-                merged.columns[col] = autoDetect(col)
-                dirty = true
-              }
-            })
-          }
-          setEditCfg(prev => ({ ...prev, [t]: merged }))
-          if (dirty) setColumnConfig(t, merged)
         }
+        setEditCfg(prev => ({ ...prev, [t]: merged }))
+        if (dirty) setColumnConfig(t, merged)
       }
-      return next
-    })
+    }
   }
 
   /* 저장 완료 피드백 */

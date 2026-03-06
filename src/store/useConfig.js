@@ -460,6 +460,7 @@ export function useConfig() {
 
   const latestRef = useRef(config)
   const saveTimer = useRef(null)
+  const lastPersistTs = useRef(0)        // Realtime 자기 에코 방지용 타임스탬프
   useEffect(() => { latestRef.current = config }, [config])
 
   /* ── Supabase: 초기 로드 (DB 값으로 동기화) ── */
@@ -499,6 +500,8 @@ export function useConfig() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'dashboard_config', filter: `id=eq.${DB_ROW_ID}` },
         (payload) => {
+          /* 자기 에코 방지: 최근 3초 이내에 내가 저장한 경우 무시 */
+          if (Date.now() - lastPersistTs.current < 3000) return
           const remote = payload.new?.config
           if (!remote) return
           const merged = migrateConfig(remote)
@@ -525,6 +528,7 @@ export function useConfig() {
     if (supabase) {
       clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
+        lastPersistTs.current = Date.now()   // Realtime 자기 에코 방지
         supabase
           .from('dashboard_config')
           .upsert({ id: DB_ROW_ID, config: latestRef.current, updated_at: new Date().toISOString() })
