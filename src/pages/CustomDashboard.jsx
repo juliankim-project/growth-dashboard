@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, Database, GripVertical } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -8,7 +8,7 @@ import {
 } from '../store/useConfig'
 import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
-import { useTableData } from '../hooks/useTableData'
+import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
 import KPIWidget from '../components/widgets/KPIWidget'
@@ -276,71 +276,12 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate) => {
 }
 
 /* ══════════════════════════════════════════
-   데이터 소스 셀렉터 (편집모드에서 테이블 선택)
-══════════════════════════════════════════ */
-function DataSourceSelector({ tableName, onChange, dark }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(tableName)
-
-  // 일반적으로 사용되는 테이블 예시 (초기값)
-  const KNOWN_TABLES = ['marketing_data']
-
-  const commit = () => {
-    const t = draft.trim()
-    if (t) onChange(t)
-    setEditing(false)
-  }
-
-  if (!editing) return (
-    <button
-      onClick={() => { setDraft(tableName); setEditing(true) }}
-      title="데이터 소스 테이블 변경"
-      className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors
-        ${dark
-          ? 'border-[#252836] text-slate-400 hover:text-indigo-400 hover:border-indigo-500/40'
-          : 'border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-300'}`}
-    >
-      <Database size={11} />
-      <span className="font-mono">{tableName}</span>
-    </button>
-  )
-
-  return (
-    <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5
-      ${dark ? 'border-indigo-500 bg-[#0F1117]' : 'border-indigo-400 bg-white shadow'}`}>
-      <Database size={11} className="text-indigo-400 shrink-0" />
-      <input
-        autoFocus
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
-        list="known-tables"
-        placeholder="테이블명 입력"
-        className={`text-xs outline-none w-36 font-mono bg-transparent
-          ${dark ? 'text-white placeholder:text-slate-500' : 'text-slate-800 placeholder:text-slate-600'}`}
-      />
-      <datalist id="known-tables">
-        {KNOWN_TABLES.map(t => <option key={t} value={t} />)}
-      </datalist>
-      <button onClick={commit}
-        className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-        확인
-      </button>
-      <button onClick={() => setEditing(false)}
-        className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-700'}`}>
-        취소
-      </button>
-    </div>
-  )
-}
-
-/* ══════════════════════════════════════════
    위젯 에디터 모달 — 3스텝 퍼널
    Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
 ══════════════════════════════════════════ */
-function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metrics: metricsProp, groupByOptions, columnConfig }) {
+function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metrics: metricsProp, groupByOptions, columnConfig, availableTables }) {
   const [step, setStep] = useState(1)
-  const selTable = widget.config?._table || 'marketing_data'
+  const [selTable, setSelTable] = useState(widget.config?._table || 'marketing_data')
   const [type, setType] = useState(widget.type)
   const [config, setConfig] = useState({ ...widget.config })
   const [filters, setFilters] = useState(widget.config.filters || {})
@@ -368,6 +309,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
     ([, st]) => st.widgetTypes?.includes(type)
   )?.[0] || 'report'
   const allowedTypes = SUB_TYPES[detectedCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
+  const needsDataForType = { report: true, funnel: true, cohort: true, simulation: false, kanban: false }[detectedCategory]
 
   const S = {
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -469,11 +411,13 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
               ))}
             </div>
           </div>
-          {/* 데이터소스 칩 */}
+          {/* 데이터소스 칩 — 데이터 필요 위젯만 표시 */}
           <div className="flex items-center gap-2">
-            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-              📊 {selTable}
-            </span>
+            {needsDataForType && (
+              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                📊 {getTableDisplayName(selTable, columnConfig)}
+              </span>
+            )}
             <button onClick={onClose}
               className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
               <X size={16} />
@@ -527,6 +471,19 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
           {/* Step 2: 위젯별 설정 */}
           {step === 2 && (
             <>
+              {/* 데이터 소스 변경 (데이터 필요 위젯만) */}
+              {needsDataForType && availableTables && availableTables.length > 1 && (
+                <div>
+                  <p className={`${S.lab} mb-1.5`}>데이터 소스</p>
+                  <select className={S.sel} value={selTable}
+                    onChange={e => setSelTable(e.target.value)}>
+                    {availableTables.map(t => (
+                      <option key={t.id} value={t.id}>{t.displayName || t.id}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {type !== 'kpi' && (
                 <div>
                   <p className={`${S.lab} mb-1.5`}>제목</p>
@@ -803,7 +760,7 @@ function findSnap(value, neighbors, range = SNAP_RANGE) {
   return null
 }
 
-function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeightChange, onConfigUpdate, data, dark, gridRef, tableMetrics }) {
+function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeightChange, onConfigUpdate, dataMap, defaultTable, filterByDate, columnConfig, dark, gridRef }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -890,6 +847,18 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup', onUp)
   }
+
+  /* ── 위젯별 데이터 해석: _table 기반 ── */
+  const widgetTable = slot.config?._table || defaultTable
+  const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
+  const widgetData = useMemo(() => {
+    const filtered = filterByDate ? filterByDate(widgetRawData) : widgetRawData
+    return applyComputedColumns(filtered, widgetTable, columnConfig)
+  }, [widgetRawData, filterByDate, widgetTable, columnConfig])
+  const widgetMetrics = useMemo(
+    () => buildTableMetrics(widgetTable, columnConfig),
+    [widgetTable, columnConfig]
+  )
 
   const widthPct = slot.widthPct ?? 33.33
   const heightPx = slot.heightPx
@@ -982,7 +951,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
         </>
       )}
       <div className={heightPx ? 'h-full overflow-hidden rounded-xl' : ''}>
-        {renderWidget(slot.type, applyWidgetFilters(data, slot.config.filters), slot.config, dark, tableMetrics,
+        {renderWidget(slot.type, applyWidgetFilters(widgetData, slot.config.filters), slot.config, dark, widgetMetrics,
           onConfigUpdate ? (newCfg) => onConfigUpdate(slot.id, newCfg) : undefined)}
       </div>
     </div>
@@ -1419,7 +1388,7 @@ const CATEGORY_META = {
   kanban:     { icon: '📋', label: '칸반',        desc: '작업 관리 칸반 보드' },
 }
 
-function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp, groupByOptions, columnConfig }) {
+function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', filterByDate, onAdd, onClose, columnConfig, availableTables: availableTablesProp }) {
   const [step, setStep] = useState(1)   // 1:카테고리 2:데이터소스(조건부) 3:위젯타입 4:설정
   const [selCategory, setSelCategory] = useState('report')
   const [selTable, setSelTable] = useState('marketing_data')
@@ -1442,36 +1411,15 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
     [selTable, columnConfig]
   )
 
-  /* 사용 가능한 테이블 목록: DB_TABLES + columnConfig에 등록된 테이블들 */
-  const availableTables = useMemo(() => {
-    const seen = new Set()
-    const tables = []
-    // DB_TABLES 기본 포함
-    DB_TABLES.forEach(t => {
-      seen.add(t)
-      const tCfg = columnConfig?.[t]
-      const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
-      const displayName = getTableDisplayName(t, columnConfig)
-      tables.push({
-        id: t,
-        label: displayName + (colCount ? ` · ${colCount}컬럼` : ''),
-        displayName,
-        icon: t === 'marketing_data' ? '📊' : '🏨',
-      })
-    })
-    // columnConfig에만 있는 추가 테이블
-    if (columnConfig) {
-      Object.keys(columnConfig).forEach(t => {
-        if (seen.has(t)) return
-        seen.add(t)
-        const tCfg = columnConfig[t]
-        const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
-        const displayName = getTableDisplayName(t, columnConfig)
-        tables.push({ id: t, label: displayName + (colCount ? ` · ${colCount}컬럼` : ''), displayName, icon: '🏨' })
-      })
-    }
-    return tables
-  }, [columnConfig])
+  /* 사용 가능한 테이블 목록: 부모에서 전달 */
+  const availableTables = availableTablesProp || []
+
+  /* AddWidgetModal 내부 데이터: 선택된 테이블 기반 */
+  const widgetData = useMemo(() => {
+    const raw = dataMap[selTable] || dataMap[defaultTable] || []
+    const filtered = filterByDate ? filterByDate(raw) : raw
+    return applyComputedColumns(filtered, selTable, columnConfig)
+  }, [dataMap, selTable, defaultTable, filterByDate, columnConfig])
 
   /* 카테고리별 허용 위젯 */
   const allowedTypes = SUB_TYPES[selCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
@@ -2031,7 +1979,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
                 <FilterSection
                   filters={filters}
                   groupBy={wConfig.groupBy}
-                  data={data}
+                  data={widgetData}
                   dark={dark}
                   onChange={setFilters}
                   onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
@@ -2073,7 +2021,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
 /* ══════════════════════════════════════════
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd, tableMetrics, tableGroupBy, columnConfig }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, showAdd, onOpenAdd, onCloseAdd, columnConfig, availableTables }) {
   const [editSlot, setEditSlot] = useState(null)   // 편집 모달 대상 slotId
   const [activeId, setActiveId] = useState(null)   // 드래그 중인 slotId
   const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
@@ -2181,8 +2129,10 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
                   onWidthChange={handleWidthChange}
                   onHeightChange={handleHeightChange}
                   onConfigUpdate={handleConfigUpdate}
-                  data={data}
-                  tableMetrics={tableMetrics}
+                  dataMap={dataMap}
+                  defaultTable={defaultTable}
+                  filterByDate={filterByDate}
+                  columnConfig={columnConfig}
                   dark={dark}
                   gridRef={gridRef}
                 />
@@ -2205,38 +2155,51 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
 
           {/* 드래그 중 고스트 카드 */}
           <DragOverlay>
-            {activeSlot && (
-              <div className="rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl"
-                style={{
-                  width: pctToWidth(activeSlot.widthPct ?? 33.33),
-                  ...(activeSlot.type !== 'kpi' && { minHeight: 210 }),
-                }}>
-                {renderWidget(activeSlot.type, applyWidgetFilters(data, activeSlot.config.filters), activeSlot.config, dark, tableMetrics, null)}
-              </div>
-            )}
+            {activeSlot && (() => {
+              const t = activeSlot.config?._table || defaultTable
+              const raw = dataMap[t] || dataMap[defaultTable] || []
+              const d = filterByDate ? filterByDate(raw) : raw
+              const processed = applyComputedColumns(d, t, columnConfig)
+              const m = buildTableMetrics(t, columnConfig)
+              return (
+                <div className="rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl"
+                  style={{
+                    width: pctToWidth(activeSlot.widthPct ?? 33.33),
+                    ...(activeSlot.type !== 'kpi' && { minHeight: 210 }),
+                  }}>
+                  {renderWidget(activeSlot.type, applyWidgetFilters(processed, activeSlot.config.filters), activeSlot.config, dark, m, null)}
+                </div>
+              )
+            })()}
           </DragOverlay>
         </DndContext>
       )}
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} metrics={tableMetrics} groupByOptions={tableGroupBy} columnConfig={columnConfig} />
+        <AddWidgetModal dark={dark} dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
+          onAdd={handleAddSlot} onClose={onCloseAdd} columnConfig={columnConfig} availableTables={availableTables} />
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
-      {editingSlot && (
-        <WidgetEditor
-          slotId={editingSlot.id}
-          widget={{ type: editingSlot.type, config: editingSlot.config }}
-          data={data}
-          dark={dark}
-          onSave={handleWidgetSave}
-          onClose={() => setEditSlot(null)}
-          metrics={tableMetrics}
-          groupByOptions={tableGroupBy}
-          columnConfig={columnConfig}
-        />
-      )}
+      {editingSlot && (() => {
+        const t = editingSlot.config?._table || defaultTable
+        const raw = dataMap[t] || dataMap[defaultTable] || []
+        const d = filterByDate ? filterByDate(raw) : raw
+        const processed = applyComputedColumns(d, t, columnConfig)
+        return (
+          <WidgetEditor
+            slotId={editingSlot.id}
+            widget={{ type: editingSlot.type, config: editingSlot.config }}
+            data={processed}
+            dark={dark}
+            onSave={handleWidgetSave}
+            onClose={() => setEditSlot(null)}
+            columnConfig={columnConfig}
+            availableTables={availableTables}
+          />
+        )
+      })()}
     </div>
   )
 }
@@ -2271,13 +2234,6 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   const [showAdd, setShowAdd] = useState(false)
   const tabBarAddRef = useRef(null)
 
-  const currentTable = dashboard.dataSource?.table || 'marketing_data'
-
-  const handleTableChange = (tableName) => {
-    const n = normalizeDashboard(dashboard)
-    setDashboard({ ...n, dataSource: { ...(n.dataSource || {}), table: tableName } })
-  }
-
   /* 탭 전환 → 대시보드 로드 + 편집 상태 초기화 */
   useEffect(() => {
     if (!activeTab) return
@@ -2288,32 +2244,51 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     setShowAdd(false)
   }, [activeTab?.id])
 
-  /* 데이터 소스: L2 subDataSource.table 우선, 없으면 dashboard.dataSource, 기본값 marketing_data */
-  const tableName = subDataSource?.table
-    || dashboard.dataSource?.table
-    || 'marketing_data'
-  const fieldMap = subDataSource?.fieldMap || {}
+  /* ── 데이터 소스: 위젯 기반 자동 수집 ── */
+  const defaultTable = subDataSource?.table || 'marketing_data'
 
-  const { data: rawData, loading, error } = useTableData(tableName)
-  const data = useMemo(() => {
-    const filtered = filterByDate ? filterByDate(rawData) : rawData
-    const mapped = applyFieldMap(filtered, fieldMap)
-    return applyComputedColumns(mapped, tableName, config.columnConfig)
-  }, [rawData, filterByDate, fieldMap, tableName, config.columnConfig])
+  /* 위젯들이 사용하는 모든 테이블 수집 → 멀티 페치 */
+  const neededTables = useMemo(() => {
+    const norm = normalizeDashboard(dashboard)
+    const tables = new Set()
+    tables.add(defaultTable) // 기본 테이블은 항상 포함
+    ;(norm.slots || []).forEach(s => {
+      const t = s.config?._table
+      if (t) tables.add(t)
+    })
+    return [...tables]
+  }, [dashboard, defaultTable])
 
-  const tableMetrics = useMemo(
-    () => buildTableMetrics(tableName, config.columnConfig),
-    [tableName, config.columnConfig]
-  )
-  const tableGroupBy = useMemo(
-    () => buildTableGroupBy(tableName, config.columnConfig),
-    [tableName, config.columnConfig]
-  )
+  const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables)
+  const errorMsg = Object.entries(errors).map(([t, e]) => `${t}: ${e}`).join(', ')
+
+  /* 사용 가능한 테이블 목록 */
+  const availableTables = useMemo(() => {
+    const seen = new Set()
+    const tables = []
+    DB_TABLES.forEach(t => {
+      seen.add(t)
+      const tCfg = config.columnConfig?.[t]
+      const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
+      const displayName = getTableDisplayName(t, config.columnConfig)
+      tables.push({ id: t, label: displayName + (colCount ? ` · ${colCount}컬럼` : ''), displayName, icon: t === 'marketing_data' ? '📊' : '🏨' })
+    })
+    if (config.columnConfig) {
+      Object.keys(config.columnConfig).forEach(t => {
+        if (seen.has(t)) return
+        seen.add(t)
+        const tCfg = config.columnConfig[t]
+        const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
+        const displayName = getTableDisplayName(t, config.columnConfig)
+        tables.push({ id: t, label: displayName + (colCount ? ` · ${colCount}컬럼` : ''), displayName, icon: '🏨' })
+      })
+    }
+    return tables
+  }, [config.columnConfig])
 
   /* 탭 추가 — 자동 이동 없음 */
   const handleAddTab = (label, templateId = null) => {
     tabsConfig?.addTab(label, templateId)
-    // setActiveTabId 호출하지 않음 — 탭설정 페이지에서 확인
   }
 
   /* 탭 삭제 */
@@ -2356,7 +2331,6 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
                   bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
                 <Plus size={12} /> 카드 추가
               </button>
-              <DataSourceSelector tableName={currentTable} onChange={handleTableChange} dark={dark} />
               <button onClick={() => { setEditMode(false); setShowAdd(false) }}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
@@ -2381,10 +2355,10 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
       {/* ── 컨텐츠 ── */}
       {activeTab ? (
         <div className="p-5 overflow-y-auto flex-1">
-          {error && (
+          {errorMsg && (
             <div className={`mb-4 px-4 py-2.5 rounded-lg text-xs border
               ${dark ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}>
-              ⚠️ 데이터 조회 오류 ({tableName}): {error}
+              ⚠️ 데이터 조회 오류: {errorMsg}
             </div>
           )}
           <DashboardGrid
@@ -2392,15 +2366,16 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             tabId={activeTab.id}
             dashboard={dashboard}
             setDashboard={setDashboard}
-            data={data}
+            dataMap={rawDataMap}
+            defaultTable={defaultTable}
+            filterByDate={filterByDate}
             dark={dark}
             editMode={editMode}
             showAdd={showAdd}
             onOpenAdd={() => setShowAdd(true)}
             onCloseAdd={() => setShowAdd(false)}
-            tableMetrics={tableMetrics}
-            tableGroupBy={tableGroupBy}
             columnConfig={config.columnConfig}
+            availableTables={availableTables}
           />
         </div>
       ) : (

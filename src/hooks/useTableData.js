@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { fetchAll, supabase } from '../lib/supabase'
 
 /**
@@ -39,4 +39,64 @@ export function useTableData(tableName = 'marketing_data') {
   }, [tableName])
 
   return { data, loading, error }
+}
+
+/**
+ * 여러 테이블 동시 조회 훅
+ * tableNames 배열이 바뀌면 자동으로 재조회
+ * 반환: { dataMap: { tableName: rows[] }, loading, errors: { tableName: msg } }
+ */
+export function useMultiTableData(tableNames = []) {
+  const [dataMap,  setDataMap]  = useState({})
+  const [loading,  setLoading]  = useState(true)
+  const [errors,   setErrors]   = useState({})
+  const prevKeyRef = useRef('')
+
+  // 안정적 키: 정렬된 유니크 테이블 목록
+  const uniqueTables = [...new Set(tableNames.filter(Boolean))].sort()
+  const key = uniqueTables.join(',')
+
+  useEffect(() => {
+    if (!supabase) {
+      setErrors({ _global: 'Supabase 환경변수가 설정되지 않았습니다' })
+      setLoading(false)
+      return
+    }
+    if (uniqueTables.length === 0) {
+      setDataMap({})
+      setErrors({})
+      setLoading(false)
+      return
+    }
+
+    // 이전과 동일한 테이블 세트면 다시 조회하지 않음
+    if (key === prevKeyRef.current) return
+    prevKeyRef.current = key
+
+    let cancelled = false
+    setLoading(true)
+
+    Promise.all(
+      uniqueTables.map(t =>
+        fetchAll(t)
+          .then(rows => ({ table: t, rows, error: null }))
+          .catch(err => ({ table: t, rows: [], error: err.message }))
+      )
+    ).then(results => {
+      if (cancelled) return
+      const map = {}
+      const errs = {}
+      results.forEach(r => {
+        map[r.table] = r.rows
+        if (r.error) errs[r.table] = r.error
+      })
+      setDataMap(map)
+      setErrors(errs)
+      setLoading(false)
+    })
+
+    return () => { cancelled = true }
+  }, [key])
+
+  return { dataMap, loading, errors }
 }
