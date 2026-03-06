@@ -64,38 +64,31 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
   /* 디멘전 라벨 헬퍼 */
   const dimLabel = (dim) => getColumnLabel(dim, tCfg?.columns?.[dim])
 
-  /* 캐스케이딩 데이터: 각 디멘전마다 이전 디멘전 필터 적용 */
-  const dimStates = dimCols.map((dim, idx) => {
+  /* 크로스 필터: 각 디멘전의 옵션을 다른 디멘전 선택값으로 필터 (모든 디멘전 동시 표시) */
+  const dimStates = dimCols.map((dim) => {
     let filtered = data
-    for (let i = 0; i < idx; i++) {
-      const prevDim = dimCols[i]
-      const prevSel = filters[prevDim] || []
-      if (prevSel.length > 0) {
-        filtered = filtered.filter(r => prevSel.includes(r[prevDim]))
+    dimCols.forEach(otherDim => {
+      if (otherDim === dim) return
+      const sel = filters[otherDim] || []
+      if (sel.length > 0) {
+        filtered = filtered.filter(r => sel.includes(r[otherDim]))
       }
-    }
+    })
     const opts = [...new Set(filtered.map(r => r[dim]).filter(Boolean))].sort()
     const sel = filters[dim] || []
-    const show = idx === 0 || ((filters[dimCols[idx - 1]] || []).length > 0 && opts.length > 0)
-    return { key: dim, label: dimLabel(dim), opts, sel, show }
+    return { key: dim, label: dimLabel(dim), opts, sel, show: opts.length > 0 }
   })
 
   const COLS = dimStates.filter(d => d.show)
 
-  /* 이벤트 핸들러 — 동적 캐스케이딩 리셋 */
+  /* 이벤트 핸들러 — 독립 필터 (캐스케이딩 리셋 없음) */
   const toggle = (dim, val) => {
     const cur = filters[dim] || []
     const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
-    const dimIdx = dimCols.indexOf(dim)
-    const reset = {}
-    dimCols.slice(dimIdx + 1).forEach(d => { reset[d] = [] })
-    onChange({ ...filters, [dim]: next, ...reset })
+    onChange({ ...filters, [dim]: next })
   }
   const clearDim = (dim) => {
-    const dimIdx = dimCols.indexOf(dim)
-    const reset = {}
-    dimCols.slice(dimIdx).forEach(d => { reset[d] = [] })
-    onChange({ ...filters, ...reset })
+    onChange({ ...filters, [dim]: [] })
   }
 
   const activeCount = dimStates.reduce((sum, d) => sum + d.sel.length, 0)

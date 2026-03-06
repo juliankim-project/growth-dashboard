@@ -63,13 +63,18 @@ export function useDateRange() {
 
   /**
    * data 배열을 dateRange 기준으로 필터링
-   * date 컬럼: 'YYYY-MM-DD' 형식 (구버전 'Event Date' fallback 포함)
+   * 다양한 날짜 컬럼 자동 감지 (테이블마다 날짜 컬럼명이 다를 수 있음)
    */
   const filterByDate = useCallback((data) => {
     const { start, end } = state
-    if (!start || !end || !Array.isArray(data)) return data
+    if (!start || !end || !Array.isArray(data) || data.length === 0) return data
+    const DATE_FIELDS = ['date', 'Event Date', 'reservation_date', 'check_in_date', 'check_in', 'reserved_at', 'created_at', 'updated_at']
+    /* 첫 행에서 사용 가능한 날짜 컬럼 결정 (매번 탐색 방지) */
+    const row0 = data[0]
+    const dateCol = DATE_FIELDS.find(f => row0[f] != null)
+    if (!dateCol) return data  /* 날짜 컬럼 없으면 필터 건너뜀 */
     return data.filter(r => {
-      const d = (r['date'] || r['Event Date'])?.slice(0, 10)
+      const d = String(r[dateCol] || '').slice(0, 10)
       return d && d >= start && d <= end
     })
   }, [state])
