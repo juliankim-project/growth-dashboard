@@ -62,11 +62,16 @@ export function fmtMetric(metricId, value, metricsOverride) {
   return fmtNum(value)
 }
 
-/* 파생지표 계산 (그룹/일별 공통) — row에 기반 지표가 누적된 상태에서 호출 */
+/* 파생지표 계산 (그룹/일별 공통) — row에 기반 지표가 누적된 상태에서 호출
+   legacy ID(cost, impr...) + 동적 컬럼명(spend, impressions...) 모두 지원 */
 function calcDerived(row, metrics) {
-  const c = row.cost || 0, rv = row.revenue || 0
-  const im = row.impr || 0, cl = row.clicks || 0
-  const vc = row.view_content || 0, sg = row.signup || 0, cv = row.conv || 0
+  const c  = row.cost   ?? row.spend       ?? 0
+  const rv = row.revenue ?? 0
+  const im = row.impr   ?? row.impressions ?? 0
+  const cl = row.clicks  ?? 0
+  const vc = row.view_content ?? 0
+  const sg = row.signup ?? row.signups     ?? 0
+  const cv = row.conv   ?? row.purchases   ?? 0
   if (metrics.includes('roas'))     row.roas     = c  > 0  ? rv / c        : 0
   if (metrics.includes('ctr'))      row.ctr      = im > 0  ? (cl / im) * 100  : 0
   if (metrics.includes('cpm'))      row.cpm      = im > 0  ? (c  / im) * 1000 : 0
@@ -78,10 +83,13 @@ function calcDerived(row, metrics) {
 /* 그룹핑 (SUM / COUNT / AVG 지원) */
 export function groupData(data, groupByField, metrics, metricsOverride) {
   const mList = metricsOverride || METRICS
-  /* 파생지표 계산용 기반 지표를 항상 누적 — 동적 메트릭에는 파생 없음 */
-  const hasDerived = mList === METRICS
+  /* 파생지표가 있으면 기반 지표도 함께 누적 (legacy + 동적 모두 지원) */
+  const hasDerived = metrics.some(mid => {
+    const m = mList.find(x => x.id === mid)
+    return m?.derived
+  })
   const allAccum = hasDerived
-    ? [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+    ? [...new Set([...metrics, ...mList.filter(m => !m.derived && m.field).map(m => m.id)])]
     : metrics
 
   /* 메트릭별 agg 타입 캐시 (매 행 lookup 방지) */
@@ -123,9 +131,13 @@ export function groupData(data, groupByField, metrics, metricsOverride) {
 /* 일별 집계 (SUM / COUNT / AVG 지원) */
 export function dailyData(data, metrics, metricsOverride) {
   const mList = metricsOverride || METRICS
-  const hasDerived = mList === METRICS
+  /* 파생지표가 있으면 기반 지표도 함께 누적 */
+  const hasDerived = metrics.some(mid => {
+    const m = mList.find(x => x.id === mid)
+    return m?.derived
+  })
   const allAccum = hasDerived
-    ? [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+    ? [...new Set([...metrics, ...mList.filter(m => !m.derived && m.field).map(m => m.id)])]
     : metrics
 
   /* 메트릭별 agg 타입 캐시 */

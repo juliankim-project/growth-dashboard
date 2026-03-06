@@ -4,13 +4,17 @@ import { METRICS } from '../../store/useConfig'
 import { calcMetric, fmtMetric } from './widgetUtils'
 
 const COLOR_MAP = {
-  /* 지표 */
+  /* 지표 (legacy + dynamic ID 동시 지원) */
   cost:         'text-indigo-500  bg-indigo-500/10',
+  spend:        'text-indigo-500  bg-indigo-500/10',
   impr:         'text-sky-500     bg-sky-500/10',
+  impressions:  'text-sky-500     bg-sky-500/10',
   clicks:       'text-pink-500    bg-pink-500/10',
   view_content: 'text-cyan-500    bg-cyan-500/10',
   signup:       'text-teal-500    bg-teal-500/10',
+  signups:      'text-teal-500    bg-teal-500/10',
   conv:         'text-orange-500  bg-orange-500/10',
+  purchases:    'text-orange-500  bg-orange-500/10',
   revenue:      'text-emerald-500 bg-emerald-500/10',
   installs:     'text-blue-500    bg-blue-500/10',
   /* 단가 */
@@ -21,12 +25,25 @@ const COLOR_MAP = {
   cac:          'text-fuchsia-500 bg-fuchsia-500/10',
   cps:          'text-red-500     bg-red-500/10',
   roas:         'text-purple-500  bg-purple-500/10',
+  /* 프로덕트 메트릭 */
+  payment_amount:     'text-emerald-500  bg-emerald-500/10',
+  original_price:     'text-teal-500     bg-teal-500/10',
+  cc_order_count:     'text-orange-500   bg-orange-500/10',
+  cc_avg_payment:     'text-indigo-500   bg-indigo-500/10',
+  cc_price_per_person:'text-violet-500   bg-violet-500/10',
+  nights:             'text-sky-500      bg-sky-500/10',
+  peoples:            'text-cyan-500     bg-cyan-500/10',
+  lead_time:          'text-amber-500    bg-amber-500/10',
 }
 
 const ICON_MAP = {
-  cost:'₩', impr:'👁', clicks:'🖱', view_content:'📄', signup:'👤',
-  conv:'🛒', revenue:'↑', installs:'📲',
+  cost:'₩', spend:'₩', impr:'👁', impressions:'👁', clicks:'🖱',
+  view_content:'📄', signup:'👤', signups:'👤',
+  conv:'🛒', purchases:'🛒', revenue:'↑', installs:'📲',
   cpm:'₩', cpc:'₩', ctr:'%', cpa_view:'₩', cac:'₩', cps:'₩', roas:'✕',
+  payment_amount:'₩', original_price:'₩',
+  cc_order_count:'#', cc_avg_payment:'₩', cc_price_per_person:'₩',
+  nights:'🌙', peoples:'👥', lead_time:'⏱',
 }
 
 export default function KPIWidget({ data, config, dark, metrics: metricsProp }) {

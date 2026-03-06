@@ -47,16 +47,20 @@ export default function TableWidget({ data, config, dark, metrics: metricsProp }
             {rows.map((row, i) => (
               <tr key={i} className={`border-t transition-colors ${dark ? 'border-[#252836] hover:bg-[#13151C]' : 'border-slate-100 hover:bg-slate-50'}`}>
                 <td className={`${td} font-medium ${dark ? 'text-white' : 'text-slate-700'}`}>{row.name}</td>
-                {metrics.map(mid => (
-                  <td key={mid} className={td}>
-                    {mid === 'roas'
-                      ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${row[mid] >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                          {fmtMetric(mid, row[mid] || 0, metricsProp)}
-                        </span>
-                      : fmtMetric(mid, row[mid] || 0, metricsProp)  /* ROAS raw value >= 2 = 200% = 손익분기점 이상 */
-                    }
-                  </td>
-                ))}
+                {metrics.map(mid => {
+                  const meta = (metricsProp || METRICS).find(x => x.id === mid)
+                  const isRoas = meta?.fmt === 'roas'
+                  return (
+                    <td key={mid} className={td}>
+                      {isRoas
+                        ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(row[mid] || 0) >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                            {fmtMetric(mid, row[mid] || 0, metricsProp)}
+                          </span>
+                        : fmtMetric(mid, row[mid] || 0, metricsProp)
+                      }
+                    </td>
+                  )
+                })}
               </tr>
             ))}
             {rows.length === 0 && (

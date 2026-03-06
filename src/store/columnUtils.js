@@ -38,6 +38,17 @@ export function getTableDisplayName(tableName, columnConfig) {
 /* ═══════════════════════════════════════════
    buildTableMetrics — METRICS 호환 배열 생성
    ═══════════════════════════════════════════ */
+
+/* 마케팅 파생지표 — buildTableMetrics 전용 (순환 import 방지) */
+const MARKETING_DERIVED = [
+  { id: 'roas',     label: 'ROAS',       field: null, fmt: 'roas',     derived: true, group: 'rate' },
+  { id: 'ctr',      label: 'CTR',        field: null, fmt: 'pct',      derived: true, group: 'rate' },
+  { id: 'cpm',      label: 'CPM',        field: null, fmt: 'currency', derived: true, group: 'rate' },
+  { id: 'cpa_view', label: 'CPA(조회)',  field: null, fmt: 'currency', derived: true, group: 'rate' },
+  { id: 'cac',      label: 'CAC',        field: null, fmt: 'currency', derived: true, group: 'rate' },
+  { id: 'cps',      label: 'CPS',        field: null, fmt: 'currency', derived: true, group: 'rate' },
+]
+
 export function buildTableMetrics(tableName, columnConfig) {
   if (!tableName) return []
 
@@ -75,6 +86,15 @@ export function buildTableMetrics(tableName, columnConfig) {
       _computed: true,
     })
   })
+
+  /* 3) 마케팅 테이블 → 파생지표 (ROAS, CTR 등) 자동 포함 */
+  if (tableName === 'marketing_data') {
+    MARKETING_DERIVED.forEach(dm => {
+      if (!metrics.find(x => x.id === dm.id)) {
+        metrics.push({ ...dm })
+      }
+    })
+  }
 
   return metrics
 }
