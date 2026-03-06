@@ -57,6 +57,21 @@ const TABLE_CONFIGS = {
       'has_gift', 'is_extend', 'prohibit_move', 'early_check_in', 'late_check_out',
       'is_long', 'lead_time',
     ]),
+    /* DB 컬럼 타입 (ensure_table_columns RPC에 전달) */
+    colTypes: {
+      'id': 'BIGINT', 'guest_id': 'BIGINT', 'user_id': 'BIGINT',
+      'branch_id': 'INTEGER', 'roomtype_id': 'INTEGER', 'room_id': 'INTEGER', 'channel_id': 'INTEGER',
+      'nights': 'INTEGER', 'peoples': 'INTEGER',
+      'payment_amount': 'NUMERIC', 'original_price': 'NUMERIC',
+      'staypass_discount': 'NUMERIC', 'promo_discount': 'NUMERIC',
+      'coupon_discount_amount': 'NUMERIC', 'point_amount': 'NUMERIC',
+      'has_gift': 'INTEGER', 'is_extend': 'INTEGER', 'prohibit_move': 'INTEGER',
+      'early_check_in': 'INTEGER', 'late_check_out': 'INTEGER',
+      'is_long': 'INTEGER', 'lead_time': 'INTEGER',
+      'reservation_date': 'DATE', 'check_in_date': 'DATE',
+      'check_in': 'TIMESTAMPTZ', 'check_out': 'TIMESTAMPTZ',
+      'reserved_at': 'TIMESTAMPTZ', 'created_at': 'TIMESTAMPTZ', 'updated_at': 'TIMESTAMPTZ',
+    },
     dedupKey: row => String(row.id),
     dateDbCol: 'reservation_date',
     csvDateCol: 'reservationDate',
@@ -231,33 +246,27 @@ export default function DataStudio({ dark }) {
     setUploading(true)
     setProgress(0)
     try {
-      /* 실제 테이블 컬럼 목록 조회 → 존재하는 컬럼만 insert */
-      let dbCols = null
-      if (cfg.colMap === 'auto') {
-        const { data: sample, error: schemaErr } = await supabase
-          .from(selectedTable).select('*').limit(0)
-        if (!schemaErr && sample !== null) {
-          // PostgREST는 빈 배열이지만 columns 정보를 headers에 포함
-          // 대안: limit(1)로 가져와서 키 추출
-          const { data: row1 } = await supabase
-            .from(selectedTable).select('*').limit(1)
-          if (row1 && row1.length > 0) {
-            dbCols = new Set(Object.keys(row1[0]))
-          }
-        }
-      }
-
       const currentColMap = buildColMap(cfg, parsed.headers)
       const currentMatchedCols = Object.keys(currentColMap).filter(c => parsed.headers.includes(c))
+
+      /* auto 매핑 테이블: DB에 없는 컬럼 자동 생성 (ensure_table_columns RPC) */
+      if (cfg.colMap === 'auto') {
+        const colDefs = currentMatchedCols.map(csvCol => {
+          const dbCol = currentColMap[csvCol]
+          return { name: dbCol, type: cfg.colTypes?.[dbCol] || 'TEXT' }
+        })
+        const { error: rpcErr } = await supabase.rpc('ensure_table_columns', {
+          p_table: selectedTable,
+          p_columns: colDefs,
+        })
+        if (rpcErr) console.warn('[DataStudio] ensure_table_columns:', rpcErr.message)
+      }
 
       const rawRows = parsed.rows.map(row => {
         const obj = {}
         currentMatchedCols.forEach(csvCol => {
           const dbCol = currentColMap[csvCol]
-          // DB에 실제 존재하는 컬럼만 포함 (dbCols가 null이면 전부 포함)
-          if (!dbCols || dbCols.has(dbCol)) {
-            obj[dbCol] = toDbValue(dbCol, row[csvCol], cfg.numericCols)
-          }
+          obj[dbCol] = toDbValue(dbCol, row[csvCol], cfg.numericCols)
         })
         return obj
       })
