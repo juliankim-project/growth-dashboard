@@ -1,29 +1,50 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useConfig, MARKETING_SEED_CONFIG } from '../../store/useConfig'
-import { Table2, RefreshCw, ChevronDown, ChevronRight, Eye, EyeOff, Layers, Plus, Trash2, Save, Calculator, Check } from 'lucide-react'
+import { useConfig, MARKETING_SEED_CONFIG, PRODUCT_SEED_CONFIG } from '../../store/useConfig'
+import { getColumnLabel } from '../../store/columnUtils'
+import {
+  Table2, RefreshCw, ChevronDown, ChevronRight,
+  Eye, EyeOff, Plus, Trash2, Save, Calculator, Check, X,
+} from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
 
 export const TABLES = ['marketing_data', 'product_revenue_raw']
 
 /* 숫자형으로 추정되는 컬럼 (auto-detect 용) */
 const LIKELY_HIDDEN = new Set(['id', 'no', 'guest_type', 'guest_id', 'user_id', 'roomtype_id', 'room_id', 'branch_id', 'channel_id', 'room_type2', 'channel_resv_no1', 'channel_resv_no2', 'vehicle_num', 'has_gift', 'gift_memo', 'operator', 'alim_status', 'is_extend', 'prohibit_move', 'is_long'])
-const LIKELY_DIMENSION = new Set(['brand_name', 'branch_name', 'channel_name', 'channel_group', 'room_type_name', 'room_type2', 'status', 'channel', 'campaign', 'ad_group', 'ad_creative', 'content', 'sub_publisher', 'term'])
+const LIKELY_DIMENSION = new Set(['brand_name', 'branch_name', 'channel_name', 'channel_group', 'room_type_name', 'room_type2', 'status', 'channel', 'campaign', 'ad_group', 'ad_creative', 'content', 'sub_publisher', 'term', 'area'])
 const LIKELY_CURRENCY = new Set(['payment_amount', 'original_price', 'staypass_discount', 'promo_discount', 'coupon_discount_amount', 'point_amount', 'spend', 'revenue', 'cpc'])
 const LIKELY_DATE = new Set(['date', 'reservation_date', 'check_in_date', 'check_in', 'check_out', 'reserved_at', 'created_at', 'updated_at'])
 
 function autoDetect(col) {
+  const isDim = LIKELY_DIMENSION.has(col)
+  const isHidden = LIKELY_HIDDEN.has(col) || LIKELY_DATE.has(col)
   return {
     alias: '',
-    visible: !LIKELY_HIDDEN.has(col) && !LIKELY_DATE.has(col),
-    fmt: LIKELY_CURRENCY.has(col) ? 'currency' : 'number',
+    visible: !isHidden,
+    fmt: LIKELY_CURRENCY.has(col) ? 'currency' : LIKELY_DATE.has(col) ? 'date' : isDim ? 'text' : 'number',
+    agg: (isDim || isHidden) ? null : 'sum',
   }
 }
 
 const FMT_OPTIONS = [
-  { value: 'number', label: '숫자' },
-  { value: 'currency', label: '금액' },
+  { value: 'number', label: '#숫자' },
+  { value: 'currency', label: '통화' },
   { value: 'pct', label: '%' },
+  { value: 'text', label: '텍스트' },
+  { value: 'date', label: '날짜' },
+]
+
+const AGG_OPTIONS = [
+  { value: 'sum', label: 'SUM' },
+  { value: 'count', label: 'COUNT' },
+  { value: 'avg', label: 'AVG' },
+]
+
+const CC_TYPE_OPTIONS = [
+  { value: 'formula', label: '수식' },
+  { value: 'count', label: 'COUNT(*)' },
+  { value: 'avg', label: 'AVG(컬럼)' },
 ]
 
 export default function Tables({ dark }) {
@@ -32,7 +53,8 @@ export default function Tables({ dark }) {
   const [loading, setLoading] = useState(true)
   const [open, setOpen]       = useState({})
   const [editCfg, setEditCfg] = useState({}) // { tableName: localCopy }
-  const [saved, setSaved]     = useState({}) // { tableName: true } — 저장 피드백
+  const [saved, setSaved]     = useState({}) // { tableName: true }
+  const [addDimDrop, setAddDimDrop] = useState({}) // { tableName: true } — GroupBy 드롭다운 열림
   const saveTimer = useRef({})
   const savedTimer = useRef({})
 
@@ -67,8 +89,9 @@ export default function Tables({ dark }) {
         const existing = getColumnConfig(t)
         const info = tables[t]
         if (info && (!existing.columns || Object.keys(existing.columns).length === 0)) {
-          // 자동 초기화: 시드 config 또는 DB 컬럼 auto-detect
-          const seed = t === 'marketing_data' ? MARKETING_SEED_CONFIG : null
+          const seed = t === 'marketing_data' ? MARKETING_SEED_CONFIG
+                     : t === 'product_revenue_raw' ? PRODUCT_SEED_CONFIG
+                     : null
           const columns = {}
           const dimensionColumns = seed ? [...(seed.dimensionColumns || [])] : []
           info.columns.forEach(col => {
@@ -86,9 +109,8 @@ export default function Tables({ dark }) {
             ...(seed?.displayName ? { displayName: seed.displayName } : {}),
           }
           setEditCfg(prev => ({ ...prev, [t]: init }))
-          setColumnConfig(t, init) // 즉시 저장
+          setColumnConfig(t, init)
         } else {
-          // 기존 config 로드 + DB에만 있는 새 컬럼 자동 머지
           const merged = { ...existing, columns: { ...(existing.columns || {}) } }
           let dirty = false
           if (info) {
@@ -100,7 +122,7 @@ export default function Tables({ dark }) {
             })
           }
           setEditCfg(prev => ({ ...prev, [t]: merged }))
-          if (dirty) setColumnConfig(t, merged) // 새 컬럼 발견 시 자동 저장
+          if (dirty) setColumnConfig(t, merged)
         }
       }
       return next
@@ -136,15 +158,39 @@ export default function Tables({ dark }) {
     })
   }
 
-  /* 디멘전 토글 */
-  const toggleDim = (tableName, col) => {
+  /* 디멘전 추가 (GroupBy 칩) */
+  const addDim = (tableName, col) => {
     setEditCfg(prev => {
       const tCfg = { ...(prev[tableName] || {}) }
       const dims = [...(tCfg.dimensionColumns || [])]
-      const idx = dims.indexOf(col)
-      if (idx >= 0) dims.splice(idx, 1)
-      else dims.push(col)
+      if (!dims.includes(col)) dims.push(col)
       tCfg.dimensionColumns = dims
+      // 디멘전 추가 시 agg null로
+      tCfg.columns = { ...(tCfg.columns || {}) }
+      tCfg.columns[col] = { ...(tCfg.columns[col] || {}), agg: null }
+      debounceSave(tableName, tCfg)
+      return { ...prev, [tableName]: tCfg }
+    })
+    setAddDimDrop(prev => ({ ...prev, [tableName]: false }))
+  }
+
+  /* 디멘전 제거 */
+  const removeDim = (tableName, col) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}) }
+      tCfg.dimensionColumns = (tCfg.dimensionColumns || []).filter(d => d !== col)
+      // 디멘전 제거 시 agg sum으로 복원
+      tCfg.columns = { ...(tCfg.columns || {}) }
+      tCfg.columns[col] = { ...(tCfg.columns[col] || {}), agg: 'sum' }
+      debounceSave(tableName, tCfg)
+      return { ...prev, [tableName]: tCfg }
+    })
+  }
+
+  /* displayName 업데이트 */
+  const updateDisplayName = (tableName, value) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}), displayName: value }
       debounceSave(tableName, tCfg)
       return { ...prev, [tableName]: tCfg }
     })
@@ -157,6 +203,7 @@ export default function Tables({ dark }) {
       tCfg.computed = [...(tCfg.computed || []), {
         id: 'cc_' + Date.now(),
         name: '',
+        aggType: 'formula',
         terms: [{ col: '', sign: '+' }],
         fmt: 'number',
       }]
@@ -186,7 +233,26 @@ export default function Tables({ dark }) {
     })
   }
 
-  /* 계산 컬럼 term 추가/삭제/수정 */
+  /* 계산 컬럼 타입 변경 */
+  const changeComputedType = (tableName, ccId, newType) => {
+    setEditCfg(prev => {
+      const tCfg = { ...(prev[tableName] || {}) }
+      tCfg.computed = (tCfg.computed || []).map(cc => {
+        if (cc.id !== ccId) return cc
+        if (newType === 'count') {
+          return { ...cc, aggType: 'count', terms: [] }
+        } else if (newType === 'avg') {
+          return { ...cc, aggType: 'avg', terms: [{ col: '', sign: '+' }] }
+        } else {
+          return { ...cc, aggType: undefined, terms: cc.terms?.length ? cc.terms : [{ col: '', sign: '+' }] }
+        }
+      })
+      debounceSave(tableName, tCfg)
+      return { ...prev, [tableName]: tCfg }
+    })
+  }
+
+  /* term 추가/삭제/수정 */
   const addTerm = (tableName, ccId) => {
     setEditCfg(prev => {
       const tCfg = { ...(prev[tableName] || {}) }
@@ -219,7 +285,7 @@ export default function Tables({ dark }) {
     })
   }
 
-  /* 괄호 그룹 추가 */
+  /* 괄호 그룹 관련 */
   const addGroup = (tableName, ccId) => {
     setEditCfg(prev => {
       const tCfg = { ...(prev[tableName] || {}) }
@@ -232,7 +298,6 @@ export default function Tables({ dark }) {
     })
   }
 
-  /* 그룹 내부 term 추가 */
   const addTermToGroup = (tableName, ccId, groupIdx) => {
     setEditCfg(prev => {
       const tCfg = { ...(prev[tableName] || {}) }
@@ -249,7 +314,6 @@ export default function Tables({ dark }) {
     })
   }
 
-  /* 그룹 내부 term 삭제 */
   const removeTermFromGroup = (tableName, ccId, groupIdx, childIdx) => {
     setEditCfg(prev => {
       const tCfg = { ...(prev[tableName] || {}) }
@@ -267,7 +331,6 @@ export default function Tables({ dark }) {
     })
   }
 
-  /* 그룹 내부 term 수정 */
   const updateTermInGroup = (tableName, ccId, groupIdx, childIdx, updates) => {
     setEditCfg(prev => {
       const tCfg = { ...(prev[tableName] || {}) }
@@ -311,7 +374,7 @@ export default function Tables({ dark }) {
 
   /* ── 스타일 ── */
   const card = dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'
-  const sub = dark ? 'text-slate-400' : 'text-slate-700'
+  const sub = dark ? 'text-slate-400' : 'text-slate-500'
   const inp = `text-xs px-2 py-1.5 rounded-lg border outline-none transition-colors
     ${dark ? 'bg-[#13151C] border-[#252836] text-white placeholder:text-slate-600 focus:border-indigo-500'
            : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-500'}`
@@ -321,12 +384,13 @@ export default function Tables({ dark }) {
   if (loading) return <Spinner dark={dark} />
 
   return (
-    <div className="p-6 flex flex-col gap-4 max-w-4xl mx-auto">
+    <div className="p-6 flex flex-col gap-4 max-w-5xl mx-auto">
+      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>테이블 관리</h2>
           <p className={`text-xs mt-0.5 ${sub}`}>
-            컬럼 별칭 · 가시성 · 계산 컬럼 설정
+            컬럼 별칭 · 집계 · GroupBy · 계산 컬럼 설정
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -353,6 +417,7 @@ export default function Tables({ dark }) {
         </div>
       </div>
 
+      {/* 테이블 목록 */}
       {TABLES.map(t => {
         const info    = tables[t]
         const isOpen  = !!open[t]
@@ -360,28 +425,45 @@ export default function Tables({ dark }) {
         const columns = tCfg.columns || {}
         const dims    = new Set(tCfg.dimensionColumns || [])
         const computed = tCfg.computed || []
+        const displayName = tCfg.displayName || ''
 
-        /* 드롭다운에서 선택 가능한 컬럼 목록 */
-        const selectableCols = [
-          ...(info?.columns || []).filter(c => columns[c]?.visible !== false),
-          ...computed.filter(cc => cc.name).map(cc => cc.id),
-        ]
+        /* 디멘전 추가 후보: visible이면서 아직 dims에 없는 컬럼 */
+        const dimCandidates = (info?.columns || []).filter(c =>
+          columns[c]?.visible !== false && !dims.has(c)
+        )
+
+        /* 계산 컬럼 드롭다운용 visible metric 컬럼 (디멘전/날짜 제외) */
+        const visCols = (info?.columns || []).filter(c =>
+          columns[c]?.visible !== false && !LIKELY_DATE.has(c) && !dims.has(c))
 
         return (
           <div key={t} className={`rounded-xl border overflow-hidden ${card}`}>
-            {/* 헤더 */}
+            {/* ─── 테이블 헤더 ─── */}
             <button
               onClick={() => toggle(t)}
               className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors
                 ${dark ? 'hover:bg-[#13151C]' : 'hover:bg-slate-50'}`}
             >
               <Table2 size={16} className="text-indigo-500 shrink-0" />
-              <span className={`font-semibold text-sm flex-1 ${dark ? 'text-white' : 'text-slate-800'}`}>{t}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`font-mono text-sm font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>{t}</span>
+                  {displayName && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full
+                      ${dark ? 'bg-[#252836] text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                      {displayName}
+                    </span>
+                  )}
+                </div>
+              </div>
               {info && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0
                   ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
                   {info.count?.toLocaleString() ?? 0}행
                 </span>
+              )}
+              {saved[t] && (
+                <span className="text-xs text-emerald-500 font-semibold animate-pulse shrink-0">저장됨</span>
               )}
               {info ? (
                 isOpen ? <ChevronDown size={14} className={dark ? 'text-slate-500' : 'text-slate-700'} />
@@ -395,37 +477,94 @@ export default function Tables({ dark }) {
             {isOpen && info && (
               <div className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
 
-                {/* ─── 컬럼 별칭 + 가시성 ─── */}
+                {/* ─── 테이블 표시명 ─── */}
+                <div className={`px-5 py-3 border-b flex items-center gap-3
+                  ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                  <span className={`text-[11px] font-semibold shrink-0 ${sub}`}>표시명</span>
+                  <input
+                    className={`${inp} h-7 flex-1 max-w-xs`}
+                    placeholder="예: 상품 매출"
+                    value={displayName}
+                    onChange={e => updateDisplayName(t, e.target.value)}
+                  />
+                </div>
+
+                {/* ─── GroupBy 칩 섹션 ─── */}
+                <div className={`px-5 py-3 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[11px] font-semibold shrink-0 ${sub}`}>GroupBy</span>
+                    {[...(tCfg.dimensionColumns || [])].map(dim => (
+                      <span key={dim}
+                        className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium
+                          ${dark ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20'
+                                 : 'bg-violet-50 text-violet-600 border border-violet-200'}`}
+                      >
+                        {getColumnLabel(dim, columns[dim])}
+                        <button onClick={() => removeDim(t, dim)}
+                          className="hover:text-red-400 transition-colors ml-0.5">
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                    {/* + 추가 드롭다운 */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setAddDimDrop(prev => ({ ...prev, [t]: !prev[t] }))}
+                        className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full font-medium transition-colors
+                          ${dark ? 'bg-[#252836] text-slate-400 hover:text-white hover:bg-[#2A2D3A]'
+                                 : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200'}`}
+                      >
+                        <Plus size={11} /> 추가
+                      </button>
+                      {addDimDrop[t] && dimCandidates.length > 0 && (
+                        <div className={`absolute left-0 top-full mt-1 z-30 rounded-lg border shadow-lg py-1 max-h-48 overflow-y-auto min-w-[160px]
+                          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
+                          {dimCandidates.map(c => (
+                            <button key={c} onClick={() => addDim(t, c)}
+                              className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors
+                                ${dark ? 'text-slate-300 hover:bg-[#252836]' : 'text-slate-600 hover:bg-slate-50'}`}>
+                              {getColumnLabel(c, columns[c])}
+                              <span className={`ml-1.5 font-mono text-[10px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                {c}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── 컬럼 설정 인라인 테이블 ─── */}
                 <div className={`px-5 py-4 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
                   <p className={`text-xs font-bold mb-3 ${dark ? 'text-white' : 'text-slate-800'}`}>
-                    📋 컬럼 별칭
-                    <span className={`font-normal ml-2 ${sub}`}>대시보드에서 표시될 이름을 설정하세요</span>
+                    컬럼 설정
                   </p>
 
-                  {/* 헤더 */}
-                  <div className={`grid grid-cols-[140px_1fr_36px_36px_70px] gap-2 mb-2 text-[10px] font-semibold ${sub}`}>
-                    <span>DB 컬럼명</span>
-                    <span>표시명</span>
-                    <span className="text-center">보임</span>
-                    <span className="text-center">차원</span>
+                  {/* 테이블 헤더 */}
+                  <div className={`grid grid-cols-[minmax(120px,1fr)_minmax(100px,1fr)_80px_50px_70px] gap-2 mb-1 text-[10px] font-bold uppercase tracking-wide px-2
+                    ${sub}`}>
+                    <span>컬럼명</span>
+                    <span>별칭</span>
                     <span>포맷</span>
+                    <span className="text-center">표시</span>
+                    <span>집계</span>
                   </div>
 
-                  {/* 컬럼 목록 */}
-                  <div className="flex flex-col gap-1">
+                  {/* 컬럼 행들 */}
+                  <div className="flex flex-col">
                     {info.columns.map(col => {
                       const cfg = columns[col] || autoDetect(col)
                       const isDim = dims.has(col)
-                      const isDate = LIKELY_DATE.has(col)
-                      const hidden = cfg.visible === false || isDate
+                      const hidden = cfg.visible === false
 
                       return (
                         <div key={col}
-                          className={`grid grid-cols-[140px_1fr_36px_36px_70px] gap-2 items-center py-1.5 px-2 rounded-lg transition-colors
-                            ${hidden ? (dark ? 'opacity-40' : 'opacity-50') : ''}
+                          className={`grid grid-cols-[minmax(120px,1fr)_minmax(100px,1fr)_80px_50px_70px] gap-2 items-center py-1.5 px-2 rounded-lg transition-colors
+                            ${hidden ? 'opacity-40' : ''}
                             ${dark ? 'hover:bg-[#13151C]' : 'hover:bg-slate-50'}`}
                         >
-                          {/* DB 컬럼명 */}
+                          {/* 컬럼명 */}
                           <span className={`font-mono text-[11px] truncate ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {col}
                           </span>
@@ -438,30 +577,6 @@ export default function Tables({ dark }) {
                             onChange={e => updateCol(t, col, { alias: e.target.value })}
                           />
 
-                          {/* 보임/숨김 */}
-                          <button
-                            onClick={() => updateCol(t, col, { visible: hidden ? true : false })}
-                            className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors
-                              ${hidden
-                                ? dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'
-                                : dark ? 'text-emerald-400' : 'text-emerald-500'
-                              }`}
-                          >
-                            {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-                          </button>
-
-                          {/* 디멘전 */}
-                          <button
-                            onClick={() => toggleDim(t, col)}
-                            className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors
-                              ${isDim
-                                ? dark ? 'text-violet-400' : 'text-violet-500'
-                                : dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'
-                              }`}
-                          >
-                            <Layers size={13} />
-                          </button>
-
                           {/* 포맷 */}
                           <select
                             className={sel}
@@ -472,6 +587,38 @@ export default function Tables({ dark }) {
                               <option key={o.value} value={o.value}>{o.label}</option>
                             ))}
                           </select>
+
+                          {/* 표시 토글 */}
+                          <button
+                            onClick={() => updateCol(t, col, { visible: hidden ? true : false })}
+                            className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors mx-auto
+                              ${hidden
+                                ? dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'
+                                : dark ? 'text-emerald-400' : 'text-emerald-500'
+                              }`}
+                          >
+                            {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+
+                          {/* 집계 */}
+                          {isDim ? (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-center
+                              ${dark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-600'}`}>
+                              dim
+                            </span>
+                          ) : hidden ? (
+                            <span className={`text-[10px] text-center ${sub}`}>-</span>
+                          ) : (
+                            <select
+                              className={sel}
+                              value={cfg.agg || 'sum'}
+                              onChange={e => updateCol(t, col, { agg: e.target.value })}
+                            >
+                              {AGG_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       )
                     })}
@@ -479,11 +626,11 @@ export default function Tables({ dark }) {
                 </div>
 
                 {/* ─── 계산 컬럼 ─── */}
-                <div className={`px-5 py-4 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                <div className={`px-5 py-4 ${dark ? '' : ''}`}>
                   <div className="flex items-center justify-between mb-3">
                     <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
-                      🧮 계산 컬럼
-                      <span className={`font-normal ml-2 ${sub}`}>기존 컬럼 조합으로 새 지표 생성</span>
+                      계산 컬럼
+                      <span className={`font-normal ml-2 ${sub}`}>COUNT / AVG / 수식으로 새 지표 생성</span>
                     </p>
                     <button
                       onClick={() => addComputed(t)}
@@ -497,30 +644,36 @@ export default function Tables({ dark }) {
 
                   {computed.length === 0 && (
                     <p className={`text-xs ${sub} py-2`}>
-                      아직 계산 컬럼이 없습니다. "추가" 버튼을 눌러 생성하세요.
+                      아직 계산 컬럼이 없습니다.
                     </p>
                   )}
 
                   <div className="flex flex-col gap-3">
                     {computed.map(cc => {
-                      /* 미리보기 수식 생성 (괄호 재귀) */
+                      const ccType = cc.aggType === 'count' ? 'count'
+                                   : cc.aggType === 'avg' ? 'avg'
+                                   : 'formula'
+
+                      /* 수식 미리보기 */
                       const signSymbol = { '+': '+ ', '-': '- ', '*': '× ', '/': '÷ ' }
-                      const buildPv = (terms) => terms
-                        .filter(t => t.type === 'group' ? (t.children || []).some(c => c.col) : t.col)
-                        .map(t => {
-                          if (t.type === 'group') return `${signSymbol[t.sign] || '+ '}(${buildPv(t.children || [])})`
-                          const label = t.col === '__const__'
-                            ? String(t.value ?? '')
-                            : (columns[t.col]?.alias || t.col)
-                          return `${signSymbol[t.sign] || '+ '}${label}`
+                      const buildPv = (terms) => (terms || [])
+                        .filter(trm => trm.type === 'group' ? (trm.children || []).some(c => c.col) : trm.col)
+                        .map(trm => {
+                          if (trm.type === 'group') return `${signSymbol[trm.sign] || '+ '}(${buildPv(trm.children || [])})`
+                          const label = trm.col === '__const__'
+                            ? String(trm.value ?? '')
+                            : (columns[trm.col]?.alias || trm.col)
+                          return `${signSymbol[trm.sign] || '+ '}${label}`
                         })
                         .join(' ')
                         .replace(/^\+ /, '')
-                      const preview = buildPv(cc.terms)
 
-                      /* 드롭다운용 헬퍼 */
-                      const visCols = (info?.columns || []).filter(c =>
-                        columns[c]?.visible !== false && !LIKELY_DATE.has(c) && !LIKELY_DIMENSION.has(c))
+                      const preview = ccType === 'count'
+                        ? 'COUNT(*)'
+                        : ccType === 'avg' && cc.terms?.[0]?.col
+                          ? `AVG(${columns[cc.terms[0].col]?.alias || cc.terms[0].col})`
+                          : buildPv(cc.terms)
+
                       const ccRefs = computed.filter(o => o.id !== cc.id && o.name)
 
                       /* 단일 항목 컨트롤 렌더 */
@@ -528,8 +681,8 @@ export default function Tables({ dark }) {
                         <>
                           <select className={`${sel} w-10 text-center`} value={trm.sign}
                             onChange={e => onUpdate({ sign: e.target.value })}>
-                            <option value="+">+</option><option value="-">−</option>
-                            <option value="*">×</option><option value="/">÷</option>
+                            <option value="+">+</option><option value="-">-</option>
+                            <option value="*">x</option><option value="/">÷</option>
                           </select>
                           <select className={`${sel} ${trm.col === '__const__' ? 'w-24' : 'flex-1'}`}
                             value={trm.col}
@@ -564,15 +717,24 @@ export default function Tables({ dark }) {
                           className={`rounded-xl border p-4
                             ${dark ? 'border-[#252836] bg-[#13151C]' : 'border-slate-100 bg-slate-50'}`}
                         >
-                          {/* 이름 + 포맷 + 삭제 */}
+                          {/* 이름 + 타입 + 포맷 + 삭제 */}
                           <div className="flex items-center gap-2 mb-3">
                             <Calculator size={14} className={dark ? 'text-indigo-400' : 'text-indigo-500'} />
                             <input
                               className={`${inp} flex-1 font-semibold`}
-                              placeholder="컬럼명 (예: 최종매출액)"
+                              placeholder="컬럼명 (예: 결제건수)"
                               value={cc.name}
                               onChange={e => updateComputed(t, cc.id, { name: e.target.value })}
                             />
+                            <select
+                              className={`${sel} w-[90px]`}
+                              value={ccType}
+                              onChange={e => changeComputedType(t, cc.id, e.target.value)}
+                            >
+                              {CC_TYPE_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
                             <select
                               className={sel}
                               value={cc.fmt || 'number'}
@@ -590,71 +752,94 @@ export default function Tables({ dark }) {
                             </button>
                           </div>
 
-                          {/* Terms (그룹 지원) */}
-                          <div className="flex flex-col gap-1.5 ml-6">
-                            {cc.terms.map((term, idx) => {
-                              /* ── 괄호 그룹 ── */
-                              if (term.type === 'group') return (
-                                <div key={idx} className="flex items-start gap-2">
-                                  <select className={`${sel} w-10 text-center mt-2`} value={term.sign}
-                                    onChange={e => updateTerm(t, cc.id, idx, { sign: e.target.value })}>
-                                    <option value="+">+</option><option value="-">−</option>
-                                    <option value="*">×</option><option value="/">÷</option>
-                                  </select>
-                                  <div className={`flex-1 rounded-lg border pl-3 pr-2 py-2 flex flex-col gap-1.5
-                                    ${dark ? 'border-indigo-500/30 bg-indigo-500/5' : 'border-indigo-300/40 bg-indigo-50/50'}`}>
-                                    <span className={`text-[10px] font-bold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>(</span>
-                                    {(term.children || []).map((child, cidx) => (
-                                      <div key={cidx} className="flex items-center gap-2">
-                                        {ctrl(child,
-                                          u => updateTermInGroup(t, cc.id, idx, cidx, u),
-                                          () => removeTermFromGroup(t, cc.id, idx, cidx),
-                                          (term.children || []).length > 1
-                                        )}
-                                      </div>
-                                    ))}
-                                    <button onClick={() => addTermToGroup(t, cc.id, idx)}
-                                      className={`text-[11px] px-2 py-0.5 rounded self-start transition-colors
-                                        ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
-                                      + 항목 추가
-                                    </button>
-                                    <span className={`text-[10px] font-bold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>)</span>
-                                  </div>
-                                  {cc.terms.length > 1 && (
-                                    <button onClick={() => removeTerm(t, cc.id, idx)}
-                                      className={`p-0.5 shrink-0 rounded transition-colors mt-2 ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-300 hover:text-red-400'}`}>
-                                      <Trash2 size={11} />
-                                    </button>
-                                  )}
-                                </div>
-                              )
-
-                              /* ── 일반 항목 ── */
-                              return (
-                                <div key={idx} className="flex items-center gap-2">
-                                  {ctrl(term,
-                                    u => updateTerm(t, cc.id, idx, u),
-                                    () => removeTerm(t, cc.id, idx),
-                                    cc.terms.length > 1
-                                  )}
-                                </div>
-                              )
-                            })}
-
-                            {/* term / 그룹 추가 */}
-                            <div className="flex items-center gap-3">
-                              <button onClick={() => addTerm(t, cc.id)}
-                                className={`text-[11px] px-2 py-1 rounded transition-colors
-                                  ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
-                                + 항목 추가
-                              </button>
-                              <button onClick={() => addGroup(t, cc.id)}
-                                className={`text-[11px] px-2 py-1 rounded transition-colors
-                                  ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
-                                ( ) 그룹 추가
-                              </button>
+                          {/* 타입별 내용 */}
+                          {ccType === 'count' ? (
+                            /* COUNT(*) — 설정 불필요 */
+                            <div className={`ml-6 text-[11px] px-3 py-2 rounded-lg font-medium
+                              ${dark ? 'bg-[#1A1D27] text-slate-400' : 'bg-white text-slate-500 border border-slate-100'}`}>
+                              COUNT(*) — 행 수를 자동 집계합니다
                             </div>
-                          </div>
+                          ) : ccType === 'avg' ? (
+                            /* AVG(컬럼) — 컬럼 하나만 선택 */
+                            <div className="ml-6 flex items-center gap-2">
+                              <span className={`text-[11px] font-medium ${sub}`}>AVG(</span>
+                              <select
+                                className={`${sel} flex-1 max-w-xs`}
+                                value={cc.terms?.[0]?.col || ''}
+                                onChange={e => updateComputed(t, cc.id, { terms: [{ col: e.target.value, sign: '+' }] })}
+                              >
+                                <option value="">컬럼 선택...</option>
+                                {visCols.map(c => <option key={c} value={c}>{columns[c]?.alias || c}</option>)}
+                              </select>
+                              <span className={`text-[11px] font-medium ${sub}`}>)</span>
+                            </div>
+                          ) : (
+                            /* 수식 — 기존 term builder */
+                            <div className="flex flex-col gap-1.5 ml-6">
+                              {(cc.terms || []).map((term, idx) => {
+                                /* 괄호 그룹 */
+                                if (term.type === 'group') return (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <select className={`${sel} w-10 text-center mt-2`} value={term.sign}
+                                      onChange={e => updateTerm(t, cc.id, idx, { sign: e.target.value })}>
+                                      <option value="+">+</option><option value="-">-</option>
+                                      <option value="*">x</option><option value="/">÷</option>
+                                    </select>
+                                    <div className={`flex-1 rounded-lg border pl-3 pr-2 py-2 flex flex-col gap-1.5
+                                      ${dark ? 'border-indigo-500/30 bg-indigo-500/5' : 'border-indigo-300/40 bg-indigo-50/50'}`}>
+                                      <span className={`text-[10px] font-bold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>(</span>
+                                      {(term.children || []).map((child, cidx) => (
+                                        <div key={cidx} className="flex items-center gap-2">
+                                          {ctrl(child,
+                                            u => updateTermInGroup(t, cc.id, idx, cidx, u),
+                                            () => removeTermFromGroup(t, cc.id, idx, cidx),
+                                            (term.children || []).length > 1
+                                          )}
+                                        </div>
+                                      ))}
+                                      <button onClick={() => addTermToGroup(t, cc.id, idx)}
+                                        className={`text-[11px] px-2 py-0.5 rounded self-start transition-colors
+                                          ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
+                                        + 항목 추가
+                                      </button>
+                                      <span className={`text-[10px] font-bold ${dark ? 'text-indigo-400' : 'text-indigo-500'}`}>)</span>
+                                    </div>
+                                    {cc.terms.length > 1 && (
+                                      <button onClick={() => removeTerm(t, cc.id, idx)}
+                                        className={`p-0.5 shrink-0 rounded transition-colors mt-2 ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-300 hover:text-red-400'}`}>
+                                        <Trash2 size={11} />
+                                      </button>
+                                    )}
+                                  </div>
+                                )
+
+                                /* 일반 항목 */
+                                return (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    {ctrl(term,
+                                      u => updateTerm(t, cc.id, idx, u),
+                                      () => removeTerm(t, cc.id, idx),
+                                      cc.terms.length > 1
+                                    )}
+                                  </div>
+                                )
+                              })}
+
+                              {/* term / 그룹 추가 */}
+                              <div className="flex items-center gap-3">
+                                <button onClick={() => addTerm(t, cc.id)}
+                                  className={`text-[11px] px-2 py-1 rounded transition-colors
+                                    ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
+                                  + 항목 추가
+                                </button>
+                                <button onClick={() => addGroup(t, cc.id)}
+                                  className={`text-[11px] px-2 py-1 rounded transition-colors
+                                    ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-500'}`}>
+                                  ( ) 그룹 추가
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           {/* 미리보기 */}
                           {preview && (
@@ -669,35 +854,6 @@ export default function Tables({ dark }) {
                   </div>
                 </div>
 
-                {/* ─── 샘플 데이터 ─── */}
-                {info.sample.length > 0 && (
-                  <div className={`overflow-x-auto border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className={dark ? 'bg-[#0F1117]' : 'bg-slate-50'}>
-                          {info.columns.map(c => (
-                            <th key={c} className={`px-3 py-2 text-left font-semibold border-r whitespace-nowrap
-                              ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-100 text-slate-600'}`}>
-                              {columns[c]?.alias || c}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {info.sample.map((row, i) => (
-                          <tr key={i} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-                            {info.columns.map(c => (
-                              <td key={c} className={`px-3 py-2 text-xs border-r whitespace-nowrap max-w-[120px] truncate
-                                ${dark ? 'border-[#252836] text-slate-300' : 'border-slate-100 text-slate-600'}`}>
-                                {String(row[c] ?? '')}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
             )}
           </div>

@@ -56,17 +56,21 @@ export function buildTableMetrics(tableName, columnConfig) {
       label: getColumnLabel(col, cfg),
       field: col,
       fmt: cfg.fmt || 'number',
+      agg: cfg.agg || 'sum',
       group: 'metric',
     })
   })
 
   /* 2) 계산 컬럼 → 메트릭 */
   ;(tCfg.computed || []).forEach(cc => {
+    const isCount = cc.aggType === 'count'
     metrics.push({
       id: cc.id,
       label: cc.name,
-      field: cc.id,          // applyComputedColumns에서 row[cc.id]로 저장됨
+      field: cc.id,
       fmt: cc.fmt || 'number',
+      agg: cc.aggType || 'sum',
+      _countType: isCount,
       group: 'computed',
       _computed: true,
     })
@@ -205,7 +209,11 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
   return rows.map(row => {
     const newRow = { ...row }
     computed.forEach(cc => {
-      newRow[cc.id] = (!cc.terms || cc.terms.length === 0) ? 0 : evalTerms(cc.terms, newRow)
+      if (cc.aggType === 'count') {
+        newRow[cc.id] = 1  // COUNT: 각 행 = 1 → SUM으로 자연스럽게 카운트
+      } else {
+        newRow[cc.id] = (!cc.terms || cc.terms.length === 0) ? 0 : evalTerms(cc.terms, newRow)
+      }
     })
     return newRow
   })

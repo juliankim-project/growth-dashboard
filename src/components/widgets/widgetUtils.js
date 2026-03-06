@@ -18,12 +18,17 @@ export const sumField = (data, field) =>
 /* ─── 메트릭 리스트 해석 (동적 테이블 메트릭 지원) ─── */
 const _m = (metricId, mo) => (mo || METRICS).find(x => x.id === metricId)
 
-/* 지표 ID → 값 계산 */
+/* 지표 ID → 값 계산 (SUM / COUNT / AVG 지원) */
 export function calcMetric(data, metricId, metricsOverride) {
   const m = _m(metricId, metricsOverride)
   if (!m) return 0
-  /* 동적 테이블 메트릭 (계산 컬럼 포함) — 이미 row에 값이 있음 */
+  /* COUNT(*) 계산 컬럼 */
+  if (m._countType) return data.length
+  /* 동적 테이블 메트릭 (계산 컬럼 포함) — agg 타입 반영 */
   if (m._computed || (m.field && m.field === m.id && !m.derived)) {
+    const agg = m.agg || 'sum'
+    if (agg === 'count') return data.length
+    if (agg === 'avg') return data.length > 0 ? sumField(data, m.field) / data.length : 0
     return sumField(data, m.field)
   }
   if (m.derived) {
@@ -70,7 +75,7 @@ function calcDerived(row, metrics) {
   if (metrics.includes('cps'))      row.cps      = cv > 0  ? c  / cv      : 0
 }
 
-/* 그룹핑 */
+/* 그룹핑 (SUM / COUNT / AVG 지원) */
 export function groupData(data, groupByField, metrics, metricsOverride) {
   const mList = metricsOverride || METRICS
   /* 파생지표 계산용 기반 지표를 항상 누적 — 동적 메트릭에는 파생 없음 */
@@ -79,28 +84,53 @@ export function groupData(data, groupByField, metrics, metricsOverride) {
     ? [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
     : metrics
 
+  /* 메트릭별 agg 타입 캐시 (매 행 lookup 방지) */
+  const mCache = {}
+  allAccum.forEach(mid => { mCache[mid] = mList.find(x => x.id === mid) })
+
   const map = {}
   data.forEach(r => {
     const k = r[groupByField] || '(없음)'
     if (!map[k]) { map[k] = { name: k } }
     allAccum.forEach(mid => {
-      const m = mList.find(x => x.id === mid)
-      if (m && !m.derived && m.field) {
+      const m = mCache[mid]
+      if (!m || m.derived || !m.field) return
+      const agg = m._countType ? 'count' : (m.agg || 'sum')
+      if (agg === 'count') {
+        map[k][mid] = (map[k][mid] || 0) + 1
+      } else if (agg === 'avg') {
+        map[k][mid + '__s'] = (map[k][mid + '__s'] || 0) + (parseFloat(r[m.field]) || 0)
+        map[k][mid + '__c'] = (map[k][mid + '__c'] || 0) + 1
+      } else {
         map[k][mid] = (map[k][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
+  })
+  /* AVG 확정 + 임시키 정리 */
+  allAccum.forEach(mid => {
+    const m = mCache[mid]
+    if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
+      Object.values(map).forEach(row => {
+        row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
+        delete row[mid + '__s']; delete row[mid + '__c']
+      })
+    }
   })
   if (hasDerived) Object.values(map).forEach(row => calcDerived(row, metrics))
   return Object.values(map)
 }
 
-/* 일별 집계 */
+/* 일별 집계 (SUM / COUNT / AVG 지원) */
 export function dailyData(data, metrics, metricsOverride) {
   const mList = metricsOverride || METRICS
   const hasDerived = mList === METRICS
   const allAccum = hasDerived
     ? [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
     : metrics
+
+  /* 메트릭별 agg 타입 캐시 */
+  const mCache = {}
+  allAccum.forEach(mid => { mCache[mid] = mList.find(x => x.id === mid) })
 
   /* 날짜 컬럼 자동 감지 */
   const dateFields = ['date', 'Event Date', 'reservation_date', 'check_in_date']
@@ -112,11 +142,28 @@ export function dailyData(data, metrics, metricsOverride) {
     if (!d) return
     if (!map[d]) { map[d] = { label: d.slice(5) } }
     allAccum.forEach(mid => {
-      const m = mList.find(x => x.id === mid)
-      if (m && !m.derived && m.field) {
+      const m = mCache[mid]
+      if (!m || m.derived || !m.field) return
+      const agg = m._countType ? 'count' : (m.agg || 'sum')
+      if (agg === 'count') {
+        map[d][mid] = (map[d][mid] || 0) + 1
+      } else if (agg === 'avg') {
+        map[d][mid + '__s'] = (map[d][mid + '__s'] || 0) + (parseFloat(r[m.field]) || 0)
+        map[d][mid + '__c'] = (map[d][mid + '__c'] || 0) + 1
+      } else {
         map[d][mid] = (map[d][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
+  })
+  /* AVG 확정 + 임시키 정리 */
+  allAccum.forEach(mid => {
+    const m = mCache[mid]
+    if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
+      Object.values(map).forEach(row => {
+        row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
+        delete row[mid + '__s']; delete row[mid + '__c']
+      })
+    }
   })
   if (hasDerived) Object.values(map).forEach(row => calcDerived(row, metrics))
   return Object.values(map).sort((a, b) => a.label.localeCompare(b.label))

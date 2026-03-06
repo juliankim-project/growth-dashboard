@@ -253,26 +253,94 @@ export const GROUP_BY = [
 export const MARKETING_SEED_CONFIG = {
   displayName: '마케팅 데이터',
   columns: {
-    date:          { alias: '날짜',           visible: false, fmt: 'number' },
-    channel:       { alias: '채널',           visible: true,  fmt: 'number' },
-    campaign:      { alias: '캠페인',         visible: true,  fmt: 'number' },
-    ad_group:      { alias: '광고그룹',       visible: true,  fmt: 'number' },
-    ad_creative:   { alias: '크리에이티브',   visible: true,  fmt: 'number' },
-    spend:         { alias: '광고비',         visible: true,  fmt: 'currency' },
-    impressions:   { alias: '노출',           visible: true,  fmt: 'number' },
-    clicks:        { alias: '클릭',           visible: true,  fmt: 'number' },
-    cpc:           { alias: 'CPC',            visible: true,  fmt: 'currency' },
-    view_content:  { alias: '상세페이지 조회', visible: true,  fmt: 'number' },
-    signups:       { alias: '회원가입',       visible: true,  fmt: 'number' },
-    purchases:     { alias: '구매',           visible: true,  fmt: 'number' },
-    revenue:       { alias: '매출',           visible: true,  fmt: 'currency' },
-    installs:      { alias: '인스톨',         visible: true,  fmt: 'number' },
-    content:       { alias: '콘텐츠',         visible: true,  fmt: 'number' },
-    sub_publisher: { alias: '서브 퍼블리셔',  visible: true,  fmt: 'number' },
-    term:          { alias: '검색어',         visible: true,  fmt: 'number' },
+    date:          { alias: '날짜',           visible: false, fmt: 'number', agg: null },
+    channel:       { alias: '채널',           visible: true,  fmt: 'number', agg: null },
+    campaign:      { alias: '캠페인',         visible: true,  fmt: 'number', agg: null },
+    ad_group:      { alias: '광고그룹',       visible: true,  fmt: 'number', agg: null },
+    ad_creative:   { alias: '크리에이티브',   visible: true,  fmt: 'number', agg: null },
+    spend:         { alias: '광고비',         visible: true,  fmt: 'currency', agg: 'sum' },
+    impressions:   { alias: '노출',           visible: true,  fmt: 'number', agg: 'sum' },
+    clicks:        { alias: '클릭',           visible: true,  fmt: 'number', agg: 'sum' },
+    cpc:           { alias: 'CPC',            visible: true,  fmt: 'currency', agg: 'avg' },
+    view_content:  { alias: '상세페이지 조회', visible: true,  fmt: 'number', agg: 'sum' },
+    signups:       { alias: '회원가입',       visible: true,  fmt: 'number', agg: 'sum' },
+    purchases:     { alias: '구매',           visible: true,  fmt: 'number', agg: 'sum' },
+    revenue:       { alias: '매출',           visible: true,  fmt: 'currency', agg: 'sum' },
+    installs:      { alias: '인스톨',         visible: true,  fmt: 'number', agg: 'sum' },
+    content:       { alias: '콘텐츠',         visible: true,  fmt: 'number', agg: null },
+    sub_publisher: { alias: '서브 퍼블리셔',  visible: true,  fmt: 'number', agg: null },
+    term:          { alias: '검색어',         visible: true,  fmt: 'number', agg: null },
   },
   dimensionColumns: ['channel', 'campaign', 'ad_group', 'ad_creative', 'content', 'sub_publisher', 'term'],
   computed: [],
+}
+
+/* ──────────────────────────────────────────
+   product_revenue_raw 기본 columnConfig 시드
+─────────────────────────────────────────── */
+export const PRODUCT_SEED_CONFIG = {
+  displayName: '상품 매출',
+  columns: {
+    /* 숨김 — ID/키 */
+    id:                     { alias: '',              visible: false, fmt: 'number', agg: null },
+    no:                     { alias: '',              visible: false, fmt: 'number', agg: null },
+    guest_type:             { alias: '',              visible: false, fmt: 'number', agg: null },
+    guest_id:               { alias: '',              visible: false, fmt: 'number', agg: null },
+    user_id:                { alias: '',              visible: false, fmt: 'number', agg: null },
+    branch_id:              { alias: '',              visible: false, fmt: 'number', agg: null },
+    roomtype_id:            { alias: '',              visible: false, fmt: 'number', agg: null },
+    room_id:                { alias: '',              visible: false, fmt: 'number', agg: null },
+    channel_id:             { alias: '',              visible: false, fmt: 'number', agg: null },
+    /* 숨김 — 날짜 */
+    reservation_date:       { alias: '예약일',        visible: false, fmt: 'date', agg: null },
+    check_in_date:          { alias: '체크인일',      visible: false, fmt: 'date', agg: null },
+    check_in:               { alias: '체크인',        visible: false, fmt: 'date', agg: null },
+    check_out:              { alias: '체크아웃',      visible: false, fmt: 'date', agg: null },
+    reserved_at:            { alias: '예약시각',      visible: false, fmt: 'date', agg: null },
+    created_at:             { alias: '',              visible: false, fmt: 'date', agg: null },
+    updated_at:             { alias: '',              visible: false, fmt: 'date', agg: null },
+    /* 숨김 — 플래그/기타 */
+    channel_resv_no1:       { alias: '',              visible: false, fmt: 'number', agg: null },
+    channel_resv_no2:       { alias: '',              visible: false, fmt: 'number', agg: null },
+    vehicle_num:            { alias: '',              visible: false, fmt: 'number', agg: null },
+    has_gift:               { alias: '',              visible: false, fmt: 'number', agg: null },
+    gift_memo:              { alias: '',              visible: false, fmt: 'number', agg: null },
+    operator:               { alias: '',              visible: false, fmt: 'number', agg: null },
+    alim_status:            { alias: '',              visible: false, fmt: 'number', agg: null },
+    is_extend:              { alias: '',              visible: false, fmt: 'number', agg: null },
+    prohibit_move:          { alias: '',              visible: false, fmt: 'number', agg: null },
+    early_check_in:         { alias: '',              visible: false, fmt: 'number', agg: null },
+    late_check_out:         { alias: '',              visible: false, fmt: 'number', agg: null },
+    is_long:                { alias: '',              visible: false, fmt: 'number', agg: null },
+    /* 디멘전 */
+    brand_name:             { alias: '브랜드',        visible: true,  fmt: 'text', agg: null },
+    branch_name:            { alias: '지점명',        visible: true,  fmt: 'text', agg: null },
+    channel_name:           { alias: '채널명',        visible: true,  fmt: 'text', agg: null },
+    channel_group:          { alias: '채널그룹',      visible: true,  fmt: 'text', agg: null },
+    status:                 { alias: '상태',          visible: true,  fmt: 'text', agg: null },
+    area:                   { alias: '지역',          visible: true,  fmt: 'text', agg: null },
+    room_type_name:         { alias: '객실유형',      visible: true,  fmt: 'text', agg: null },
+    room_type2:             { alias: '객실유형2',     visible: false, fmt: 'text', agg: null },
+    product_option_name:    { alias: '상품옵션',      visible: false, fmt: 'text', agg: null },
+    display_product_name:   { alias: '표시상품명',    visible: false, fmt: 'text', agg: null },
+    /* 메트릭 — SUM */
+    payment_amount:         { alias: '결제금액',      visible: true,  fmt: 'currency', agg: 'sum' },
+    original_price:         { alias: '정가',          visible: true,  fmt: 'currency', agg: 'sum' },
+    staypass_discount:      { alias: '스테이패스할인', visible: true, fmt: 'currency', agg: 'sum' },
+    promo_discount:         { alias: '프로모할인',    visible: true,  fmt: 'currency', agg: 'sum' },
+    coupon_discount_amount: { alias: '쿠폰할인',      visible: true,  fmt: 'currency', agg: 'sum' },
+    point_amount:           { alias: '포인트사용',     visible: true,  fmt: 'currency', agg: 'sum' },
+    /* 메트릭 — AVG */
+    nights:                 { alias: '숙박일수',      visible: true,  fmt: 'number', agg: 'avg' },
+    peoples:                { alias: '인원',          visible: true,  fmt: 'number', agg: 'avg' },
+    lead_time:              { alias: '리드타임',      visible: true,  fmt: 'number', agg: 'avg' },
+  },
+  dimensionColumns: ['brand_name', 'branch_name', 'channel_name', 'channel_group', 'status', 'area', 'room_type_name'],
+  computed: [
+    { id: 'cc_order_count',     name: '결제건수',     aggType: 'count', terms: [], fmt: 'number' },
+    { id: 'cc_avg_payment',     name: '평균결제금액', aggType: 'avg', terms: [{ col: 'payment_amount', sign: '+' }], fmt: 'currency' },
+    { id: 'cc_price_per_person', name: '객단가',      terms: [{ col: 'payment_amount', sign: '+' }, { col: 'peoples', sign: '/' }], fmt: 'currency' },
+  ],
 }
 
 /* ──────────────────────────────────────────
@@ -347,11 +415,16 @@ function migrateConfig(raw) {
     if (changed) merged.subDataSources = newDS
   }
 
-  /* columnConfig 자동 시딩: marketing_data가 없거나 비어있으면 시드 적용 */
+  /* columnConfig 자동 시딩: 시드 config가 없거나 비어있으면 적용 */
   if (!merged.columnConfig) merged.columnConfig = {}
   const mkCfg = merged.columnConfig.marketing_data
   if (!mkCfg || !mkCfg.columns || Object.keys(mkCfg.columns).length === 0) {
     merged.columnConfig = { ...merged.columnConfig, marketing_data: { ...MARKETING_SEED_CONFIG } }
+    changed = true
+  }
+  const prCfg = merged.columnConfig.product_revenue_raw
+  if (!prCfg || !prCfg.columns || Object.keys(prCfg.columns).length === 0) {
+    merged.columnConfig = { ...merged.columnConfig, product_revenue_raw: { ...PRODUCT_SEED_CONFIG } }
     changed = true
   }
 
