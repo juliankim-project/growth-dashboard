@@ -630,34 +630,6 @@ function SubRow({
       {/* L3 서서브 + L4 탭 영역 */}
       {open && (
         <>
-          {/* 탭 타입 선택 */}
-          <div className={`ml-10 mr-3 mb-1 px-3 py-2 rounded-lg
-            ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5
-              ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-              탭 타입
-            </p>
-            <div className="flex gap-1.5 flex-wrap">
-              {Object.values(SUB_TYPES).map(st => (
-                <button key={st.id}
-                  onClick={() => setSubType?.(sectionId, sub.id, st.id)}
-                  className={`flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-lg border transition-colors
-                    ${subType === st.id
-                      ? st.colorClasses.btnActive + ' border-transparent'
-                      : dark
-                        ? 'border-[#252836] ' + st.colorClasses.btnIdle
-                        : 'border-slate-200 ' + st.colorClasses.btnIdleLight}`}
-                >
-                  <span>{st.icon}</span>
-                  <span className="font-medium">{st.label}</span>
-                </button>
-              ))}
-            </div>
-            <p className={`text-[9px] mt-1 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>
-              {typeInfo.desc}
-            </p>
-          </div>
-
           {/* L3 서서브 관리 */}
           <L3SubsManager
             sectionId={sectionId}

@@ -149,7 +149,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-amber-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-amber-50',
     },
-    widgetTypes: ['sim_budget', 'sim_goal', 'sim_scenario', 'kpi', 'bar', 'table'],
+    widgetTypes: ['sim_budget', 'sim_goal', 'sim_scenario'],
   },
   funnel: {
     id: 'funnel',
@@ -164,7 +164,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-emerald-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-emerald-50',
     },
-    widgetTypes: ['funnel_chart', 'funnel_breakdown', 'kpi', 'bar', 'table'],
+    widgetTypes: ['funnel_chart', 'funnel_breakdown'],
   },
   cohort: {
     id: 'cohort',
@@ -179,7 +179,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-violet-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-violet-50',
     },
-    widgetTypes: ['cohort_heatmap', 'cohort_trend', 'kpi', 'timeseries', 'table'],
+    widgetTypes: ['cohort_heatmap', 'cohort_trend'],
   },
   kanban: {
     id: 'kanban',
@@ -194,7 +194,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-rose-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-rose-50',
     },
-    widgetTypes: ['kanban_board', 'kpi', 'table'],
+    widgetTypes: ['kanban_board'],
   },
 }
 

@@ -1133,6 +1133,9 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
                       : 'border-transparent text-slate-700 hover:text-slate-700'
                   }`}
               >
+                {subType && subType !== 'report' && SUB_TYPES[subType]?.colorClasses?.dot && (
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${SUB_TYPES[subType].colorClasses.dot}`} />
+                )}
                 {tab.label}
               </button>
             )}
