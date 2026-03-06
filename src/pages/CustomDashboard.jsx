@@ -1419,12 +1419,15 @@ const CATEGORY_META = {
 }
 
 function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp, groupByOptions, columnConfig }) {
-  const [step, setStep] = useState(1)   // 1:테이블 2:카테고리 3:위젯타입 4:설정
-  const [selTable, setSelTable] = useState('marketing_data')
+  const [step, setStep] = useState(1)   // 1:카테고리 2:데이터소스(조건부) 3:위젯타입 4:설정
   const [selCategory, setSelCategory] = useState('report')
+  const [selTable, setSelTable] = useState('marketing_data')
   const [type, setType] = useState('kpi')
   const [wConfig, setWConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
   const [filters, setFilters] = useState({})
+
+  /* 데이터소스가 필요 없는 카테고리 */
+  const NEEDS_DATA = { report: true, funnel: true, cohort: true, simulation: false, kanban: false }
 
   const upd = (k, v) => setWConfig(c => ({ ...c, [k]: v }))
 
@@ -1475,7 +1478,9 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
   }
 
   const handleAdd = () => {
-    onAdd({ id: `w_${Date.now()}`, widthPct: 33.33, type, config: { ...wConfig, filters, _table: selTable } })
+    const cfg = { ...wConfig, filters }
+    if (NEEDS_DATA[selCategory]) cfg._table = selTable
+    onAdd({ id: `w_${Date.now()}`, widthPct: 33.33, type, config: cfg })
     onClose()
   }
 
@@ -1490,7 +1495,32 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-700 hover:border-indigo-300'}`,
   }
 
-  const STEPS = ['데이터 소스', '카드 유형', '위젯 선택', '설정']
+  /* 카테고리에 따라 동적 스텝 구성 */
+  const needsData = NEEDS_DATA[selCategory]
+  const STEPS = needsData
+    ? ['카드 유형', '데이터 소스', '위젯 선택', '설정']
+    : ['카드 유형', '위젯 선택', '설정']
+  const totalSteps = STEPS.length
+
+  /* 논리 스텝 → 실제 내부 스텝 매핑 */
+  const toInternal = (logical) => {
+    if (!needsData && logical >= 2) return logical + 1 // 2→3, 3→4
+    return logical
+  }
+  const toLogical = (internal) => {
+    if (!needsData && internal >= 3) return internal - 1 // 3→2, 4→3
+    return internal
+  }
+  const logicalStep = toLogical(step)
+
+  const goNext = () => {
+    if (step === 1 && !needsData) setStep(3) // 카테고리→위젯 (데이터소스 스킵)
+    else setStep(s => s + 1)
+  }
+  const goPrev = () => {
+    if (step === 3 && !needsData) setStep(1) // 위젯→카테고리 (데이터소스 스킵)
+    else setStep(s => s - 1)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
@@ -1506,16 +1536,16 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
               {STEPS.map((s, i) => (
                 <div key={s} className="flex items-center gap-1">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
-                    ${step === i + 1 ? 'bg-indigo-500 text-white'
-                      : step > i + 1 ? 'bg-emerald-500 text-white'
+                    ${logicalStep === i + 1 ? 'bg-indigo-500 text-white'
+                      : logicalStep > i + 1 ? 'bg-emerald-500 text-white'
                         : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
-                    {step > i + 1 ? '✓' : i + 1}
+                    {logicalStep > i + 1 ? '✓' : i + 1}
                   </div>
                   <span className={`text-[10px] font-medium hidden sm:inline
-                    ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-600'}`}>
+                    ${logicalStep === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-600'}`}>
                     {s}
                   </span>
-                  {i < 3 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>›</span>}
+                  {i < totalSteps - 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>›</span>}
                 </div>
               ))}
             </div>
@@ -1529,12 +1559,12 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
         {/* 선택 요약 칩 */}
         {step > 1 && (
           <div className="flex items-center gap-1.5 px-5 pt-3 flex-wrap">
-            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-              {availableTables.find(t => t.id === selTable)?.icon} {selTable}
+            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+              {CATEGORY_META[selCategory]?.icon} {CATEGORY_META[selCategory]?.label}
             </span>
-            {step > 2 && (
-              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                {CATEGORY_META[selCategory]?.icon} {CATEGORY_META[selCategory]?.label}
+            {needsData && step > 2 && (
+              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                {availableTables.find(t => t.id === selTable)?.icon} {selTable}
               </span>
             )}
             {step > 3 && (
@@ -1548,8 +1578,39 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
         {/* 바디 */}
         <div className="flex-1 overflow-y-auto p-5 min-h-0">
 
-          {/* ─── Step 1: 데이터 소스 선택 ─── */}
+          {/* ─── Step 1: 카드 유형 선택 ─── */}
           {step === 1 && (
+            <div className="flex flex-col gap-2">
+              <p className={`${S.lab} mb-1`}>카드 유형</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(CATEGORY_META).map(([id, meta]) => {
+                  const on = selCategory === id
+                  return (
+                    <button key={id} onClick={() => {
+                      setSelCategory(id)
+                      // 카테고리 변경 시 해당 카테고리 첫 위젯으로 초기화
+                      const firstType = (SUB_TYPES[id]?.widgetTypes || ['kpi'])[0]
+                      setType(firstType)
+                      setWConfig({ ...DEFAULT_WIDGET_CONFIG[firstType] })
+                    }}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
+                        ${on ? 'border-indigo-500 bg-indigo-500/10'
+                          : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                      <span className="text-2xl">{meta.icon}</span>
+                      <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
+                      <span className={`text-[10px] leading-tight ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</span>
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                        {(SUB_TYPES[id]?.widgetTypes || []).length}개 위젯
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ─── Step 2: 데이터 소스 선택 (리포트/퍼널/코호트만) ─── */}
+          {step === 2 && needsData && (
             <div className="flex flex-col gap-2">
               <p className={`${S.lab} mb-1`}>데이터 소스 선택</p>
               {availableTables.map(t => {
@@ -1577,31 +1638,6 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
                 ${dark ? 'text-slate-500 bg-indigo-500/5' : 'text-slate-700 bg-indigo-50'}`}>
                 선택한 테이블의 컬럼 설정(별칭, 계산 컬럼)이 위젯 메트릭에 반영됩니다.
               </p>
-            </div>
-          )}
-
-          {/* ─── Step 2: 카드 유형 선택 ─── */}
-          {step === 2 && (
-            <div className="flex flex-col gap-2">
-              <p className={`${S.lab} mb-1`}>카드 유형</p>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(CATEGORY_META).map(([id, meta]) => {
-                  const on = selCategory === id
-                  return (
-                    <button key={id} onClick={() => setSelCategory(id)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
-                        ${on ? 'border-indigo-500 bg-indigo-500/10'
-                          : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
-                      <span className="text-2xl">{meta.icon}</span>
-                      <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
-                      <span className={`text-[10px] leading-tight ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                        {(SUB_TYPES[id]?.widgetTypes || []).length}개 위젯
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
           )}
 
@@ -2007,14 +2043,14 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
         <div className={`flex items-center justify-between px-5 py-4 border-t shrink-0
           ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <button
-            onClick={() => step > 1 ? setStep(s => s - 1) : onClose()}
+            onClick={() => step > 1 ? goPrev() : onClose()}
             className={`text-xs px-4 py-2 rounded-xl border transition-colors
               ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600'
                 : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
             {step > 1 ? '← 이전' : '취소'}
           </button>
           {step < 4 ? (
-            <button onClick={() => setStep(s => s + 1)}
+            <button onClick={goNext}
               className="text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
               다음 →
             </button>
