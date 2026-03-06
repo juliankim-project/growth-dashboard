@@ -6,6 +6,20 @@
  */
 import { METRICS, GROUP_BY } from './useConfig'
 
+/* ── 컬럼명 → 표시명 변환 (snake_case → Readable) ── */
+function prettifyColumnName(col) {
+  if (!col) return col
+  return col
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+/** 컬럼 표시명: alias > prettify */
+export function getColumnLabel(col, cfg) {
+  if (cfg?.alias) return cfg.alias
+  return prettifyColumnName(col)
+}
+
 /* ── 테이블 표시명 매핑 ── */
 const TABLE_DISPLAY_NAMES = {
   marketing_data: '마케팅 데이터',
@@ -41,7 +55,7 @@ export function buildTableMetrics(tableName, columnConfig) {
     if (dims.has(col)) return
     metrics.push({
       id: col,
-      label: cfg.alias || col,
+      label: getColumnLabel(col, cfg),
       field: col,
       fmt: cfg.fmt || 'number',
       group: 'metric',
@@ -78,7 +92,7 @@ export function buildTableGroupBy(tableName, columnConfig) {
   if (dims.length > 0) {
     return dims.map(col => {
       const cfg = tCfg.columns?.[col]
-      return { id: col, label: cfg?.alias || col }
+      return { id: col, label: getColumnLabel(col, cfg) }
     })
   }
 
@@ -87,7 +101,7 @@ export function buildTableGroupBy(tableName, columnConfig) {
     const result = []
     Object.entries(tCfg.columns).forEach(([col, cfg]) => {
       if (cfg.visible === false) return
-      result.push({ id: col, label: cfg.alias || col })
+      result.push({ id: col, label: getColumnLabel(col, cfg) })
     })
     if (result.length > 0) return result
   }

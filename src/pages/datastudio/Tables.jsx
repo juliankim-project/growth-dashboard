@@ -67,7 +67,7 @@ export default function Tables({ dark }) {
         const existing = getColumnConfig(t)
         const info = tables[t]
         if (info && (!existing.columns || Object.keys(existing.columns).length === 0)) {
-          // 자동 초기화: DB 컬럼 기반
+          // 자동 초기화: DB 컬럼 기반 → 즉시 저장
           const columns = {}
           const dimensionColumns = []
           info.columns.forEach(col => {
@@ -76,6 +76,7 @@ export default function Tables({ dark }) {
           })
           const init = { columns, dimensionColumns, computed: [] }
           setEditCfg(prev => ({ ...prev, [t]: init }))
+          setColumnConfig(t, init) // 자동 감지 결과 즉시 저장
         } else {
           setEditCfg(prev => ({ ...prev, [t]: { ...existing } }))
         }
