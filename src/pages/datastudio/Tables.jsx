@@ -43,7 +43,7 @@ export default function Tables({ dark }) {
     for (const t of TABLES) {
       try {
         const { data, error, count } = await supabase
-          .from(t).select('*', { count: 'exact' }).limit(3)
+          .from(t).select('*', { count: 'exact' }).limit(10)
         if (!error) {
           result[t] = {
             count,
@@ -272,6 +272,20 @@ export default function Tables({ dark }) {
     }
   }
 
+  /* 전체 저장 */
+  const [globalSaved, setGlobalSaved] = useState(false)
+  const globalSavedTimer = useRef()
+  const saveAll = () => {
+    Object.entries(editCfg).forEach(([tableName, cfg]) => {
+      clearTimeout(saveTimer.current[tableName])
+      setColumnConfig(tableName, cfg)
+    })
+    setGlobalSaved(true)
+    clearTimeout(globalSavedTimer.current)
+    globalSavedTimer.current = setTimeout(() => setGlobalSaved(false), 2000)
+  }
+  const hasEdits = Object.keys(editCfg).length > 0
+
   /* ── 스타일 ── */
   const card = dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'
   const sub = dark ? 'text-slate-400' : 'text-slate-700'
@@ -292,11 +306,28 @@ export default function Tables({ dark }) {
             컬럼 별칭 · 가시성 · 계산 컬럼 설정
           </p>
         </div>
-        <button onClick={loadTables}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-colors
-            ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-          <RefreshCw size={13} /> 새로고침
-        </button>
+        <div className="flex items-center gap-2">
+          {globalSaved && (
+            <span className="text-xs text-emerald-500 font-semibold animate-pulse">저장 완료</span>
+          )}
+          <button onClick={saveAll} disabled={!hasEdits}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300
+              ${globalSaved
+                ? dark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                : hasEdits
+                  ? dark ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
+                         : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                  : dark ? 'bg-[#252836] text-slate-600 cursor-not-allowed'
+                         : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}>
+            {globalSaved ? <><Check size={13} /> 저장됨</> : <><Save size={13} /> 전체 저장</>}
+          </button>
+          <button onClick={loadTables}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+              ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+            <RefreshCw size={13} /> 새로고침
+          </button>
+        </div>
       </div>
 
       {TABLES.map(t => {
@@ -615,37 +646,13 @@ export default function Tables({ dark }) {
                   </div>
                 </div>
 
-                {/* ─── 저장 버튼 ─── */}
-                <div className={`px-5 py-3 flex items-center justify-between
-                  ${dark ? 'bg-[#13151C]' : 'bg-slate-50'}`}>
-                  <p className={`text-[10px] ${sub}`}>
-                    변경사항은 자동 저장됩니다 · 다른 유저에게도 실시간 반영
-                    {saved[t] && (
-                      <span className="ml-2 text-emerald-500 font-semibold animate-pulse">
-                        저장 완료
-                      </span>
-                    )}
-                  </p>
-                  <button
-                    onClick={() => saveNow(t)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300
-                      ${saved[t]
-                        ? dark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-                        : dark ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
-                               : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
-                      }`}
-                  >
-                    {saved[t] ? <><Check size={12} /> 저장됨</> : <><Save size={12} /> 저장</>}
-                  </button>
-                </div>
-
                 {/* ─── 샘플 데이터 ─── */}
                 {info.sample.length > 0 && (
                   <div className={`overflow-x-auto border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
                     <table className="w-full text-xs">
                       <thead>
                         <tr className={dark ? 'bg-[#0F1117]' : 'bg-slate-50'}>
-                          {info.columns.slice(0, 8).map(c => (
+                          {info.columns.map(c => (
                             <th key={c} className={`px-3 py-2 text-left font-semibold border-r whitespace-nowrap
                               ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-100 text-slate-600'}`}>
                               {columns[c]?.alias || c}
@@ -656,7 +663,7 @@ export default function Tables({ dark }) {
                       <tbody>
                         {info.sample.map((row, i) => (
                           <tr key={i} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-                            {info.columns.slice(0, 8).map(c => (
+                            {info.columns.map(c => (
                               <td key={c} className={`px-3 py-2 text-xs border-r whitespace-nowrap max-w-[120px] truncate
                                 ${dark ? 'border-[#252836] text-slate-300' : 'border-slate-100 text-slate-600'}`}>
                                 {String(row[c] ?? '')}
