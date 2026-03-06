@@ -29,12 +29,12 @@ const ICON_MAP = {
   cpm:'₩', cpc:'₩', ctr:'%', cpa_view:'₩', cac:'₩', cps:'₩', roas:'✕',
 }
 
-export default function KPIWidget({ data, config, dark }) {
+export default function KPIWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', label = '' } = config
-  const metaDef  = METRICS.find(m => m.id === metric)
+  const metaDef  = (metricsProp || METRICS).find(m => m.id === metric)
   const title    = label || metaDef?.label || metric
-  const value    = useMemo(() => calcMetric(data, metric), [data, metric])
-  const display  = fmtMetric(metric, value)
+  const value    = useMemo(() => calcMetric(data, metric, metricsProp), [data, metric, metricsProp])
+  const display  = fmtMetric(metric, value, metricsProp)
   const colorCls = COLOR_MAP[metric] || 'text-slate-500 bg-slate-500/10'
 
   return (

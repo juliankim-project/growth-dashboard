@@ -19,10 +19,10 @@ function Tip({ active, payload, label, dark }) {
   )
 }
 
-export default function TimeSeriesWidget({ data, config, dark }) {
+export default function TimeSeriesWidget({ data, config, dark, metrics: metricsProp }) {
   const { metrics = ['cost','revenue'], title = '일별 트렌드' } = config
 
-  const chartData = useMemo(() => dailyData(data, metrics), [data, metrics])
+  const chartData = useMemo(() => dailyData(data, metrics, metricsProp), [data, metrics, metricsProp])
   const tick  = dark ? '#64748B' : '#475569'
   const grid  = dark ? '#1E2130' : '#F1F5F9'
 
@@ -46,7 +46,7 @@ export default function TimeSeriesWidget({ data, config, dark }) {
             <Tooltip content={<Tip dark={dark}/>}/>
             <Legend wrapperStyle={{ fontSize:11, color:tick }}/>
             {metrics.map((m, i) => {
-              const meta = METRICS.find(x => x.id === m)
+              const meta = (metricsProp || METRICS).find(x => x.id === m)
               return (
                 <Area key={m} type="monotone" dataKey={m} name={meta?.label || m}
                   stroke={CHART_COLORS[i]} fill={`url(#grad_${m})`} strokeWidth={2} dot={false}/>

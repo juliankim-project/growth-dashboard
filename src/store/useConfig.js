@@ -26,6 +26,8 @@ export const DEFAULT_CONFIG = {
   sectionIcons: {},        // { 'sectionId': 'IconName' }
   subIcons: {},        // { 'sectionId.subId': 'IconName' }
   l3subIcons: {},        // { 'sectionId.subId.l3subId': 'IconName' }
+  /* ── 테이블 컬럼 설정 ── */
+  columnConfig: {},        // { 'tableName': { columns, dimensionColumns, computed } }
 }
 
 /* ──────────────────────────────────────────
@@ -712,6 +714,16 @@ export function useConfig() {
   const getSubLabel = (sid, s) => config.subLabels[`${sid}.${s}`] || null
   const getCustomSubs = sid => config.customSubs[sid] || []
 
+  /* ── 컬럼 설정 ── */
+  const getColumnConfig = tableName =>
+    config.columnConfig?.[tableName] || { columns: {}, computed: [], dimensionColumns: [] }
+
+  const setColumnConfig = (tableName, tableConfig) =>
+    persist(prev => ({
+      ...prev,
+      columnConfig: { ...(prev.columnConfig || {}), [tableName]: tableConfig },
+    }))
+
   return {
     config,
     getSectionLabel, getSubLabel, getCustomSubs, getDashboard, saveDashboard,
@@ -723,6 +735,7 @@ export function useConfig() {
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
     getSubType, setSubType,
     getSubDataSource, setSubDataSource,
+    getColumnConfig, setColumnConfig,
     getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, reorderL3Subs,
     getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, reorderL3Tabs,
   }

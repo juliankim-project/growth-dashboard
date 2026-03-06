@@ -3,17 +3,17 @@ import { ArrowUpDown } from 'lucide-react'
 import { METRICS, GROUP_BY } from '../../store/useConfig'
 import { groupData, fmtMetric } from './widgetUtils'
 
-export default function TableWidget({ data, config, dark }) {
+export default function TableWidget({ data, config, dark, metrics: metricsProp }) {
   const { metrics = ['cost','installs','conv','revenue'], groupBy = 'channel', title = '성과 테이블' } = config
   const [sort, setSort] = useState({ key: metrics[0] || 'cost', dir: -1 })
 
   const rows = useMemo(() => {
-    const g = groupData(data, groupBy, metrics)
+    const g = groupData(data, groupBy, metrics, metricsProp)
     return [...g].sort((a, b) => {
       const av = a[sort.key] ?? 0, bv = b[sort.key] ?? 0
       return (bv - av) * -sort.dir
     })
-  }, [data, metrics, groupBy, sort])
+  }, [data, metrics, groupBy, sort, metricsProp])
 
   const toggle = key => setSort(s => s.key === key ? { key, dir: -s.dir } : { key, dir: -1 })
 
@@ -31,7 +31,7 @@ export default function TableWidget({ data, config, dark }) {
             <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
               <th className={th} onClick={() => toggle('name')}>이름</th>
               {metrics.map(mid => {
-                const meta = METRICS.find(x => x.id === mid)
+                const meta = (metricsProp || METRICS).find(x => x.id === mid)
                 return (
                   <th key={mid} className={th} onClick={() => toggle(mid)}>
                     <span className="flex items-center gap-1">
@@ -51,9 +51,9 @@ export default function TableWidget({ data, config, dark }) {
                   <td key={mid} className={td}>
                     {mid === 'roas'
                       ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${row[mid] >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                          {fmtMetric(mid, row[mid] || 0)}
+                          {fmtMetric(mid, row[mid] || 0, metricsProp)}
                         </span>
-                      : fmtMetric(mid, row[mid] || 0)  /* ROAS raw value >= 2 = 200% = 손익분기점 이상 */
+                      : fmtMetric(mid, row[mid] || 0, metricsProp)  /* ROAS raw value >= 2 = 200% = 손익분기점 이상 */
                     }
                   </td>
                 ))}

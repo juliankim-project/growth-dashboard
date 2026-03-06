@@ -15,10 +15,17 @@ export const fmtP   = n => (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%'
 export const sumField = (data, field) =>
   data.reduce((s, r) => s + (parseFloat(r[field]) || 0), 0)
 
+/* ─── 메트릭 리스트 해석 (동적 테이블 메트릭 지원) ─── */
+const _m = (metricId, mo) => (mo || METRICS).find(x => x.id === metricId)
+
 /* 지표 ID → 값 계산 */
-export function calcMetric(data, metricId) {
-  const m = METRICS.find(x => x.id === metricId)
+export function calcMetric(data, metricId, metricsOverride) {
+  const m = _m(metricId, metricsOverride)
   if (!m) return 0
+  /* 동적 테이블 메트릭 (계산 컬럼 포함) — 이미 row에 값이 있음 */
+  if (m._computed || (m.field && m.field === m.id && !m.derived)) {
+    return sumField(data, m.field)
+  }
   if (m.derived) {
     const cost        = sumField(data, 'spend')
     const rev         = sumField(data, 'revenue')
@@ -41,8 +48,8 @@ export function calcMetric(data, metricId) {
 }
 
 /* 포맷 - KPI/테이블 표시용 */
-export function fmtMetric(metricId, value) {
-  const m = METRICS.find(x => x.id === metricId)
+export function fmtMetric(metricId, value, metricsOverride) {
+  const m = _m(metricId, metricsOverride)
   if (!m) return String(value)
   if (m.fmt === 'currency') return fmtKRW(value)
   if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
@@ -64,41 +71,54 @@ function calcDerived(row, metrics) {
 }
 
 /* 그룹핑 */
-export function groupData(data, groupByField, metrics) {
-  /* 파생지표 계산용 기반 지표를 항상 누적 */
-  const allAccum = [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+export function groupData(data, groupByField, metrics, metricsOverride) {
+  const mList = metricsOverride || METRICS
+  /* 파생지표 계산용 기반 지표를 항상 누적 — 동적 메트릭에는 파생 없음 */
+  const hasDerived = mList === METRICS
+  const allAccum = hasDerived
+    ? [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+    : metrics
 
   const map = {}
   data.forEach(r => {
     const k = r[groupByField] || '(없음)'
     if (!map[k]) { map[k] = { name: k } }
     allAccum.forEach(mid => {
-      const m = METRICS.find(x => x.id === mid)
+      const m = mList.find(x => x.id === mid)
       if (m && !m.derived && m.field) {
         map[k][mid] = (map[k][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
   })
-  Object.values(map).forEach(row => calcDerived(row, metrics))
+  if (hasDerived) Object.values(map).forEach(row => calcDerived(row, metrics))
   return Object.values(map)
 }
 
 /* 일별 집계 */
-export function dailyData(data, metrics) {
-  const allAccum = [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+export function dailyData(data, metrics, metricsOverride) {
+  const mList = metricsOverride || METRICS
+  const hasDerived = mList === METRICS
+  const allAccum = hasDerived
+    ? [...new Set([...metrics, ...DERIVED_BASE_METRICS])]
+    : metrics
+
+  /* 날짜 컬럼 자동 감지 */
+  const dateFields = ['date', 'Event Date', 'reservation_date', 'check_in_date']
+
   const map = {}
   data.forEach(r => {
-    const d = (r['date'] || r['Event Date'])?.slice(0, 10)
+    let d = null
+    for (const f of dateFields) { if (r[f]) { d = String(r[f]).slice(0, 10); break } }
     if (!d) return
     if (!map[d]) { map[d] = { label: d.slice(5) } }
     allAccum.forEach(mid => {
-      const m = METRICS.find(x => x.id === mid)
+      const m = mList.find(x => x.id === mid)
       if (m && !m.derived && m.field) {
         map[d][mid] = (map[d][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
   })
-  Object.values(map).forEach(row => calcDerived(row, metrics))
+  if (hasDerived) Object.values(map).forEach(row => calcDerived(row, metrics))
   return Object.values(map).sort((a, b) => a.label.localeCompare(b.label))
 }
 

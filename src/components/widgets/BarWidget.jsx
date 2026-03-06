@@ -18,17 +18,17 @@ function Tip({ active, payload, label, dark }) {
   )
 }
 
-export default function BarWidget({ data, config, dark }) {
+export default function BarWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', groupBy = 'channel', title = '채널별 성과' } = config
 
   const chartData = useMemo(() => {
-    const grouped = groupData(data, groupBy, [metric])
+    const grouped = groupData(data, groupBy, [metric], metricsProp)
     return grouped.sort((a, b) => (b[metric] || 0) - (a[metric] || 0)).slice(0, 10)
-  }, [data, metric, groupBy])
+  }, [data, metric, groupBy, metricsProp])
 
   const tick = dark ? '#64748B' : '#475569'
   const grid = dark ? '#1E2130' : '#F1F5F9'
-  const meta = METRICS.find(x => x.id === metric)
+  const meta = (metricsProp || METRICS).find(x => x.id === metric)
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
