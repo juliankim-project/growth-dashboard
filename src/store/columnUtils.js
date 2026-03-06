@@ -6,6 +6,23 @@
  */
 import { METRICS, GROUP_BY } from './useConfig'
 
+/* ── 테이블 표시명 매핑 ── */
+const TABLE_DISPLAY_NAMES = {
+  marketing_data: '마케팅 데이터',
+  product_revenue_raw: '상품 매출',
+}
+
+/** 테이블 표시명 반환 — displayName → 매핑 → columnConfig 기반 → 원본 */
+export function getTableDisplayName(tableName, columnConfig) {
+  // 1) columnConfig에 displayName이 있으면 사용
+  const tCfg = columnConfig?.[tableName]
+  if (tCfg?.displayName) return tCfg.displayName
+  // 2) 알려진 테이블명 매핑
+  if (TABLE_DISPLAY_NAMES[tableName]) return TABLE_DISPLAY_NAMES[tableName]
+  // 3) 언더스코어 → 공백 치환
+  return tableName.replace(/_/g, ' ')
+}
+
 /* ═══════════════════════════════════════════
    buildTableMetrics — METRICS 호환 배열 생성
    ═══════════════════════════════════════════ */
@@ -56,12 +73,26 @@ export function buildTableGroupBy(tableName, columnConfig) {
   if (!tCfg) return GROUP_BY
 
   const dims = tCfg.dimensionColumns || []
-  if (dims.length === 0) return GROUP_BY
 
-  return dims.map(col => {
-    const cfg = tCfg.columns?.[col]
-    return { id: col, label: cfg?.alias || col }
-  })
+  // dimensionColumns 설정됨 → 그대로 사용
+  if (dims.length > 0) {
+    return dims.map(col => {
+      const cfg = tCfg.columns?.[col]
+      return { id: col, label: cfg?.alias || col }
+    })
+  }
+
+  // dimensionColumns 미설정 → visible 컬럼 전체를 그룹바이 후보로
+  if (tCfg.columns) {
+    const result = []
+    Object.entries(tCfg.columns).forEach(([col, cfg]) => {
+      if (cfg.visible === false) return
+      result.push({ id: col, label: cfg.alias || col })
+    })
+    if (result.length > 0) return result
+  }
+
+  return GROUP_BY
 }
 
 /* ═══════════════════════════════════════════

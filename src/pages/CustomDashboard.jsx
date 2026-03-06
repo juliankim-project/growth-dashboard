@@ -6,7 +6,7 @@ import {
   SUB_TYPES,
   useConfig,
 } from '../store/useConfig'
-import { applyComputedColumns, buildTableMetrics, buildTableGroupBy } from '../store/columnUtils'
+import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
@@ -68,6 +68,7 @@ function applyWidgetFilters(data, filters) {
 /* ── 테이블 목록 (나중에 product / crm 등 추가 가능) ── */
 const KNOWN_TABLES = [
   { id: 'marketing_data', label: '마케팅' },
+  { id: 'product_revenue_raw', label: '상품 매출' },
   { id: 'product_data', label: '프로덕트' },
   { id: 'crm_data', label: 'CRM' },
 ]
@@ -1450,9 +1451,11 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
       seen.add(t)
       const tCfg = columnConfig?.[t]
       const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
+      const displayName = getTableDisplayName(t, columnConfig)
       tables.push({
         id: t,
-        label: t === 'marketing_data' ? '마케팅 데이터' : `${t.replace(/_/g, ' ')}${colCount ? ` · ${colCount}컬럼` : ''}`,
+        label: displayName + (colCount ? ` · ${colCount}컬럼` : ''),
+        displayName,
         icon: t === 'marketing_data' ? '📊' : '🏨',
       })
     })
@@ -1463,7 +1466,8 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
         seen.add(t)
         const tCfg = columnConfig[t]
         const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
-        tables.push({ id: t, label: `${t.replace(/_/g, ' ')}${colCount ? ` · ${colCount}컬럼` : ''}`, icon: '🏨' })
+        const displayName = getTableDisplayName(t, columnConfig)
+        tables.push({ id: t, label: displayName + (colCount ? ` · ${colCount}컬럼` : ''), displayName, icon: '🏨' })
       })
     }
     return tables
@@ -1564,7 +1568,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
             </span>
             {needsData && step > 2 && (
               <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                {availableTables.find(t => t.id === selTable)?.icon} {selTable}
+                {availableTables.find(t => t.id === selTable)?.icon} {availableTables.find(t => t.id === selTable)?.displayName || selTable}
               </span>
             )}
             {step > 3 && (
@@ -1624,8 +1628,8 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp,
                       {t.icon}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-bold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{t.id}</p>
-                      <p className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-700'}`}>{t.label}</p>
+                      <p className={`text-xs font-bold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{t.displayName}</p>
+                      <p className={`text-[10px] font-mono ${dark ? 'text-slate-500' : 'text-slate-700'}`}>{t.id}</p>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] transition-colors
                       ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>

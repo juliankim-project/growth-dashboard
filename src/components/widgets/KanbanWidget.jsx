@@ -260,7 +260,7 @@ export default function KanbanWidget({ data, config, dark, onConfigUpdate }) {
   }, [activeCardId, columns])
 
   return (
-    <div className={`rounded-xl border h-full flex flex-col overflow-hidden relative
+    <div className={`rounded-xl border h-full min-h-[280px] flex flex-col overflow-hidden relative
       ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
       {/* Title */}
       <p className={`text-xs font-semibold px-4 pt-3 pb-2 shrink-0 ${dark ? 'text-white' : 'text-slate-700'}`}>
@@ -279,7 +279,7 @@ export default function KanbanWidget({ data, config, dark, onConfigUpdate }) {
           >
             {columns.map(col => (
               <div key={col.id}
-                className={`shrink-0 w-44 rounded-lg border flex flex-col max-h-full
+                className={`shrink-0 min-w-[160px] flex-1 rounded-lg border flex flex-col max-h-full
                 ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-100'}`}>
 
                 {/* Column header */}
@@ -367,7 +367,7 @@ export default function KanbanWidget({ data, config, dark, onConfigUpdate }) {
 
           {/* Add column */}
           {addingCol ? (
-            <div className={`shrink-0 w-44 rounded-lg border p-2
+            <div className={`shrink-0 min-w-[160px] flex-1 rounded-lg border p-2
               ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-100'}`}>
               <input autoFocus value={newColTitle}
                 onChange={e => setNewColTitle(e.target.value)}
@@ -393,7 +393,7 @@ export default function KanbanWidget({ data, config, dark, onConfigUpdate }) {
             </div>
           ) : (
             <button onClick={() => setAddingCol(true)}
-              className={`shrink-0 w-44 h-fit rounded-lg border border-dashed p-3
+              className={`shrink-0 min-w-[160px] h-fit rounded-lg border border-dashed p-3
               flex items-center justify-center gap-1 text-[9px] transition-colors
               ${dark
                 ? 'border-[#2E3450] text-slate-600 hover:text-slate-400 hover:border-slate-500'
