@@ -30,7 +30,7 @@ export function buildTableMetrics(tableName, columnConfig) {
   if (tableName === 'marketing_data' || !tableName) return METRICS
 
   const tCfg = columnConfig?.[tableName]
-  if (!tCfg || !tCfg.columns || Object.keys(tCfg.columns).length === 0) return METRICS
+  if (!tCfg || !tCfg.columns || Object.keys(tCfg.columns).length === 0) return []
 
   const dims = new Set(tCfg.dimensionColumns || [])
   const metrics = []
@@ -70,7 +70,7 @@ export function buildTableGroupBy(tableName, columnConfig) {
   if (tableName === 'marketing_data' || !tableName) return GROUP_BY
 
   const tCfg = columnConfig?.[tableName]
-  if (!tCfg) return GROUP_BY
+  if (!tCfg) return []
 
   const dims = tCfg.dimensionColumns || []
 
@@ -92,7 +92,7 @@ export function buildTableGroupBy(tableName, columnConfig) {
     if (result.length > 0) return result
   }
 
-  return GROUP_BY
+  return []
 }
 
 /* ═══════════════════════════════════════════
