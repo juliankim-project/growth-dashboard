@@ -3,7 +3,7 @@ import { Settings2, Check, X, Plus, Database, GripVertical } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
-  SUB_TYPES, TYPE_TEMPLATES,
+  SUB_TYPES,
   useConfig,
 } from '../store/useConfig'
 import { applyComputedColumns, buildTableMetrics, buildTableGroupBy } from '../store/columnUtils'
@@ -337,7 +337,7 @@ function DataSourceSelector({ tableName, onChange, dark }) {
    위젯 에디터 모달 — 3스텝 퍼널
    Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
 ══════════════════════════════════════════ */
-function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subType = 'report', metrics: metricsProp, groupByOptions, columnConfig }) {
+function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metrics: metricsProp, groupByOptions, columnConfig }) {
   const [step, setStep] = useState(1)
   const selTable = widget.config?._table || 'marketing_data'
   const [type, setType] = useState(widget.type)
@@ -362,8 +362,11 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
   const changeType = t => { setType(t); setConfig(prev => ({ ...DEFAULT_WIDGET_CONFIG[t], _table: prev._table, filters: prev.filters })) }
   const handleSave = () => onSave(slotId, { type, config: { ...config, filters, _table: selTable } })
 
-  /* 카테고리별 허용 위젯 */
-  const allowedTypes = SUB_TYPES[subType]?.widgetTypes || SUB_TYPES.report.widgetTypes
+  /* 현재 위젯의 카테고리 자동 감지 → 같은 카테고리 위젯만 타입 변경 허용 */
+  const detectedCategory = Object.entries(SUB_TYPES).find(
+    ([, st]) => st.widgetTypes?.includes(type)
+  )?.[0] || 'report'
+  const allowedTypes = SUB_TYPES[detectedCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
 
   const S = {
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -1028,11 +1031,9 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
    - 호버 ×: 탭 삭제
    - + 탭 추가 버튼 (추가 후 자동 이동 없음)
 ══════════════════════════════════════════ */
-function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef, subType = 'report' }) {
+function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef }) {
   const [addingTab, setAddingTab] = useState(false)
   const [newLabel, setNewLabel] = useState('')
-  const [showTemplates, setShowTemplates] = useState(false) // 템플릿 선택 단계
-  const [pendingLabel, setPendingLabel] = useState('')       // 이름 확정 후 대기
 
   /* 외부(빈 상태 버튼 등)에서 탭 추가 폼 열기용 */
   useEffect(() => {
@@ -1061,24 +1062,9 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
 
   const commitAdd = () => {
     if (!newLabel.trim()) { setAddingTab(false); return }
-    const templates = TYPE_TEMPLATES[subType]
-    if (templates && templates.length > 0 && subType !== 'report') {
-      // 비-report: 이름 확정 후 템플릿 선택
-      setPendingLabel(newLabel.trim())
-      setShowTemplates(true)
-      setAddingTab(false)
-      setNewLabel('')
-    } else {
-      onAdd(newLabel.trim())
-      setAddingTab(false)
-      setNewLabel('')
-    }
-  }
-
-  const handleTemplateSelect = (templateId) => {
-    onAdd(pendingLabel, templateId)
-    setShowTemplates(false)
-    setPendingLabel('')
+    onAdd(newLabel.trim())
+    setAddingTab(false)
+    setNewLabel('')
   }
 
   const commitRename = () => {
@@ -1133,9 +1119,6 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
                       : 'border-transparent text-slate-700 hover:text-slate-700'
                   }`}
               >
-                {subType && subType !== 'report' && SUB_TYPES[subType]?.colorClasses?.dot && (
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${SUB_TYPES[subType].colorClasses.dot}`} />
-                )}
                 {tab.label}
               </button>
             )}
@@ -1202,48 +1185,6 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
         </div>
       )}
 
-      {/* 템플릿 선택 팝오버 (비-report 타입) */}
-      {showTemplates && (() => {
-        const templates = TYPE_TEMPLATES[subType] || []
-        const typeInfo = SUB_TYPES[subType]
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => { setShowTemplates(false); setPendingLabel('') }}>
-            <div onClick={e => e.stopPropagation()}
-              className={`rounded-2xl border w-full max-w-md p-5
-              ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${typeInfo?.colorClasses?.badge || ''}`}>
-                    {typeInfo?.icon} {typeInfo?.label}
-                  </span>
-                  <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
-                    "{pendingLabel}" 템플릿 선택
-                  </p>
-                </div>
-                <button onClick={() => { setShowTemplates(false); setPendingLabel('') }}
-                  className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-600 hover:bg-slate-100'}`}>
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                {templates.map(tpl => (
-                  <button key={tpl.id} onClick={() => handleTemplateSelect(tpl.id)}
-                    className={`p-3.5 rounded-xl border text-left transition-all
-                    ${dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/50'
-                          : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
-                    </div>
-                    <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{tpl.desc}</p>
-                    <p className={`text-[10px] mt-1.5 font-mono ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{tpl.preview}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )
-      })()}
     </div>
   )
 }
@@ -1477,7 +1418,7 @@ const CATEGORY_META = {
   kanban:     { icon: '📋', label: '칸반',        desc: '작업 관리 칸반 보드' },
 }
 
-function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', metrics: metricsProp, groupByOptions, columnConfig }) {
+function AddWidgetModal({ dark, data = [], onAdd, onClose, metrics: metricsProp, groupByOptions, columnConfig }) {
   const [step, setStep] = useState(1)   // 1:테이블 2:카테고리 3:위젯타입 4:설정
   const [selTable, setSelTable] = useState('marketing_data')
   const [selCategory, setSelCategory] = useState('report')
@@ -2092,7 +2033,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
 /* ══════════════════════════════════════════
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd, subType = 'report', tableMetrics, tableGroupBy, columnConfig }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd, tableMetrics, tableGroupBy, columnConfig }) {
   const [editSlot, setEditSlot] = useState(null)   // 편집 모달 대상 slotId
   const [activeId, setActiveId] = useState(null)   // 드래그 중인 slotId
   const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
@@ -2239,7 +2180,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} subType={subType} metrics={tableMetrics} groupByOptions={tableGroupBy} columnConfig={columnConfig} />
+        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} metrics={tableMetrics} groupByOptions={tableGroupBy} columnConfig={columnConfig} />
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
@@ -2251,7 +2192,6 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
           dark={dark}
           onSave={handleWidgetSave}
           onClose={() => setEditSlot(null)}
-          subType={subType}
           metrics={tableMetrics}
           groupByOptions={tableGroupBy}
           columnConfig={columnConfig}
@@ -2273,7 +2213,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
      saveDashboard:(dashboard, tabId) => void,
    }
 ══════════════════════════════════════════ */
-export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource, subType = 'report' }) {
+export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
   const { config } = useConfig()
   const tabs = tabsConfig?.tabs || []
 
@@ -2368,7 +2308,6 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         onReorder={(from, to) => tabsConfig?.reorderTabs?.(from, to)}
         dark={dark}
         addRef={tabBarAddRef}
-        subType={subType}
         rightSlot={activeTab ? (
           editMode ? (
             <>
@@ -2419,7 +2358,6 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             showAdd={showAdd}
             onOpenAdd={() => setShowAdd(true)}
             onCloseAdd={() => setShowAdd(false)}
-            subType={subType}
             tableMetrics={tableMetrics}
             tableGroupBy={tableGroupBy}
             columnConfig={config.columnConfig}

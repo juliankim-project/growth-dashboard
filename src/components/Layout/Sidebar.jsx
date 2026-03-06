@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { SUB_TYPES } from '../../store/useConfig'
+import { SUB_COLOR_OPTIONS } from '../../store/useConfig'
 import { APP_VERSION } from '../../version'
 import {
   LayoutDashboard, Megaphone, Package, Database,
@@ -481,10 +481,10 @@ export default function Sidebar({
                             <>
                               <span className={`${anyActive ? 'font-semibold' : 'font-medium'} flex-1 truncate`}>{subLabel}</span>
                               {(() => {
-                                const stId = config.subTypes?.[`${sec.id}.${sub.id}`]
-                                const stInfo = stId && stId !== 'report' && SUB_TYPES[stId]
-                                return stInfo ? (
-                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${stInfo.colorClasses.dot}`} title={stInfo.label}/>
+                                const colorId = config.subColors?.[`${sec.id}.${sub.id}`]
+                                const colorInfo = colorId && SUB_COLOR_OPTIONS.find(c => c.id === colorId)
+                                return colorInfo ? (
+                                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: colorInfo.hex }} title={colorInfo.label}/>
                                 ) : null
                               })()}
                               <button

@@ -18,7 +18,7 @@ export const DEFAULT_CONFIG = {
   l3subs: {},  // { 'section.sub': [{id, label}] }  ← 새 L3 사이드바 서서브
   deletedBuiltinSubs: {},  // { 'overview': ['dashboard'], 'product': ['funnel'] }
   subDataSources: {},  // { 'section.sub': { table, fieldMap: { metricId: 'colName' } } }
-  subTypes: {},  // { 'section.sub': 'report' | 'simulation' | 'funnel' | 'cohort' }
+  subColors: {},  // { 'section.sub': 'indigo' | 'amber' | 'emerald' | 'violet' | 'rose' | null }
   /* ── 앱 설정 ── */
   projectName: 'Growth HQ',
   logoUrl: null,      // base64 이미지 or null
@@ -198,7 +198,16 @@ export const SUB_TYPES = {
   },
 }
 
-export const DEFAULT_SUB_TYPE = 'report'
+/* ── 중위탭 색깔 옵션 (순수 장식용) ── */
+export const SUB_COLOR_OPTIONS = [
+  { id: 'indigo',  hex: '#818cf8', label: '인디고' },
+  { id: 'amber',   hex: '#fbbf24', label: '앰버' },
+  { id: 'emerald', hex: '#34d399', label: '에메랄드' },
+  { id: 'violet',  hex: '#a78bfa', label: '바이올렛' },
+  { id: 'rose',    hex: '#fb7185', label: '로즈' },
+  { id: 'sky',     hex: '#38bdf8', label: '스카이' },
+  { id: 'orange',  hex: '#fb923c', label: '오렌지' },
+]
 
 /* ──────────────────────────────────────────
    지표 목록
@@ -272,32 +281,9 @@ export const DEFAULT_WIDGET_CONFIG = {
 }
 
 /* ──────────────────────────────────────────
-   타입별 템플릿 정의
+   대시보드 초기값 생성
 ─────────────────────────────────────────── */
-export const TYPE_TEMPLATES = {
-  report: Object.values(TEMPLATES).map(t => ({ id: t.id, name: t.name, desc: t.desc, preview: t.preview })),
-  simulation: [
-    { id: 'SIM_BUDGET', name: '예산 배분', desc: '채널별 예산 최적화 시뮬레이션', preview: '📊 예산 → 성과 예측' },
-    { id: 'SIM_TARGET', name: '목표 역산', desc: '목표 매출/전환에서 필요 예산 역산', preview: '🎯 목표 → 필요 예산' },
-  ],
-  funnel: [
-    { id: 'FNL_MARKETING', name: '마케팅 퍼널', desc: '노출 → 클릭 → 조회 → 가입 → 구매', preview: '🔻 노출 ▸ 클릭 ▸ 가입 ▸ 구매' },
-    { id: 'FNL_CUSTOM', name: '커스텀 퍼널', desc: '직접 단계를 정의합니다', preview: '✏️ 단계 직접 설정' },
-  ],
-  cohort: [
-    { id: 'COH_WEEKLY', name: '주간 코호트', desc: '주 단위 가입 → 리텐션 분석', preview: '📅 주간 가입 코호트' },
-    { id: 'COH_MONTHLY', name: '월간 코호트', desc: '월 단위 가입 → 리텐션 분석', preview: '📅 월간 가입 코호트' },
-  ],
-  kanban: [
-    { id: 'KAN_CAMPAIGN', name: '캠페인 관리', desc: '기획 → 진행중 → 분석 → 완료', preview: '📋 기획 | 진행중 | 분석 | 완료' },
-    { id: 'KAN_SIMPLE', name: '심플 보드', desc: 'To Do → Doing → Done', preview: '📋 To Do | Doing | Done' },
-  ],
-}
-
-/* ──────────────────────────────────────────
-   대시보드 초기값 생성 (타입별)
-─────────────────────────────────────────── */
-export function makeDashboard(subType = 'report', templateId = null) {
+export function makeDashboard() {
   /* 모든 탭은 DashboardGrid (slots 배열) — 타입별 전체 페이지는 제거됨 */
   return { slots: [] }
 }
@@ -313,7 +299,7 @@ const OLD_TABLE_NAMES = new Set([
 
 function migrateConfig(raw) {
   const merged = { ...DEFAULT_CONFIG, ...raw }
-  if (!merged.subTypes) merged.subTypes = {}
+  if (!merged.subColors) merged.subColors = {}
   if (!merged.subDataSources) return merged
   let changed = false
   const newDS = Object.fromEntries(
@@ -466,14 +452,14 @@ export function useConfig() {
   const isBuiltinSubHidden = (sectionId, subId) =>
     (config.deletedBuiltinSubs[sectionId] || []).includes(subId)
 
-  /* ── L2 서브 타입 ── */
-  const getSubType = (sectionId, subId) =>
-    config.subTypes?.[`${sectionId}.${subId}`] || DEFAULT_SUB_TYPE
+  /* ── L2 서브 색깔 (장식용) ── */
+  const getSubColor = (sectionId, subId) =>
+    config.subColors?.[`${sectionId}.${subId}`] || null
 
-  const setSubType = (sectionId, subId, subType) =>
+  const setSubColor = (sectionId, subId, color) =>
     persist(prev => ({
       ...prev,
-      subTypes: { ...(prev.subTypes || {}), [`${sectionId}.${subId}`]: subType },
+      subColors: { ...(prev.subColors || {}), [`${sectionId}.${subId}`]: color },
     }))
 
   /* ── L2 서브 데이터 소스 ── */
@@ -518,20 +504,19 @@ export function useConfig() {
         l3tabs: filterOut(prev.l3tabs),
         dashboards: filterOut(prev.dashboards),
         subDataSources: filterOut(prev.subDataSources),
-        subTypes: filterOut(prev.subTypes),
+        subColors: filterOut(prev.subColors),
       }
     })
   }
 
   /* ── L2 커스텀 서브탭 ── */
-  const addCustomSub = (sectionId, label, subType = 'report') => {
+  const addCustomSub = (sectionId, label) => {
     const id = `cx_${Date.now()}`
     persist(prev => {
       const cur = prev.customSubs[sectionId] || []
       return {
         ...prev,
         customSubs: { ...prev.customSubs, [sectionId]: [...cur, { id, label }] },
-        subTypes: { ...(prev.subTypes || {}), [`${sectionId}.${id}`]: subType },
       }
     })
     return id
@@ -562,8 +547,8 @@ export function useConfig() {
 
       const ds = { ...prev.subDataSources }
       delete ds[l3Key]
-      const st = { ...(prev.subTypes || {}) }
-      delete st[l3Key]
+      const sc = { ...(prev.subColors || {}) }
+      delete sc[l3Key]
       return {
         ...prev,
         customSubs: { ...prev.customSubs, [sectionId]: cur.filter(s => s.id !== subId) },
@@ -571,7 +556,7 @@ export function useConfig() {
         l3tabs: l3t,
         l3subs: l3s,
         subDataSources: ds,
-        subTypes: st,
+        subColors: sc,
       }
     })
   }
@@ -641,10 +626,10 @@ export function useConfig() {
   const getL3Tabs = (sid, sub, l3sub = null) =>
     config.l3tabs[_tabsScope(sid, sub, l3sub)] || []
 
-  const addL3Tab = (sid, sub, label, l3sub = null, subType = 'report', templateId = null) => {
+  const addL3Tab = (sid, sub, label, l3sub = null) => {
     const id = `t3_${Date.now()}`
     const scope = _tabsScope(sid, sub, l3sub)
-    const dash = makeDashboard(subType, templateId)
+    const dash = makeDashboard()
     persist(prev => {
       const cur = prev.l3tabs[scope] || []
       return {
@@ -732,7 +717,7 @@ export function useConfig() {
     getCustomSections, addCustomSection, removeCustomSection,
     addCustomSub, removeCustomSub,
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
-    getSubType, setSubType,
+    getSubColor, setSubColor,
     getSubDataSource, setSubDataSource,
     getColumnConfig, setColumnConfig,
     getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, reorderL3Subs,

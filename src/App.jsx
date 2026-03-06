@@ -83,10 +83,9 @@ function Dashboard({ dark, setDark, user, signOut }) {
   }, [nav.section, nav.sub, nav.l3sub, cfg.config.l3subs])
 
   /* ── tabsConfig 생성 헬퍼 (l3sub 지원) ── */
-  const subType = cfg.getSubType(nav.section, nav.sub)
   const makeTabsConfig = (section, sub, l3sub = null) => ({
     tabs: cfg.getL3Tabs(section, sub, l3sub),
-    addTab: (label, templateId) => cfg.addL3Tab(section, sub, label, l3sub, subType, templateId),
+    addTab: (label) => cfg.addL3Tab(section, sub, label, l3sub),
     removeTab: (tabId) => cfg.removeL3Tab(section, sub, tabId, l3sub),
     renameTab: (tabId, label) => cfg.renameL3Tab(section, sub, tabId, label, l3sub),
     reorderTabs: (fromIdx, toIdx) => cfg.reorderL3Tabs(section, sub, fromIdx, toIdx, l3sub),
@@ -104,7 +103,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         config={cfg.config}
         onUpdateSection={cfg.setSectionLabel}
         onUpdateSub={cfg.setSubLabel}
-        onAddSub={(sid, label, subType) => cfg.addCustomSub(sid, label, subType)}
+        onAddSub={(sid, label) => cfg.addCustomSub(sid, label)}
         onRemoveSub={(sid, sub) => {
           cfg.removeCustomSub(sid, sub)
           if (nav.section === sid && nav.sub === sub) {
@@ -133,8 +132,8 @@ function Dashboard({ dark, setDark, user, signOut }) {
           cfg.removeCustomSection(id)
           if (nav.section === id) setNav({ section: 'overview', sub: 'dashboard', l3sub: null })
         }}
-        getSubType={cfg.getSubType}
-        setSubType={cfg.setSubType}
+        getSubColor={cfg.getSubColor}
+        setSubColor={cfg.setSubColor}
         setSectionIcon={cfg.setSectionIcon}
         setSubIcon={cfg.setSubIcon}
         setL3SubIcon={cfg.setL3SubIcon}
@@ -164,7 +163,6 @@ function Dashboard({ dark, setDark, user, signOut }) {
         filterByDate={filterByDate}
         tabsConfig={makeTabsConfig(nav.section, nav.sub, nav.l3sub)}
         subDataSource={subDataSource}
-        subType={subType}
       />
     )
   }
