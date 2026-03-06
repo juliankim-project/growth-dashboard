@@ -134,6 +134,69 @@ function evalTerms(terms, row) {
   return val
 }
 
+/* ═══════════════════════════════════════════
+   sanitizeWidgetConfig — 위젯 config의 메트릭을 테이블 columnConfig 기준으로 정리
+   테이블에 존재하지 않는 메트릭 → 자동 제거, 빈 경우 첫 메트릭으로 폴백
+   ═══════════════════════════════════════════ */
+export function sanitizeWidgetConfig(widgetType, config, tableName, columnConfig) {
+  if (!config || !tableName || !columnConfig) return config
+
+  const validMetrics = buildTableMetrics(tableName, columnConfig)
+  if (validMetrics.length === 0) return config
+
+  const validIds = new Set(validMetrics.map(m => m.id))
+  const first = validMetrics[0].id
+  const validGroupBy = buildTableGroupBy(tableName, columnConfig)
+  const validGbIds = new Set(validGroupBy.map(g => g.id))
+  const firstGb = validGroupBy[0]?.id
+
+  const next = { ...config }
+  let changed = false
+
+  /* 단일 메트릭 (kpi, bar, donut) */
+  if ('metric' in next) {
+    if (!validIds.has(next.metric)) {
+      next.metric = first
+      changed = true
+    }
+  }
+
+  /* 복수 메트릭 (timeseries, table) */
+  if (Array.isArray(next.metrics)) {
+    const filtered = next.metrics.filter(mid => validIds.has(mid))
+    if (filtered.length !== next.metrics.length) {
+      next.metrics = filtered.length > 0 ? filtered : [first]
+      changed = true
+    }
+  }
+
+  /* 그룹바이 */
+  if (next.groupBy && validGbIds.size > 0 && !validGbIds.has(next.groupBy)) {
+    next.groupBy = firstGb
+    changed = true
+  }
+
+  /* 시뮬레이션/퍼널 등의 targetMetric */
+  if (next.targetMetric && !validIds.has(next.targetMetric)) {
+    next.targetMetric = first
+    changed = true
+  }
+
+  /* 퍼널 stages 내 metric */
+  if (Array.isArray(next.stages)) {
+    const newStages = next.stages.map(s => {
+      if (s.metric && !validIds.has(s.metric)) return { ...s, metric: first }
+      return s
+    })
+    if (JSON.stringify(newStages) !== JSON.stringify(next.stages)) {
+      next.stages = newStages
+      changed = true
+    }
+  }
+
+  return changed ? next : config
+}
+
 export function applyComputedColumns(rows, tableName, columnConfig) {
   const tCfg = columnConfig?.[tableName]
   const computed = tCfg?.computed

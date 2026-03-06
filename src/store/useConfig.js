@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { sanitizeWidgetConfig } from './columnUtils'
 
 const STORAGE_KEY = 'growth_config_v4'   // v4: 빌트인 숨기기 + 서브 데이터소스
 const DB_ROW_ID = 'default'              // Supabase dashboard_config 행 ID
@@ -352,6 +353,22 @@ function migrateConfig(raw) {
   if (!mkCfg || !mkCfg.columns || Object.keys(mkCfg.columns).length === 0) {
     merged.columnConfig = { ...merged.columnConfig, marketing_data: { ...MARKETING_SEED_CONFIG } }
     changed = true
+  }
+
+  /* 대시보드 위젯 slots → 테이블 기준 메트릭 sanitize */
+  if (merged.dashboards && merged.columnConfig) {
+    Object.entries(merged.dashboards).forEach(([dashKey, dash]) => {
+      if (!Array.isArray(dash?.slots)) return
+      dash.slots.forEach((slot, idx) => {
+        if (!slot?.config || !slot?.type) return
+        const tbl = slot.config._table || 'marketing_data'
+        const sanitized = sanitizeWidgetConfig(slot.type, slot.config, tbl, merged.columnConfig)
+        if (sanitized !== slot.config) {
+          dash.slots[idx] = { ...slot, config: sanitized }
+          changed = true
+        }
+      })
+    })
   }
 
   if (changed) {

@@ -6,7 +6,7 @@ import {
   SUB_TYPES,
   useConfig,
 } from '../store/useConfig'
-import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName, getColumnLabel } from '../store/columnUtils'
+import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
@@ -232,7 +232,10 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
   const [step, setStep] = useState(1)
   const [selTable, setSelTable] = useState(widget.config?._table || 'marketing_data')
   const [type, setType] = useState(widget.type)
-  const [config, setConfig] = useState({ ...widget.config })
+  /* 초기 config → sanitize (기존 invalid 메트릭 정리) */
+  const [config, setConfig] = useState(() =>
+    sanitizeWidgetConfig(widget.type, { ...widget.config }, widget.config?._table || 'marketing_data', columnConfig)
+  )
   const [filters, setFilters] = useState(widget.config.filters || {})
 
   /* 테이블 기준 동적 메트릭/그룹바이 */
@@ -244,6 +247,16 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
     () => buildTableGroupBy(selTable, columnConfig),
     [selTable, columnConfig]
   )
+
+  /* 테이블 변경 시 → config의 메트릭/그룹바이를 새 테이블 기준으로 리셋 */
+  const handleTableChange = (newTable) => {
+    setSelTable(newTable)
+    setConfig(prev => {
+      const sanitized = sanitizeWidgetConfig(type, prev, newTable, columnConfig)
+      return { ...sanitized, _table: newTable }
+    })
+    setFilters({}) // 필터도 리셋 (디멘전이 다르므로)
+  }
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
   const toggleMetric = mid => {
@@ -425,7 +438,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                 <div>
                   <p className={`${S.lab} mb-1.5`}>데이터 소스</p>
                   <select className={S.sel} value={selTable}
-                    onChange={e => setSelTable(e.target.value)}>
+                    onChange={e => handleTableChange(e.target.value)}>
                     {availableTables.map(t => (
                       <option key={t.id} value={t.id}>{t.displayName || t.id}</option>
                     ))}
@@ -811,6 +824,12 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
     [widgetTable, columnConfig]
   )
 
+  /* 메트릭 유효성 검증: 테이블에 없는 메트릭 자동 제거 */
+  const sanitizedConfig = useMemo(
+    () => sanitizeWidgetConfig(slot.type, slot.config, widgetTable, columnConfig),
+    [slot.type, slot.config, widgetTable, columnConfig]
+  )
+
   const widthPct = slot.widthPct ?? 33.33
   const heightPx = slot.heightPx
 
@@ -902,7 +921,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
         </>
       )}
       <div className={heightPx ? 'h-full overflow-hidden rounded-xl' : ''}>
-        {renderWidget(slot.type, applyWidgetFilters(widgetData, slot.config.filters), slot.config, dark, widgetMetrics,
+        {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
           onConfigUpdate ? (newCfg) => onConfigUpdate(slot.id, newCfg) : undefined)}
       </div>
     </div>
@@ -1362,6 +1381,21 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
     [selTable, columnConfig]
   )
 
+  /* 테이블 변경 시 → config 메트릭 리셋 */
+  const handleTableChange = (newTable) => {
+    setSelTable(newTable)
+    // 새 테이블의 첫 메트릭으로 config 리셋
+    const newMetrics = buildTableMetrics(newTable, columnConfig)
+    const firstId = newMetrics[0]?.id
+    setWConfig(prev => {
+      const next = { ...prev, _table: newTable }
+      if ('metric' in next && firstId) next.metric = firstId
+      if (Array.isArray(next.metrics) && firstId) next.metrics = [firstId]
+      return next
+    })
+    setFilters({})
+  }
+
   /* 사용 가능한 테이블 목록: 부모에서 전달 */
   const availableTables = availableTablesProp || []
 
@@ -1519,7 +1553,7 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
               {availableTables.map(t => {
                 const on = selTable === t.id
                 return (
-                  <button key={t.id} onClick={() => setSelTable(t.id)}
+                  <button key={t.id} onClick={() => handleTableChange(t.id)}
                     className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all
                       ${on ? 'border-indigo-500 bg-indigo-500/10'
                         : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
@@ -2114,13 +2148,14 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               const d = filterByDate ? filterByDate(raw) : raw
               const processed = applyComputedColumns(d, t, columnConfig)
               const m = buildTableMetrics(t, columnConfig)
+              const sCfg = sanitizeWidgetConfig(activeSlot.type, activeSlot.config, t, columnConfig)
               return (
                 <div className="rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl"
                   style={{
                     width: pctToWidth(activeSlot.widthPct ?? 33.33),
                     ...(activeSlot.type !== 'kpi' && { minHeight: 210 }),
                   }}>
-                  {renderWidget(activeSlot.type, applyWidgetFilters(processed, activeSlot.config.filters), activeSlot.config, dark, m, null)}
+                  {renderWidget(activeSlot.type, applyWidgetFilters(processed, sCfg.filters), sCfg, dark, m, null)}
                 </div>
               )
             })()}
