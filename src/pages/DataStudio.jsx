@@ -7,6 +7,17 @@ function camelToSnake(s) {
   return s.replace(/[A-Z]/g, c => '_' + c.toLowerCase())
 }
 
+/* ─── CSV 헤더 → DB-safe 컬럼명 변환 (한글·특수문자 포함) ─── */
+function sanitizeColName(header) {
+  return header
+    .replace(/[()（）\[\]]/g, '')
+    .replace(/[+&]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .toLowerCase()
+}
+
 /* ═══════════════════════════════════════════════════
    테이블별 설정
    ═══════════════════════════════════════════════════ */
@@ -177,7 +188,31 @@ function buildColMap(cfg, headers) {
   if (cfg.colMap === 'auto') {
     return Object.fromEntries(headers.map(h => [h, camelToSnake(h)]))
   }
-  return cfg.colMap
+  /* 정적 매핑 + CSV에만 있는 미지 컬럼 자동 추가 */
+  const map = { ...cfg.colMap }
+  headers.forEach(h => {
+    if (!map[h]) {
+      map[h] = sanitizeColName(h)
+    }
+  })
+  return map
+}
+
+/* ─── 샘플 데이터로 숫자 컬럼 자동 감지 ─── */
+function detectNumericCols(rows, csvCols, colMap, knownNumeric) {
+  const detected = new Set(knownNumeric)
+  csvCols.forEach(csvCol => {
+    const dbCol = colMap[csvCol]
+    if (detected.has(dbCol)) return
+    const sample = rows.slice(0, 50).filter(r => r[csvCol] != null && r[csvCol] !== '')
+    if (sample.length > 0 && sample.every(r => {
+      const v = String(r[csvCol]).replace(/,/g, '')
+      return !isNaN(parseFloat(v)) && isFinite(v)
+    })) {
+      detected.add(dbCol)
+    }
+  })
+  return detected
 }
 
 const colorClass = (i, dark) => {
@@ -249,24 +284,29 @@ export default function DataStudio({ dark }) {
       const currentColMap = buildColMap(cfg, parsed.headers)
       const currentMatchedCols = Object.keys(currentColMap).filter(c => parsed.headers.includes(c))
 
-      /* auto 매핑 테이블: DB에 없는 컬럼 자동 생성 (ensure_table_columns RPC) */
-      if (cfg.colMap === 'auto') {
-        const colDefs = currentMatchedCols.map(csvCol => {
-          const dbCol = currentColMap[csvCol]
-          return { name: dbCol, type: cfg.colTypes?.[dbCol] || 'TEXT' }
-        })
-        const { error: rpcErr } = await supabase.rpc('ensure_table_columns', {
-          p_table: selectedTable,
-          p_columns: colDefs,
-        })
-        if (rpcErr) console.warn('[DataStudio] ensure_table_columns:', rpcErr.message)
-      }
+      /* 숫자 컬럼 자동 감지 (config에 없는 새 컬럼 포함) */
+      const dynNumericCols = detectNumericCols(
+        parsed.rows, currentMatchedCols, currentColMap, cfg.numericCols
+      )
+
+      /* 모든 테이블: DB에 없는 컬럼 자동 생성 (ensure_table_columns RPC) */
+      const colDefs = currentMatchedCols.map(csvCol => {
+        const dbCol = currentColMap[csvCol]
+        let type = cfg.colTypes?.[dbCol]
+        if (!type) type = dynNumericCols.has(dbCol) ? 'NUMERIC' : 'TEXT'
+        return { name: dbCol, type }
+      })
+      const { error: rpcErr } = await supabase.rpc('ensure_table_columns', {
+        p_table: selectedTable,
+        p_columns: colDefs,
+      })
+      if (rpcErr) console.warn('[DataStudio] ensure_table_columns:', rpcErr.message)
 
       const rawRows = parsed.rows.map(row => {
         const obj = {}
         currentMatchedCols.forEach(csvCol => {
           const dbCol = currentColMap[csvCol]
-          obj[dbCol] = toDbValue(dbCol, row[csvCol], cfg.numericCols)
+          obj[dbCol] = toDbValue(dbCol, row[csvCol], dynNumericCols)
         })
         return obj
       })
@@ -570,12 +610,18 @@ export default function DataStudio({ dark }) {
           <div className={card}>
             <p className={`text-xs font-semibold mb-3 ${sub}`}>컬럼 매핑 현황</p>
             <div className="flex flex-wrap gap-1.5">
-              {matchedCols.map(col => (
-                <span key={col} className={`text-[11px] px-2 py-1 rounded font-mono border
-                  ${dark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                  ✓ {col}{cfg.colMap !== 'auto' ? '' : ` → ${colMap[col]}`}
-                </span>
-              ))}
+              {matchedCols.map(col => {
+                const isNew = typeof cfg.colMap === 'object' && !cfg.colMap[col]
+                return (
+                  <span key={col} className={`text-[11px] px-2 py-1 rounded font-mono border
+                    ${isNew
+                      ? dark ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-sky-50 text-sky-600 border-sky-100'
+                      : dark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                    }`}>
+                    {isNew ? '+ ' : '✓ '}{col}{(isNew || cfg.colMap === 'auto') ? ` (${colMap[col]})` : ''}
+                  </span>
+                )
+              })}
               {unmatchedCols.map(col => (
                 <span key={col} className={`text-[11px] px-2 py-1 rounded font-mono border
                   ${dark ? 'bg-[#13151C] text-slate-600 border-[#252836]' : 'bg-slate-50 text-slate-700 border-slate-100'}`}>
@@ -586,6 +632,9 @@ export default function DataStudio({ dark }) {
             <p className={`text-[10px] mt-2 ${sub}`}>
               ✓ 매핑됨: {matchedCols.length}개 · — CSV에 없는 컬럼은 null로 저장
               {cfg.colMap === 'auto' && ' · camelCase → snake_case 자동 변환'}
+              {typeof cfg.colMap === 'object' && matchedCols.some(c => !cfg.colMap[c]) &&
+                ` · + 새 컬럼 ${matchedCols.filter(c => !cfg.colMap[c]).length}개 자동 추가`
+              }
             </p>
           </div>
 
