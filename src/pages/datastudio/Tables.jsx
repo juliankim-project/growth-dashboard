@@ -4,7 +4,7 @@ import { useConfig } from '../../store/useConfig'
 import { Table2, RefreshCw, ChevronDown, ChevronRight, Eye, EyeOff, Layers, Plus, Trash2, Save, Calculator, Check } from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
 
-const TABLES = ['marketing_data', 'product_revenue_raw']
+export const TABLES = ['marketing_data', 'product_revenue_raw']
 
 /* 숫자형으로 추정되는 컬럼 (auto-detect 용) */
 const LIKELY_HIDDEN = new Set(['id', 'no', 'guest_type', 'guest_id', 'user_id', 'roomtype_id', 'room_id', 'branch_id', 'channel_id', 'room_type2', 'channel_resv_no1', 'channel_resv_no2', 'vehicle_num', 'has_gift', 'gift_memo', 'operator', 'alim_status', 'is_extend', 'prohibit_move', 'is_long'])

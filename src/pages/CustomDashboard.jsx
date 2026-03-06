@@ -7,6 +7,7 @@ import {
   useConfig,
 } from '../store/useConfig'
 import { applyComputedColumns, buildTableMetrics, buildTableGroupBy } from '../store/columnUtils'
+import { TABLES as DB_TABLES } from './datastudio/Tables'
 import KanbanBoard from '../components/pages/KanbanBoard'
 import FunnelPage from '../components/pages/FunnelPage'
 import SimulationPage from '../components/pages/SimulationPage'
@@ -324,19 +325,33 @@ function DataSourceSelector({ tableName, onChange, dark }) {
    위젯 에디터 모달 — 3스텝 퍼널
    Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
 ══════════════════════════════════════════ */
-function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subType = 'report', metrics: metricsProp, groupByOptions }) {
+function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subType = 'report', metrics: metricsProp, groupByOptions, columnConfig }) {
   const [step, setStep] = useState(1)
+  const selTable = widget.config?._table || 'marketing_data'
   const [type, setType] = useState(widget.type)
   const [config, setConfig] = useState({ ...widget.config })
   const [filters, setFilters] = useState(widget.config.filters || {})
+
+  /* 테이블 기준 동적 메트릭/그룹바이 */
+  const dynMetrics = useMemo(
+    () => buildTableMetrics(selTable, columnConfig),
+    [selTable, columnConfig]
+  )
+  const dynGroupBy = useMemo(
+    () => buildTableGroupBy(selTable, columnConfig),
+    [selTable, columnConfig]
+  )
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
   const toggleMetric = mid => {
     const cur = config.metrics || []
     setConfig(c => ({ ...c, metrics: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] }))
   }
-  const changeType = t => { setType(t); setConfig({ ...DEFAULT_WIDGET_CONFIG[t] }) }
-  const handleSave = () => onSave(slotId, { type, config: { ...config, filters } })
+  const changeType = t => { setType(t); setConfig(prev => ({ ...DEFAULT_WIDGET_CONFIG[t], _table: prev._table, filters: prev.filters })) }
+  const handleSave = () => onSave(slotId, { type, config: { ...config, filters, _table: selTable } })
+
+  /* 카테고리별 허용 위젯 */
+  const allowedTypes = SUB_TYPES[subType]?.widgetTypes || SUB_TYPES.report.widgetTypes
 
   const S = {
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -344,28 +359,83 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
-    btn: (on) => `text-xs px-2.5 py-2 rounded-lg border text-left transition-colors
+    btn: (on, computed) => `text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
+      ${computed ? 'border-l-2 !border-l-violet-500' : ''}
       ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-700 hover:border-indigo-300'}`,
-    typeCard: (on) => `flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all
-      ${on ? 'border-indigo-500 bg-indigo-500/10'
-        : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
-          : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
   }
 
-  const STEPS = ['타입', '설정', '데이터 필터']
+  const STEPS = ['위젯 타입', '설정', '데이터 필터']
+
+  /* 메트릭 그룹 분류 */
+  const metricGroups = useMemo(() => {
+    const groups = {}
+    dynMetrics.forEach(m => {
+      const g = m._computed ? 'computed' : (m.group || 'metric')
+      if (!groups[g]) groups[g] = []
+      groups[g].push(m)
+    })
+    return groups
+  }, [dynMetrics])
+
+  const GROUP_LABELS = { metric: '지표', computed: '🧮 계산 컬럼', rate: '단가' }
+
+  /* 메트릭 버튼 렌더 (단일 선택) */
+  const renderMetricSingle = (selectedId, onSelect) => (
+    <div className="flex flex-col gap-3">
+      {Object.entries(metricGroups).map(([group, items]) => (
+        <div key={group}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+            ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
+            {GROUP_LABELS[group] || group}
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {items.map(m => (
+              <button key={m.id} onClick={() => onSelect(m.id)} className={S.btn(selectedId === m.id, m._computed)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  /* 메트릭 버튼 렌더 (복수 선택) */
+  const renderMetricMulti = (selectedIds, onToggle) => (
+    <div className="flex flex-col gap-3">
+      {Object.entries(metricGroups).map(([group, items]) => (
+        <div key={group}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+            ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
+            {GROUP_LABELS[group] || group}
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {items.map(m => {
+              const on = selectedIds.includes(m.id)
+              return (
+                <button key={m.id} onClick={() => onToggle(m.id)} className={S.btn(on, m._computed)}>
+                  {on ? '✓ ' : ''}{m.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`rounded-2xl border w-full max-w-3xl flex flex-col max-h-[90vh]
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-xl flex flex-col max-h-[90vh]
         ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
 
-        {/* 헤더 — 스텝 인디케이터 */}
+        {/* 헤더 */}
         <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0
           ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <div>
-            <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>위젯 설정</p>
-            <div className="flex items-center gap-1.5 mt-2">
+            <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>위젯 편집</p>
+            <div className="flex items-center gap-1 mt-2">
               {STEPS.map((s, i) => (
                 <div key={s} className="flex items-center gap-1">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
@@ -374,7 +444,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                         : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
                     {step > i + 1 ? '✓' : i + 1}
                   </div>
-                  <span className={`text-[10px] font-medium
+                  <span className={`text-[10px] font-medium hidden sm:inline
                     ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-600'}`}>
                     {s}
                   </span>
@@ -383,32 +453,60 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
               ))}
             </div>
           </div>
-          <button onClick={onClose}
-            className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-            <X size={16} />
-          </button>
+          {/* 데이터소스 칩 */}
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+              📊 {selTable}
+            </span>
+            <button onClick={onClose}
+              className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* 바디 */}
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 min-h-0">
 
-          {/* Step 1: 타입 선택 */}
-          {step === 1 && (() => {
-            const filtered = getFilteredWidgetMeta(subType)
-            const cols = Object.keys(filtered).length
-            return (
-              <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${Math.min(cols, 5)}, 1fr)` }}>
-                {Object.entries(filtered).map(([id, m]) => (
-                  <button key={id} onClick={() => changeType(id)} className={S.typeCard(type === id)}>
-                    <span className="text-2xl">{m.icon}</span>
-                    <span className={`text-[10px] font-semibold leading-tight ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {m.label}
-                    </span>
+          {/* Step 1: 위젯 타입 선택 (미리보기 포함) */}
+          {step === 1 && (
+            <div className="flex flex-col gap-2">
+              {allowedTypes.filter(wt => WTYPE_META[wt]).map(wt => {
+                const meta = WTYPE_META[wt]
+                const on = type === wt
+                const Preview = MINI_PREVIEW[wt]
+                return (
+                  <button key={wt} onClick={() => changeType(wt)}
+                    className={`flex items-center gap-4 p-3.5 rounded-xl border text-left transition-all
+                      ${on ? 'border-indigo-500 bg-indigo-500/10'
+                        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                    <div className={`w-16 h-12 rounded-lg flex items-center justify-center shrink-0 p-2
+                      ${dark ? 'bg-[#0F1117]' : 'bg-slate-100'}`}>
+                      {Preview ? <Preview dark={dark} /> : <span className="text-xl">{meta.icon}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{meta.icon} {meta.label}</p>
+                      <p className={`text-[10px] mt-0.5 leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-700'}`}>{meta.desc}</p>
+                      <div className="flex gap-1.5 mt-1.5">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                          {meta.metricTag}
+                        </span>
+                        {meta.needsGroup && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                            그룹바이 필요
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] transition-colors shrink-0
+                      ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+                      {on && '✓'}
+                    </div>
                   </button>
-                ))}
-              </div>
-            )
-          })()}
+                )
+              })}
+            </div>
+          )}
 
           {/* Step 2: 위젯별 설정 */}
           {step === 2 && (
@@ -425,22 +523,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => (
-                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                                {m.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    {renderMetricSingle(config.metric, mid => upd('metric', mid))}
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
@@ -453,25 +536,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
               {type === 'timeseries' && (
                 <div>
                   <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                  <div className="flex flex-col gap-3">
-                    {['metric', 'rate'].map(group => (
-                      <div key={group}>
-                        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                          {group === 'metric' ? '지표' : '단가'}
-                        </p>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {(metricsProp || METRICS).filter(m => m.group === group).map(m => {
-                            const on = (config.metrics || []).includes(m.id)
-                            return (
-                              <button key={m.id} onClick={() => toggleMetric(m.id)} className={S.btn(on)}>
-                                {on ? '✓ ' : ''}{m.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {renderMetricMulti(config.metrics || [], toggleMetric)}
                 </div>
               )}
 
@@ -479,28 +544,13 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => (
-                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                                {m.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    {renderMetricSingle(config.metric, mid => upd('metric', mid))}
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
                     <select className={S.sel} value={config.groupBy || 'channel'}
                       onChange={e => upd('groupBy', e.target.value)}>
-                      {(groupByOptions || GROUP_BY).map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                     </select>
                   </div>
                 </>
@@ -510,34 +560,16 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => {
-                              const on = (config.metrics || []).includes(m.id)
-                              return (
-                                <button key={m.id} onClick={() => {
-                                  const cur = config.metrics || []
-                                  upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
-                                }} className={S.btn(on)}>
-                                  {on ? '✓ ' : ''}{m.label}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    {renderMetricMulti(config.metrics || [], mid => {
+                      const cur = config.metrics || []
+                      upd('metrics', cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid])
+                    })}
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
                     <select className={S.sel} value={config.groupBy || 'channel'}
                       onChange={e => upd('groupBy', e.target.value)}>
-                      {(groupByOptions || GROUP_BY).map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                     </select>
                   </div>
                 </>
@@ -545,7 +577,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
             </>
           )}
 
-          {/* Step 3: 데이터 필터 — 전체 너비, 초기 펼침 */}
+          {/* Step 3: 데이터 필터 */}
           {step === 3 && (
             <FilterSection
               filters={filters}
@@ -561,7 +593,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
           )}
         </div>
 
-        {/* 푸터 — 이전 / 다음 / 저장 */}
+        {/* 푸터 */}
         <div className={`flex items-center justify-between px-5 py-4 border-t shrink-0
           ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <button
@@ -1207,13 +1239,29 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
     [selTable, columnConfig]
   )
 
-  /* 사용 가능한 테이블 목록: marketing_data + columnConfig에 등록된 테이블들 */
+  /* 사용 가능한 테이블 목록: DB_TABLES + columnConfig에 등록된 테이블들 */
   const availableTables = useMemo(() => {
-    const tables = [{ id: 'marketing_data', label: '마케팅 데이터', icon: '📊' }]
+    const seen = new Set()
+    const tables = []
+    // DB_TABLES 기본 포함
+    DB_TABLES.forEach(t => {
+      seen.add(t)
+      const tCfg = columnConfig?.[t]
+      const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
+      tables.push({
+        id: t,
+        label: t === 'marketing_data' ? '마케팅 데이터' : `${t.replace(/_/g, ' ')}${colCount ? ` · ${colCount}컬럼` : ''}`,
+        icon: t === 'marketing_data' ? '📊' : '🏨',
+      })
+    })
+    // columnConfig에만 있는 추가 테이블
     if (columnConfig) {
       Object.keys(columnConfig).forEach(t => {
-        if (t === 'marketing_data') return
-        tables.push({ id: t, label: t.replace(/_/g, ' '), icon: '🏨' })
+        if (seen.has(t)) return
+        seen.add(t)
+        const tCfg = columnConfig[t]
+        const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
+        tables.push({ id: t, label: `${t.replace(/_/g, ' ')}${colCount ? ` · ${colCount}컬럼` : ''}`, icon: '🏨' })
       })
     }
     return tables
@@ -1776,6 +1824,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
           subType={subType}
           metrics={tableMetrics}
           groupByOptions={tableGroupBy}
+          columnConfig={columnConfig}
         />
       )}
     </div>
