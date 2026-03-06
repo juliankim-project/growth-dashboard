@@ -210,7 +210,7 @@ export const SUB_COLOR_OPTIONS = [
 ]
 
 /* ──────────────────────────────────────────
-   지표 목록
+   지표 목록 (레거시 — 하위호환용, 신규 코드는 columnConfig 사용)
    group: 'metric' = 원시 지표 / 'rate' = 단가·비율 파생지표
 ─────────────────────────────────────────── */
 export const METRICS = [
@@ -236,13 +236,43 @@ export const METRICS = [
 /* 파생지표 계산에 필요한 기반 지표 ID */
 export const DERIVED_BASE_METRICS = ['cost', 'impr', 'clicks', 'view_content', 'signup', 'conv', 'revenue']
 
-/* GROUP_BY: DB 컬럼명 snake_case 사용 */
+/* GROUP_BY: DB 컬럼명 snake_case 사용 (레거시) */
 export const GROUP_BY = [
   { id: 'channel', label: '채널' },
   { id: 'campaign', label: '캠페인' },
   { id: 'ad_group', label: '광고그룹' },
   { id: 'ad_creative', label: '크리에이티브' },
 ]
+
+/* ──────────────────────────────────────────
+   marketing_data 기본 columnConfig 시드
+   — METRICS/GROUP_BY 한국어 라벨을 columnConfig 형식으로 매핑
+   — migrateConfig / Tables.jsx 자동 초기화 시 사용
+─────────────────────────────────────────── */
+export const MARKETING_SEED_CONFIG = {
+  displayName: '마케팅 데이터',
+  columns: {
+    date:          { alias: '날짜',           visible: false, fmt: 'number' },
+    channel:       { alias: '채널',           visible: true,  fmt: 'number' },
+    campaign:      { alias: '캠페인',         visible: true,  fmt: 'number' },
+    ad_group:      { alias: '광고그룹',       visible: true,  fmt: 'number' },
+    ad_creative:   { alias: '크리에이티브',   visible: true,  fmt: 'number' },
+    spend:         { alias: '광고비',         visible: true,  fmt: 'currency' },
+    impressions:   { alias: '노출',           visible: true,  fmt: 'number' },
+    clicks:        { alias: '클릭',           visible: true,  fmt: 'number' },
+    cpc:           { alias: 'CPC',            visible: true,  fmt: 'currency' },
+    view_content:  { alias: '상세페이지 조회', visible: true,  fmt: 'number' },
+    signups:       { alias: '회원가입',       visible: true,  fmt: 'number' },
+    purchases:     { alias: '구매',           visible: true,  fmt: 'number' },
+    revenue:       { alias: '매출',           visible: true,  fmt: 'currency' },
+    installs:      { alias: '인스톨',         visible: true,  fmt: 'number' },
+    content:       { alias: '콘텐츠',         visible: true,  fmt: 'number' },
+    sub_publisher: { alias: '서브 퍼블리셔',  visible: true,  fmt: 'number' },
+    term:          { alias: '검색어',         visible: true,  fmt: 'number' },
+  },
+  dimensionColumns: ['channel', 'campaign', 'ad_group', 'ad_creative', 'content', 'sub_publisher', 'term'],
+  computed: [],
+}
 
 /* ──────────────────────────────────────────
    기본 위젯 config
@@ -300,19 +330,31 @@ const OLD_TABLE_NAMES = new Set([
 function migrateConfig(raw) {
   const merged = { ...DEFAULT_CONFIG, ...raw }
   if (!merged.subColors) merged.subColors = {}
-  if (!merged.subDataSources) return merged
   let changed = false
-  const newDS = Object.fromEntries(
-    Object.entries(merged.subDataSources).map(([k, v]) => {
-      if (OLD_TABLE_NAMES.has(v?.table)) {
-        changed = true
-        return [k, { ...v, table: 'marketing_data' }]
-      }
-      return [k, v]
-    })
-  )
+
+  /* 구 테이블명 → marketing_data 마이그레이션 */
+  if (merged.subDataSources) {
+    const newDS = Object.fromEntries(
+      Object.entries(merged.subDataSources).map(([k, v]) => {
+        if (OLD_TABLE_NAMES.has(v?.table)) {
+          changed = true
+          return [k, { ...v, table: 'marketing_data' }]
+        }
+        return [k, v]
+      })
+    )
+    if (changed) merged.subDataSources = newDS
+  }
+
+  /* columnConfig 자동 시딩: marketing_data가 없거나 비어있으면 시드 적용 */
+  if (!merged.columnConfig) merged.columnConfig = {}
+  const mkCfg = merged.columnConfig.marketing_data
+  if (!mkCfg || !mkCfg.columns || Object.keys(mkCfg.columns).length === 0) {
+    merged.columnConfig = { ...merged.columnConfig, marketing_data: { ...MARKETING_SEED_CONFIG } }
+    changed = true
+  }
+
   if (changed) {
-    merged.subDataSources = newDS
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch { }
   }
   return merged

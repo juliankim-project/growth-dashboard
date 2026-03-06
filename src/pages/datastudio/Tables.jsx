@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useConfig } from '../../store/useConfig'
+import { useConfig, MARKETING_SEED_CONFIG } from '../../store/useConfig'
 import { Table2, RefreshCw, ChevronDown, ChevronRight, Eye, EyeOff, Layers, Plus, Trash2, Save, Calculator, Check } from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
 
@@ -67,18 +67,40 @@ export default function Tables({ dark }) {
         const existing = getColumnConfig(t)
         const info = tables[t]
         if (info && (!existing.columns || Object.keys(existing.columns).length === 0)) {
-          // 자동 초기화: DB 컬럼 기반 → 즉시 저장
+          // 자동 초기화: 시드 config 또는 DB 컬럼 auto-detect
+          const seed = t === 'marketing_data' ? MARKETING_SEED_CONFIG : null
           const columns = {}
-          const dimensionColumns = []
+          const dimensionColumns = seed ? [...(seed.dimensionColumns || [])] : []
           info.columns.forEach(col => {
-            columns[col] = autoDetect(col)
-            if (LIKELY_DIMENSION.has(col)) dimensionColumns.push(col)
+            if (seed?.columns?.[col]) {
+              columns[col] = { ...seed.columns[col] }
+            } else {
+              columns[col] = autoDetect(col)
+              if (!seed && LIKELY_DIMENSION.has(col)) dimensionColumns.push(col)
+            }
           })
-          const init = { columns, dimensionColumns, computed: [] }
+          const init = {
+            columns,
+            dimensionColumns,
+            computed: seed?.computed || [],
+            ...(seed?.displayName ? { displayName: seed.displayName } : {}),
+          }
           setEditCfg(prev => ({ ...prev, [t]: init }))
-          setColumnConfig(t, init) // 자동 감지 결과 즉시 저장
+          setColumnConfig(t, init) // 즉시 저장
         } else {
-          setEditCfg(prev => ({ ...prev, [t]: { ...existing } }))
+          // 기존 config 로드 + DB에만 있는 새 컬럼 자동 머지
+          const merged = { ...existing, columns: { ...(existing.columns || {}) } }
+          let dirty = false
+          if (info) {
+            info.columns.forEach(col => {
+              if (!merged.columns[col]) {
+                merged.columns[col] = autoDetect(col)
+                dirty = true
+              }
+            })
+          }
+          setEditCfg(prev => ({ ...prev, [t]: merged }))
+          if (dirty) setColumnConfig(t, merged) // 새 컬럼 발견 시 자동 저장
         }
       }
       return next

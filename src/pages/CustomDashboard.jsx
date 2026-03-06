@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Settings2, Check, X, Plus, GripVertical } from 'lucide-react'
 import {
-  TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
+  TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
   SUB_TYPES,
   useConfig,
 } from '../store/useConfig'
-import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName } from '../store/columnUtils'
+import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName, getColumnLabel } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
@@ -37,119 +37,71 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-/* ── fieldMap 적용: 커스텀 컬럼명 → 표준 필드명으로 복사 ── */
-function applyFieldMap(rows, fieldMap) {
-  if (!fieldMap || Object.keys(fieldMap).length === 0) return rows
-  return rows.map(row => {
-    const mapped = { ...row }
-    Object.entries(fieldMap).forEach(([metricId, customCol]) => {
-      const m = METRICS.find(x => x.id === metricId)
-      if (m && m.field && customCol && customCol !== m.field) {
-        mapped[m.field] = row[customCol] ?? row[m.field]
-      }
-    })
-    return mapped
-  })
-}
-
-/* ── 카드별 필터 적용: channel → campaign → ad_group 캐스케이딩 ── */
+/* ── 카드별 필터 적용: dimensionColumns 기반 동적 필터링 ── */
 function applyWidgetFilters(data, filters) {
   if (!filters) return data
   let result = data
-  if (filters.channel?.length) result = result.filter(r => filters.channel.includes(r.channel))
-  if (filters.campaign?.length) result = result.filter(r => filters.campaign.includes(r.campaign))
-  if (filters.ad_group?.length) result = result.filter(r => filters.ad_group.includes(r.ad_group))
-  if (filters.ad_creative?.length) result = result.filter(r => filters.ad_creative.includes(r.ad_creative))
-  if (filters.content?.length) result = result.filter(r => filters.content.includes(r.content))
-  if (filters.term?.length) result = result.filter(r => filters.term.includes(r.term))
+  Object.entries(filters).forEach(([key, vals]) => {
+    if (key === 'table') return // 테이블 선택은 필터링 대상 아님
+    if (Array.isArray(vals) && vals.length > 0) {
+      result = result.filter(r => vals.includes(r[key]))
+    }
+  })
   return result
 }
 
-/* ── 테이블 목록 (나중에 product / crm 등 추가 가능) ── */
-const KNOWN_TABLES = [
-  { id: 'marketing_data', label: '마케팅' },
-  { id: 'product_revenue_raw', label: '상품 매출' },
-  { id: 'product_data', label: '프로덕트' },
-  { id: 'crm_data', label: 'CRM' },
-]
-
 /* ─────────────────────────────────────────────────────────────────
-   FilterSection  —  테이블→채널→캠페인→광고그룹→콘텐츠→검색어
+   FilterSection  —  columnConfig 기반 동적 디멘전 필터
    가로 컬럼 레이아웃 · 단계별 출현 · 컬럼별 "그룹바이" 토글
 ───────────────────────────────────────────────────────────────── */
-function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByChange, initialOpen = false }) {
+function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByChange, initialOpen = false, columnConfig, tableName }) {
   const [open, setOpen] = useState(initialOpen)
 
-  const selTable = filters.table || ''
-  const selCh = filters.channel || []
-  const selCp = filters.campaign || []
-  const selAg = filters.ad_group || []
-  const selAc = filters.ad_creative || []
-  const selContent = filters.content || []
-  const selTerm = filters.term || []
+  /* 현재 테이블의 디멘전 컬럼 목록 */
+  const tCfg = columnConfig?.[tableName]
+  const dimCols = tCfg?.dimensionColumns || []
 
-  /* 캐스케이딩 데이터 */
-  const byChannel = selCh.length ? data.filter(r => selCh.includes(r.channel)) : data
-  const byCampaign = selCp.length ? byChannel.filter(r => selCp.includes(r.campaign)) : byChannel
-  const byAdGroup = selAg.length ? byCampaign.filter(r => selAg.includes(r.ad_group)) : byCampaign
-  const byAdCreative = selAc.length ? byAdGroup.filter(r => selAc.includes(r.ad_creative)) : byAdGroup
-  const byContent = selContent.length ? byAdCreative.filter(r => selContent.includes(r.content)) : byAdCreative
+  /* 디멘전 라벨 헬퍼 */
+  const dimLabel = (dim) => getColumnLabel(dim, tCfg?.columns?.[dim])
 
-  const channels = [...new Set(data.map(r => r.channel).filter(Boolean))].sort()
-  const campaigns = [...new Set(byChannel.map(r => r.campaign).filter(Boolean))].sort()
-  const adGroups = [...new Set(byCampaign.map(r => r.ad_group).filter(Boolean))].sort()
-  const adCreatives = [...new Set(byAdGroup.map(r => r.ad_creative).filter(Boolean))].sort()
-  const contents = [...new Set(byAdGroup.map(r => r.content).filter(Boolean))].sort()
-  /* term: ad_group 선택 후 바로 출현 (Naver처럼 content 없는 경우 대응) */
-  const terms = [...new Set(byContent.map(r => r.term).filter(Boolean))].sort()
+  /* 캐스케이딩 데이터: 각 디멘전마다 이전 디멘전 필터 적용 */
+  const dimStates = dimCols.map((dim, idx) => {
+    let filtered = data
+    for (let i = 0; i < idx; i++) {
+      const prevDim = dimCols[i]
+      const prevSel = filters[prevDim] || []
+      if (prevSel.length > 0) {
+        filtered = filtered.filter(r => prevSel.includes(r[prevDim]))
+      }
+    }
+    const opts = [...new Set(filtered.map(r => r[dim]).filter(Boolean))].sort()
+    const sel = filters[dim] || []
+    const show = idx === 0 || ((filters[dimCols[idx - 1]] || []).length > 0 && opts.length > 0)
+    return { key: dim, label: dimLabel(dim), opts, sel, show }
+  })
 
-  /* 단계별 컬럼 정의
-     · ad_creative, content 는 ad_group 선택 후 데이터 있으면 동시 출현 (플랫폼별 차이)
-     · term 은 ad_group 선택 후 바로 출현 (content/ad_creative 없어도) */
-  const COLS = [
-    {
-      key: 'table', label: '테이블', isTable: true,
-      opts: KNOWN_TABLES.map(t => t.id),
-      labelOf: Object.fromEntries(KNOWN_TABLES.map(t => [t.id, t.label])),
-      sel: selTable ? [selTable] : [], show: true
-    },
-    { key: 'channel', label: '채널', opts: channels, sel: selCh, show: true },
-    { key: 'campaign', label: '캠페인', opts: campaigns, sel: selCp, show: selCh.length > 0 && campaigns.length > 0 },
-    { key: 'ad_group', label: '광고그룹', opts: adGroups, sel: selAg, show: selCp.length > 0 && adGroups.length > 0 },
-    { key: 'ad_creative', label: '크리에이티브', opts: adCreatives, sel: selAc, show: selAg.length > 0 && adCreatives.length > 0 },
-    { key: 'content', label: '콘텐츠', opts: contents, sel: selContent, show: selAg.length > 0 && contents.length > 0 },
-    { key: 'term', label: '검색어', opts: terms, sel: selTerm, show: selAg.length > 0 && terms.length > 0 },
-  ].filter(c => c.show)
+  const COLS = dimStates.filter(d => d.show)
 
-  /* 이벤트 핸들러 */
-  const selectTable = (id) => {
-    const next = selTable === id ? '' : id
-    onChange({ ...filters, table: next, channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-  }
+  /* 이벤트 핸들러 — 동적 캐스케이딩 리셋 */
   const toggle = (dim, val) => {
     const cur = filters[dim] || []
     const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
-    if (dim === 'channel') onChange({ ...filters, channel: next, campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'campaign') onChange({ ...filters, campaign: next, ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_group') onChange({ ...filters, ad_group: next, ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: next, term: [] })
-    else if (dim === 'content') onChange({ ...filters, content: next, term: [] })
-    else onChange({ ...filters, [dim]: next })
+    const dimIdx = dimCols.indexOf(dim)
+    const reset = {}
+    dimCols.slice(dimIdx + 1).forEach(d => { reset[d] = [] })
+    onChange({ ...filters, [dim]: next, ...reset })
   }
   const clearDim = (dim) => {
-    if (dim === 'table') onChange({ ...filters, table: '', channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'channel') onChange({ ...filters, channel: [], campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'campaign') onChange({ ...filters, campaign: [], ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_group') onChange({ ...filters, ad_group: [], ad_creative: [], content: [], term: [] })
-    else if (dim === 'ad_creative') onChange({ ...filters, ad_creative: [], term: [] })
-    else if (dim === 'content') onChange({ ...filters, content: [], term: [] })
-    else onChange({ ...filters, [dim]: [] })
+    const dimIdx = dimCols.indexOf(dim)
+    const reset = {}
+    dimCols.slice(dimIdx).forEach(d => { reset[d] = [] })
+    onChange({ ...filters, ...reset })
   }
 
-  const activeCount = (selTable ? 1 : 0) + selCh.length + selCp.length + selAg.length + selAc.length + selContent.length + selTerm.length
+  const activeCount = dimStates.reduce((sum, d) => sum + d.sel.length, 0)
 
   /* 그룹바이 라벨 */
-  const groupByLabel = COLS.find(c => c.key === groupBy)?.label ?? groupBy
+  const groupByLabel = COLS.find(c => c.key === groupBy)?.label ?? dimLabel(groupBy)
 
   return (
     <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
@@ -179,8 +131,13 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
       {open && (
         <div className={`border-t overflow-x-auto ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <div className="flex min-w-max">
+            {COLS.length === 0 && (
+              <p className={`text-[10px] px-4 py-3 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>
+                디멘전 컬럼이 설정되지 않았습니다. 데이터 스튜디오 → 테이블 관리에서 설정하세요.
+              </p>
+            )}
             {COLS.map((col, ci) => {
-              const isGroupByDim = !col.isTable && groupBy === col.key
+              const isGroupByDim = groupBy === col.key
               const bdrR = ci < COLS.length - 1
                 ? dark ? 'border-r border-[#252836]' : 'border-r border-slate-200'
                 : ''
@@ -199,8 +156,8 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                     )}
                   </div>
 
-                  {/* 그룹바이 토글 (테이블 열 제외, 지원 위젯만) */}
-                  {!col.isTable && onGroupByChange && (
+                  {/* 그룹바이 토글 */}
+                  {onGroupByChange && (
                     <button
                       onClick={() => onGroupByChange(isGroupByDim ? null : col.key)}
                       className={`text-[10px] px-2.5 py-1 text-center border-b w-full transition-colors
@@ -220,13 +177,12 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                     {col.opts.length === 0
                       ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>없음</p>
                       : col.opts.map(v => {
-                        const lbl = col.labelOf?.[v] ?? v
-                        const isOn = col.isTable ? selTable === v : col.sel.includes(v)
-                        const dimmed = !col.isTable && isGroupByDim
+                        const isOn = col.sel.includes(v)
+                        const dimmed = isGroupByDim
                         return (
                           <button
                             key={v}
-                            onClick={() => !dimmed && (col.isTable ? selectTable(v) : toggle(col.key, v))}
+                            onClick={() => !dimmed && toggle(col.key, v)}
                             title={v}
                             className={`text-[11px] px-2.5 py-[5px] text-left w-full transition-colors leading-snug break-words
                                 ${dimmed
@@ -237,7 +193,7 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
                                   : dark ? 'text-slate-400 hover:bg-[#1A1D27] hover:text-slate-200'
                                     : 'text-slate-600 hover:bg-slate-50'}`}
                           >
-                            {!dimmed && isOn ? '✓ ' : ''}{lbl}
+                            {!dimmed && isOn ? '✓ ' : ''}{v}
                           </button>
                         )
                       })
@@ -698,8 +654,10 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                 dark={dark}
                 onChange={setFilters}
                 initialOpen={true}
+                columnConfig={columnConfig}
+                tableName={selTable}
                 onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
-                  ? (dim) => upd('groupBy', dim ?? 'channel')
+                  ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
                   : undefined}
               />
             ) : (
@@ -1982,6 +1940,8 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                   data={widgetData}
                   dark={dark}
                   onChange={setFilters}
+                  columnConfig={columnConfig}
+                  tableName={selTable}
                   onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
                     ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
                     : undefined}

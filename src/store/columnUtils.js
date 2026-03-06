@@ -1,10 +1,8 @@
 /**
  * columnUtils.js — 테이블별 동적 메트릭/그룹바이 + 계산 컬럼 평가
  *
- * marketing_data → 기존 METRICS/GROUP_BY 그대로 (하위호환)
- * 기타 테이블   → columnConfig 기반 동적 생성
+ * 모든 테이블 → columnConfig 기반 동적 생성 (Single Source of Truth)
  */
-import { METRICS, GROUP_BY } from './useConfig'
 
 /* ── 컬럼명 → 표시명 변환 (snake_case → Readable) ── */
 function prettifyColumnName(col) {
@@ -41,7 +39,7 @@ export function getTableDisplayName(tableName, columnConfig) {
    buildTableMetrics — METRICS 호환 배열 생성
    ═══════════════════════════════════════════ */
 export function buildTableMetrics(tableName, columnConfig) {
-  if (tableName === 'marketing_data' || !tableName) return METRICS
+  if (!tableName) return []
 
   const tCfg = columnConfig?.[tableName]
   if (!tCfg || !tCfg.columns || Object.keys(tCfg.columns).length === 0) return []
@@ -81,7 +79,7 @@ export function buildTableMetrics(tableName, columnConfig) {
    buildTableGroupBy — GROUP_BY 호환 배열 생성
    ═══════════════════════════════════════════ */
 export function buildTableGroupBy(tableName, columnConfig) {
-  if (tableName === 'marketing_data' || !tableName) return GROUP_BY
+  if (!tableName) return []
 
   const tCfg = columnConfig?.[tableName]
   if (!tCfg) return []
