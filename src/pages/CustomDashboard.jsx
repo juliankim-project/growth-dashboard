@@ -3,15 +3,11 @@ import { Settings2, Check, X, Plus, Database, GripVertical } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES, METRICS, GROUP_BY,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
-  SUB_TYPES, DEFAULT_SUB_TYPE, TYPE_TEMPLATES,
+  SUB_TYPES, TYPE_TEMPLATES,
   useConfig,
 } from '../store/useConfig'
 import { applyComputedColumns, buildTableMetrics, buildTableGroupBy } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
-import KanbanBoard from '../components/pages/KanbanBoard'
-import FunnelPage from '../components/pages/FunnelPage'
-import SimulationPage from '../components/pages/SimulationPage'
-import CohortPage from '../components/pages/CohortPage'
 import { useTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
@@ -20,6 +16,14 @@ import TimeSeriesWidget from '../components/widgets/TimeSeriesWidget'
 import BarWidget from '../components/widgets/BarWidget'
 import DonutWidget from '../components/widgets/DonutWidget'
 import TableWidget from '../components/widgets/TableWidget'
+import SimBudgetWidget from '../components/widgets/SimBudgetWidget'
+import SimGoalWidget from '../components/widgets/SimGoalWidget'
+import SimScenarioWidget from '../components/widgets/SimScenarioWidget'
+import FunnelWidget from '../components/widgets/FunnelWidget'
+import FunnelBreakdownWidget from '../components/widgets/FunnelBreakdownWidget'
+import CohortHeatmapWidget from '../components/widgets/CohortHeatmapWidget'
+import CohortTrendWidget from '../components/widgets/CohortTrendWidget'
+import KanbanWidget from '../components/widgets/KanbanWidget'
 import {
   DndContext, closestCenter,
   PointerSensor, KeyboardSensor,
@@ -251,13 +255,21 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
 const WIDGET_MAP = {
   kpi: KPIWidget, timeseries: TimeSeriesWidget,
   bar: BarWidget, donut: DonutWidget, table: TableWidget,
+  sim_budget: SimBudgetWidget, sim_goal: SimGoalWidget, sim_scenario: SimScenarioWidget,
+  funnel_chart: FunnelWidget, funnel_breakdown: FunnelBreakdownWidget,
+  cohort_heatmap: CohortHeatmapWidget, cohort_trend: CohortTrendWidget,
+  kanban_board: KanbanWidget,
 }
-const renderWidget = (type, data, cfg, dark, metrics) => {
+/* 상태형 위젯 (onConfigUpdate 필요) */
+const STATEFUL_WIDGETS = new Set(['sim_budget', 'sim_goal', 'sim_scenario', 'kanban_board'])
+
+const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate) => {
   const C = WIDGET_MAP[type]
   if (!C) return null
   return (
     <ErrorBoundary dark={dark} label={type}>
-      <C data={data} config={cfg} dark={dark} metrics={metrics} />
+      <C data={data} config={cfg} dark={dark} metrics={metrics}
+        {...(STATEFUL_WIDGETS.has(type) && onConfigUpdate ? { onConfigUpdate } : {})} />
     </ErrorBoundary>
   )
 }
@@ -574,22 +586,167 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, subTyp
                   </div>
                 </>
               )}
+
+              {/* ── 시뮬레이션: 예산 배분 ── */}
+              {type === 'sim_budget' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
+                    <input type="number" className={S.inp} value={config.totalBudget || 1000000}
+                      onChange={e => upd('totalBudget', Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
+                    <select className={S.sel} value={config.targetMetric || 'revenue'}
+                      onChange={e => upd('targetMetric', e.target.value)}>
+                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* ── 시뮬레이션: 목표 역산 ── */}
+              {type === 'sim_goal' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
+                    <select className={S.sel} value={config.targetMetric || 'revenue'}
+                      onChange={e => upd('targetMetric', e.target.value)}>
+                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>목표값</p>
+                    <input type="number" className={S.inp} value={config.targetValue || 10000000}
+                      onChange={e => upd('targetValue', Number(e.target.value))} />
+                  </div>
+                </>
+              )}
+
+              {/* ── 시뮬레이션: 시나리오 비교 ── */}
+              {type === 'sim_scenario' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
+                    <input type="number" className={S.inp} value={config.totalBudget || 1000000}
+                      onChange={e => upd('totalBudget', Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>비교 메트릭</p>
+                    <select className={S.sel} value={config.targetMetric || 'revenue'}
+                      onChange={e => upd('targetMetric', e.target.value)}>
+                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* ── 퍼널: 전환 퍼널 / 브레이크다운 ── */}
+              {(type === 'funnel_chart' || type === 'funnel_breakdown') && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-2`}>퍼널 단계</p>
+                    {(config.stages || []).map((stage, si) => (
+                      <div key={stage.id} className="flex gap-1.5 mb-1.5">
+                        <input className={`${S.inp} flex-1`} value={stage.label}
+                          onChange={e => {
+                            const next = [...config.stages]; next[si] = {...stage, label: e.target.value}; upd('stages', next)
+                          }} placeholder={`단계 ${si+1}`} />
+                        <select className={`${S.sel} w-32`} value={stage.metric}
+                          onChange={e => {
+                            const next = [...config.stages]; next[si] = {...stage, metric: e.target.value}; upd('stages', next)
+                          }}>
+                          {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                        </select>
+                        {(config.stages || []).length > 2 && (
+                          <button onClick={() => upd('stages', config.stages.filter((_,j) => j !== si))}
+                            className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => upd('stages', [...(config.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || 'impr'}])}
+                      className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
+                        ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
+                      + 단계 추가
+                    </button>
+                  </div>
+                  {type === 'funnel_breakdown' && (
+                    <div>
+                      <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
+                      <select className={S.sel} value={config.groupBy || 'channel'}
+                        onChange={e => upd('groupBy', e.target.value)}>
+                        {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── 코호트: 히트맵 / 트렌드 ── */}
+              {(type === 'cohort_heatmap' || type === 'cohort_trend') && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>기간 단위</p>
+                    <select className={S.sel} value={config.granularity || 'week'}
+                      onChange={e => upd('granularity', e.target.value)}>
+                      <option value="week">주간</option>
+                      <option value="month">월간</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>기간 수</p>
+                    <input type="number" className={S.inp} value={config.periods || 8} min={2} max={24}
+                      onChange={e => upd('periods', Number(e.target.value))} />
+                  </div>
+                </>
+              )}
+
+              {/* ── 칸반 보드 ── */}
+              {type === 'kanban_board' && (
+                <div>
+                  <p className={`${S.lab} mb-2`}>칼럼 설정</p>
+                  {(config.columns || []).map((col, ci) => (
+                    <div key={col.id} className="flex gap-1.5 mb-1.5">
+                      <input className={`${S.inp} flex-1`} value={col.title}
+                        onChange={e => {
+                          const next = [...config.columns]; next[ci] = {...col, title: e.target.value}; upd('columns', next)
+                        }} placeholder={`칼럼 ${ci+1}`} />
+                      {(config.columns || []).length > 1 && (
+                        <button onClick={() => upd('columns', config.columns.filter((_,j) => j !== ci))}
+                          className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={() => upd('columns', [...(config.columns||[]), {id:`c${Date.now()}`, title:'', cards:[]}])}
+                    className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
+                      ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
+                    + 칼럼 추가
+                  </button>
+                </div>
+              )}
             </>
           )}
 
           {/* Step 3: 데이터 필터 */}
           {step === 3 && (
-            <FilterSection
-              filters={filters}
-              groupBy={config.groupBy}
-              data={data}
-              dark={dark}
-              onChange={setFilters}
-              initialOpen={true}
-              onGroupByChange={['bar', 'donut', 'table'].includes(type)
-                ? (dim) => upd('groupBy', dim ?? 'channel')
-                : undefined}
-            />
+            ['kpi','timeseries','bar','donut','table','funnel_chart','funnel_breakdown'].includes(type) ? (
+              <FilterSection
+                filters={filters}
+                groupBy={config.groupBy}
+                data={data}
+                dark={dark}
+                onChange={setFilters}
+                initialOpen={true}
+                onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
+                  ? (dim) => upd('groupBy', dim ?? 'channel')
+                  : undefined}
+              />
+            ) : (
+              <div className={`text-center py-10 ${dark ? 'text-slate-500' : 'text-slate-600'}`}>
+                <p className="text-xs">이 위젯 타입은 데이터 필터가 필요하지 않습니다</p>
+                <p className={`text-[10px] mt-1 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>바로 저장할 수 있습니다</p>
+              </div>
+            )
           )}
         </div>
 
@@ -642,7 +799,7 @@ function findSnap(value, neighbors, range = SNAP_RANGE) {
   return null
 }
 
-function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeightChange, data, dark, gridRef, tableMetrics }) {
+function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeightChange, onConfigUpdate, data, dark, gridRef, tableMetrics }) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -821,7 +978,8 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
         </>
       )}
       <div className={heightPx ? 'h-full overflow-hidden rounded-xl' : ''}>
-        {renderWidget(slot.type, applyWidgetFilters(data, slot.config.filters), slot.config, dark, tableMetrics)}
+        {renderWidget(slot.type, applyWidgetFilters(data, slot.config.filters), slot.config, dark, tableMetrics,
+          onConfigUpdate ? (newCfg) => onConfigUpdate(slot.id, newCfg) : undefined)}
       </div>
     </div>
   )
@@ -1096,22 +1254,6 @@ function spanToWidthPct(span) {
   return Math.round((cols / 6) * 10000) / 100  // 33.33, 50, 66.67 등
 }
 
-const WIDGET_META = {
-  kpi: { icon: '💳', label: 'KPI 카드', desc: '핵심 지표를 강조 표시' },
-  timeseries: { icon: '📈', label: '시계열 차트', desc: '날짜별 트렌드 시각화' },
-  bar: { icon: '📊', label: '바 차트', desc: '채널 / 캠페인별 비교' },
-  donut: { icon: '🍩', label: '도넛 차트', desc: '구성 비율 시각화' },
-  table: { icon: '📋', label: '데이터 테이블', desc: '상세 수치 비교' },
-}
-
-/** subType에 허용된 위젯만 필터 */
-function getFilteredWidgetMeta(subType) {
-  const allowed = SUB_TYPES[subType]?.widgetTypes || SUB_TYPES[DEFAULT_SUB_TYPE].widgetTypes
-  return Object.fromEntries(
-    Object.entries(WIDGET_META).filter(([id]) => allowed.includes(id))
-  )
-}
-
 /* ── 구 포맷 → slots 배열로 정규화 + span→widthPct 마이그레이션 ── */
 function migrateSlot(s) {
   // 이미 widthPct가 있으면 그대로
@@ -1130,7 +1272,14 @@ function migrateSlot(s) {
 
 function normalizeDashboard(d) {
   if (!d) return { slots: [] }
-  if (d.type && d.type !== 'report') return d   // 비-report 타입은 그대로 반환
+  /* 구 비-report 대시보드 마이그레이션 → slots 배열로 변환 */
+  if (d.type && d.type !== 'report' && !Array.isArray(d.slots)) {
+    if (d.type === 'funnel') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'funnel_chart', config: { ...(DEFAULT_WIDGET_CONFIG.funnel_chart || {}), stages: d.stages || DEFAULT_WIDGET_CONFIG.funnel_chart?.stages } }] }
+    if (d.type === 'kanban') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'kanban_board', config: { ...(DEFAULT_WIDGET_CONFIG.kanban_board || {}), columns: d.columns || DEFAULT_WIDGET_CONFIG.kanban_board?.columns } }] }
+    if (d.type === 'simulation') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'sim_budget', config: { ...DEFAULT_WIDGET_CONFIG.sim_budget } }] }
+    if (d.type === 'cohort') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'cohort_heatmap', config: { ...DEFAULT_WIDGET_CONFIG.cohort_heatmap } }] }
+    return { slots: [] }
+  }
   if (Array.isArray(d.slots)) return { ...d, slots: d.slots.map(migrateSlot) }
   // 구 템플릿 포맷 마이그레이션
   const tpl = TEMPLATES[d.template]
@@ -1160,6 +1309,18 @@ const WTYPE_META = {
   bar:        { icon: '📊', label: '바 차트',       desc: '그룹별 지표를 막대로 비교, 채널·캠페인별 성과 비교에 적합합니다', metricTag: '메트릭 1~3개', needsGroup: true },
   donut:      { icon: '🍩', label: '도넛 차트',     desc: '그룹별 비중을 한눈에 파악, 채널 점유율·매출 비중 분석에 최적', metricTag: '메트릭 1개', needsGroup: true },
   table:      { icon: '📋', label: '데이터 테이블', desc: '상세 데이터를 표로 확인, 정렬·필터링으로 세부 분석이 가능합니다', metricTag: '메트릭 1~10개', needsGroup: true },
+  /* 시뮬레이션 */
+  sim_budget:   { icon: '💰', label: '예산 배분',     desc: '채널별 예산 슬라이더로 배분하고 예상 성과를 실시간으로 확인합니다', metricTag: '예산 입력', needsGroup: false },
+  sim_goal:     { icon: '🎯', label: '목표 역산',     desc: '목표 매출/전환 수치를 입력하면 필요한 채널별 예산을 역산합니다', metricTag: '목표값 입력', needsGroup: false },
+  sim_scenario: { icon: '⚖️', label: '시나리오 비교', desc: '여러 예산 시나리오를 만들어 바 차트로 비교 분석합니다', metricTag: '시나리오 관리', needsGroup: false },
+  /* 퍼널 */
+  funnel_chart:     { icon: '🔻', label: '전환 퍼널',       desc: '노출→클릭→전환 등 단계별 전환율을 퍼널 차트로 시각화합니다', metricTag: '단계 설정', needsGroup: false },
+  funnel_breakdown: { icon: '📊', label: '퍼널 브레이크다운', desc: '채널별로 각 퍼널 단계의 수치와 전환율을 테이블로 비교합니다', metricTag: '단계+그룹', needsGroup: true },
+  /* 코호트 */
+  cohort_heatmap: { icon: '🟩', label: '리텐션 히트맵', desc: '코호트별 리텐션을 히트맵으로 표시, 색상으로 이탈 패턴을 파악합니다', metricTag: '기간 설정', needsGroup: false },
+  cohort_trend:   { icon: '📉', label: '코호트 트렌드', desc: '평균 리텐션 추이를 면적 차트로 시각화, 개선 효과를 확인합니다', metricTag: '기간 설정', needsGroup: false },
+  /* 칸반 */
+  kanban_board: { icon: '📋', label: '칸반 보드', desc: '드래그 앤 드롭으로 작업을 관리하는 칸반 보드입니다', metricTag: '칼럼 관리', needsGroup: false },
 }
 
 /* ── Step 3 미니 프리뷰 SVG들 ── */
@@ -1210,13 +1371,107 @@ function MiniTable({ dark }) {
   )
 }
 
-const MINI_PREVIEW = { kpi: MiniKpi, timeseries: MiniTimeseries, bar: MiniBar, donut: MiniDonut, table: MiniTable }
+function MiniSimBudget() {
+  return (
+    <div className="w-full flex flex-col gap-[3px]">
+      {[80,55,35].map((w,i) => (
+        <div key={i} className="flex items-center gap-1">
+          <div className="flex-1 h-[5px] rounded-full bg-[#252836]">
+            <div className="h-full rounded-full" style={{width:`${w}%`, background: ['#6366F1','#818CF8','#A5B4FC'][i]}} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+function MiniSimGoal() {
+  return (
+    <svg viewBox="0 0 44 44" className="w-10 h-10">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#252836" strokeWidth="3"/>
+      <circle cx="22" cy="22" r="12" fill="none" stroke="#6366F1" strokeWidth="2.5"/>
+      <circle cx="22" cy="22" r="6" fill="#818CF8"/>
+    </svg>
+  )
+}
+function MiniSimScenario() {
+  return (
+    <div className="flex items-end gap-[2px] h-10 w-full">
+      {[[60,80],[45,70],[75,50]].map(([a,b], i) => (
+        <div key={i} className="flex-1 flex gap-[1px] items-end h-full">
+          <div className="flex-1 rounded-t-sm" style={{height:`${a}%`, background:'#6366F1'}} />
+          <div className="flex-1 rounded-t-sm" style={{height:`${b}%`, background:'#A5B4FC'}} />
+        </div>
+      ))}
+    </div>
+  )
+}
+function MiniFunnel({ dark }) {
+  return (
+    <svg viewBox="0 0 60 40" className="w-full h-10">
+      <polygon points="2,2 58,2 48,14 12,14" fill="#6366F1" opacity=".9"/>
+      <polygon points="12,16 48,16 42,28 18,28" fill="#818CF8" opacity=".8"/>
+      <polygon points="18,30 42,30 38,38 22,38" fill="#A5B4FC" opacity=".7"/>
+    </svg>
+  )
+}
+function MiniFunnelBreakdown({ dark }) {
+  return (
+    <div className="w-full flex flex-col gap-[2px]">
+      {[true, false, false].map((hdr, i) => (
+        <div key={i} className="flex gap-[2px]">
+          {[1,2,3,4].map(j => <div key={j} className={`flex-1 rounded-[1px] ${hdr ? 'h-[7px] bg-emerald-500/50' : 'h-[6px]'} ${!hdr ? (dark ? 'bg-[#252836]' : 'bg-slate-200') : ''}`} />)}
+        </div>
+      ))}
+    </div>
+  )
+}
+function MiniCohortHeatmap() {
+  const colors = ['#22C55E','#16A34A','#EAB308','#F97316','#EF4444']
+  return (
+    <div className="grid grid-cols-4 gap-[2px] w-full">
+      {Array.from({length:12}).map((_,i) => (
+        <div key={i} className="h-[7px] rounded-[1px]" style={{background: colors[Math.min(4, Math.floor(i/2.5))], opacity: 0.5 + (i%3)*0.2}} />
+      ))}
+    </div>
+  )
+}
+function MiniCohortTrend() {
+  return (
+    <svg viewBox="0 0 64 40" fill="none" className="w-full h-10">
+      <path d="M2,36 L12,28 L22,24 L32,20 L42,16 L52,14 L62,12 L62,38 L2,38 Z" fill="#6366F1" opacity=".25"/>
+      <polyline points="2,36 12,28 22,24 32,20 42,16 52,14 62,12" stroke="#6366F1" strokeWidth="2" fill="none" strokeLinecap="round"/>
+    </svg>
+  )
+}
+function MiniKanban({ dark }) {
+  return (
+    <div className="flex gap-[3px] w-full h-10">
+      {[3,2,1].map((n,i) => (
+        <div key={i} className={`flex-1 rounded-sm flex flex-col gap-[2px] p-[2px] ${dark ? 'bg-[#252836]' : 'bg-slate-200'}`}>
+          {Array.from({length:n}).map((_,j) => (
+            <div key={j} className="w-full h-[6px] rounded-[1px] bg-indigo-500/40" />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const MINI_PREVIEW = {
+  kpi: MiniKpi, timeseries: MiniTimeseries, bar: MiniBar, donut: MiniDonut, table: MiniTable,
+  sim_budget: MiniSimBudget, sim_goal: MiniSimGoal, sim_scenario: MiniSimScenario,
+  funnel_chart: MiniFunnel, funnel_breakdown: MiniFunnelBreakdown,
+  cohort_heatmap: MiniCohortHeatmap, cohort_trend: MiniCohortTrend,
+  kanban_board: MiniKanban,
+}
 
 /* ── 카테고리 메타 ── */
 const CATEGORY_META = {
   report:     { icon: '📈', label: '리포트',      desc: 'KPI, 차트, 테이블 등 데이터 시각화 카드' },
   simulation: { icon: '🧪', label: '시뮬레이션',  desc: '예산 배분, ROAS 목표 시뮬레이터 카드' },
   funnel:     { icon: '🔻', label: '퍼널',        desc: '노출→클릭→전환 단계별 전환율 분석' },
+  cohort:     { icon: '🟩', label: '코호트',      desc: '사용자 리텐션·이탈 패턴 분석' },
+  kanban:     { icon: '📋', label: '칸반',        desc: '작업 관리 칸반 보드' },
 }
 
 function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', metrics: metricsProp, groupByOptions, columnConfig }) {
@@ -1422,7 +1677,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
                     {/* 미니 프리뷰 */}
                     <div className={`w-[72px] shrink-0 rounded-lg flex items-center justify-center p-2
                       ${dark ? 'bg-[#0F1117]' : 'bg-slate-50'}`}>
-                      <Preview dark={dark} />
+                      {Preview ? <Preview dark={dark} /> : <span className="text-xl">{meta.icon}</span>}
                     </div>
                     {/* 정보 */}
                     <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
@@ -1626,17 +1881,180 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
                 </>
               )}
 
-              {/* 데이터 필터 — 모든 카드 타입 공통 */}
-              <FilterSection
-                filters={filters}
-                groupBy={wConfig.groupBy}
-                data={data}
-                dark={dark}
-                onChange={setFilters}
-                onGroupByChange={['bar', 'donut', 'table'].includes(type)
-                  ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
-                  : undefined}
-              />
+              {/* ── 시뮬레이션: 예산 배분 ── */}
+              {type === 'sim_budget' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>제목</p>
+                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="예산 배분 시뮬레이션" />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
+                    <input type="number" className={S.inp} value={wConfig.totalBudget || 1000000}
+                      onChange={e => upd('totalBudget', Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
+                    <select className={S.sel} value={wConfig.targetMetric || 'revenue'}
+                      onChange={e => upd('targetMetric', e.target.value)}>
+                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* ── 시뮬레이션: 목표 역산 ── */}
+              {type === 'sim_goal' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>제목</p>
+                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="목표 역산" />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
+                    <select className={S.sel} value={wConfig.targetMetric || 'revenue'}
+                      onChange={e => upd('targetMetric', e.target.value)}>
+                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>목표값</p>
+                    <input type="number" className={S.inp} value={wConfig.targetValue || 10000000}
+                      onChange={e => upd('targetValue', Number(e.target.value))} />
+                  </div>
+                </>
+              )}
+
+              {/* ── 시뮬레이션: 시나리오 비교 ── */}
+              {type === 'sim_scenario' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>제목</p>
+                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="시나리오 비교" />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
+                    <input type="number" className={S.inp} value={wConfig.totalBudget || 1000000}
+                      onChange={e => upd('totalBudget', Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>비교 메트릭</p>
+                    <select className={S.sel} value={wConfig.targetMetric || 'revenue'}
+                      onChange={e => upd('targetMetric', e.target.value)}>
+                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* ── 퍼널: 전환 퍼널 / 브레이크다운 ── */}
+              {(type === 'funnel_chart' || type === 'funnel_breakdown') && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>제목</p>
+                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="전환 퍼널" />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-2`}>퍼널 단계</p>
+                    {(wConfig.stages || []).map((stage, si) => (
+                      <div key={stage.id} className="flex gap-1.5 mb-1.5">
+                        <input className={`${S.inp} flex-1`} value={stage.label}
+                          onChange={e => {
+                            const next = [...wConfig.stages]; next[si] = {...stage, label: e.target.value}; upd('stages', next)
+                          }} placeholder={`단계 ${si+1} 이름`} />
+                        <select className={`${S.sel} w-32`} value={stage.metric}
+                          onChange={e => {
+                            const next = [...wConfig.stages]; next[si] = {...stage, metric: e.target.value}; upd('stages', next)
+                          }}>
+                          {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                        </select>
+                        {wConfig.stages.length > 2 && (
+                          <button onClick={() => upd('stages', wConfig.stages.filter((_,j) => j !== si))}
+                            className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => upd('stages', [...(wConfig.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || 'impr'}])}
+                      className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
+                        ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
+                      + 단계 추가
+                    </button>
+                  </div>
+                  {type === 'funnel_breakdown' && (
+                    <div>
+                      <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
+                      <select className={S.sel} value={wConfig.groupBy || 'channel'}
+                        onChange={e => upd('groupBy', e.target.value)}>
+                        {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── 코호트: 히트맵 / 트렌드 ── */}
+              {(type === 'cohort_heatmap' || type === 'cohort_trend') && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>제목</p>
+                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)}
+                      placeholder={type === 'cohort_heatmap' ? '리텐션 히트맵' : '코호트 트렌드'} />
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>기간 단위</p>
+                    <select className={S.sel} value={wConfig.granularity || 'week'}
+                      onChange={e => upd('granularity', e.target.value)}>
+                      <option value="week">주간</option>
+                      <option value="month">월간</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p className={`${S.lab} mb-1.5`}>기간 수</p>
+                    <input type="number" className={S.inp} value={wConfig.periods || 8} min={2} max={24}
+                      onChange={e => upd('periods', Number(e.target.value))} />
+                  </div>
+                </>
+              )}
+
+              {/* ── 칸반 보드 ── */}
+              {type === 'kanban_board' && (
+                <>
+                  <div>
+                    <p className={`${S.lab} mb-2`}>칼럼 설정</p>
+                    {(wConfig.columns || []).map((col, ci) => (
+                      <div key={col.id} className="flex gap-1.5 mb-1.5">
+                        <input className={`${S.inp} flex-1`} value={col.title}
+                          onChange={e => {
+                            const next = [...wConfig.columns]; next[ci] = {...col, title: e.target.value}; upd('columns', next)
+                          }} placeholder={`칼럼 ${ci+1}`} />
+                        {wConfig.columns.length > 1 && (
+                          <button onClick={() => upd('columns', wConfig.columns.filter((_,j) => j !== ci))}
+                            className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => upd('columns', [...(wConfig.columns||[]), {id:`c${Date.now()}`, title:'', cards:[]}])}
+                      className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
+                        ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
+                      + 칼럼 추가
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* 데이터 필터 — 리포트 카드 타입 공통 */}
+              {['kpi','timeseries','bar','donut','table','funnel_chart','funnel_breakdown'].includes(type) && (
+                <FilterSection
+                  filters={filters}
+                  groupBy={wConfig.groupBy}
+                  data={data}
+                  dark={dark}
+                  onChange={setFilters}
+                  onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
+                    ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
+                    : undefined}
+                />
+              )}
             </div>
           )}
         </div>
@@ -1718,6 +2136,14 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
     setEditSlot(null)
   }
 
+  /* 상태형 위젯의 config 실시간 업데이트 (칸반 카드 이동, 시뮬레이션 슬라이더 등) */
+  const handleConfigUpdate = useCallback((slotId, newConfig) => {
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return { ...n, slots: (n.slots || []).map(s => s.id === slotId ? { ...s, config: newConfig } : s) }
+    })
+  }, [])
+
   /* ── 드래그 앤 드롭 ── */
   const handleDragStart = ({ active }) => setActiveId(active.id)
 
@@ -1770,6 +2196,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
                   onDelete={handleDeleteSlot}
                   onWidthChange={handleWidthChange}
                   onHeightChange={handleHeightChange}
+                  onConfigUpdate={handleConfigUpdate}
                   data={data}
                   tableMetrics={tableMetrics}
                   dark={dark}
@@ -1800,7 +2227,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
                   width: pctToWidth(activeSlot.widthPct ?? 33.33),
                   ...(activeSlot.type !== 'kpi' && { minHeight: 210 }),
                 }}>
-                {renderWidget(activeSlot.type, applyWidgetFilters(data, activeSlot.config.filters), activeSlot.config, dark, tableMetrics)}
+                {renderWidget(activeSlot.type, applyWidgetFilters(data, activeSlot.config.filters), activeSlot.config, dark, tableMetrics, null)}
               </div>
             )}
           </DragOverlay>
@@ -1940,36 +2367,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         addRef={tabBarAddRef}
         subType={subType}
         rightSlot={activeTab ? (
-          subType === 'kanban' ? (
-            /* 칸반: 항상 인터랙티브, 저장 버튼만 */
-            <button onClick={handleSave}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
-                ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-              <Check size={12} /> {saved ? '저장됨' : '저장'}
-            </button>
-          ) : subType !== 'report' ? (
-            /* 시뮬레이션/퍼널/코호트: 편집 + 저장 */
-            editMode ? (
-              <>
-                <button onClick={() => { setEditMode(false) }}
-                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
-                    ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-                  닫기
-                </button>
-                <button onClick={() => { handleSave(); setEditMode(false) }}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
-                    ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-                  <Check size={12} /> {saved ? '저장됨' : '저장'}
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setEditMode(true)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-                <Settings2 size={12} /> 설정
-              </button>
-            )
-          ) : editMode ? (
+          editMode ? (
             <>
               <button onClick={() => setShowAdd(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
@@ -2007,58 +2405,22 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
               ⚠️ 데이터 조회 오류 ({tableName}): {error}
             </div>
           )}
-          {subType === 'kanban' ? (
-            <KanbanBoard
-              key={activeTab.id}
-              dashboard={dashboard}
-              setDashboard={setDashboard}
-              dark={dark}
-            />
-          ) : subType === 'funnel' ? (
-            <FunnelPage
-              key={activeTab.id}
-              dashboard={dashboard}
-              setDashboard={setDashboard}
-              data={data}
-              dark={dark}
-              editMode={editMode}
-            />
-          ) : subType === 'simulation' ? (
-            <SimulationPage
-              key={activeTab.id}
-              dashboard={dashboard}
-              setDashboard={setDashboard}
-              data={data}
-              dark={dark}
-              editMode={editMode}
-            />
-          ) : subType === 'cohort' ? (
-            <CohortPage
-              key={activeTab.id}
-              dashboard={dashboard}
-              setDashboard={setDashboard}
-              data={data}
-              dark={dark}
-              editMode={editMode}
-            />
-          ) : (
-            <DashboardGrid
-              key={activeTab.id}
-              tabId={activeTab.id}
-              dashboard={dashboard}
-              setDashboard={setDashboard}
-              data={data}
-              dark={dark}
-              editMode={editMode}
-              showAdd={showAdd}
-              onOpenAdd={() => setShowAdd(true)}
-              onCloseAdd={() => setShowAdd(false)}
-              subType={subType}
-              tableMetrics={tableMetrics}
-              tableGroupBy={tableGroupBy}
-              columnConfig={config.columnConfig}
-            />
-          )}
+          <DashboardGrid
+            key={activeTab.id}
+            tabId={activeTab.id}
+            dashboard={dashboard}
+            setDashboard={setDashboard}
+            data={data}
+            dark={dark}
+            editMode={editMode}
+            showAdd={showAdd}
+            onOpenAdd={() => setShowAdd(true)}
+            onCloseAdd={() => setShowAdd(false)}
+            subType={subType}
+            tableMetrics={tableMetrics}
+            tableGroupBy={tableGroupBy}
+            columnConfig={config.columnConfig}
+          />
         </div>
       ) : (
         /* 빈 상태 — 클릭하면 탭 추가 폼 오픈 */

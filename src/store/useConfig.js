@@ -97,11 +97,24 @@ export const TEMPLATES = {
    위젯 타입
 ─────────────────────────────────────────── */
 export const WIDGET_TYPES = [
+  /* 리포트 */
   { id: 'kpi', label: 'KPI 카드', icon: '💳' },
   { id: 'timeseries', label: '시계열 차트', icon: '📈' },
   { id: 'bar', label: '바 차트', icon: '📊' },
   { id: 'donut', label: '도넛 차트', icon: '🍩' },
   { id: 'table', label: '데이터 테이블', icon: '📋' },
+  /* 시뮬레이션 */
+  { id: 'sim_budget', label: '예산 배분', icon: '💰' },
+  { id: 'sim_goal', label: '목표 역산', icon: '🎯' },
+  { id: 'sim_scenario', label: '시나리오 비교', icon: '⚖️' },
+  /* 퍼널 */
+  { id: 'funnel_chart', label: '전환 퍼널', icon: '🔻' },
+  { id: 'funnel_breakdown', label: '퍼널 브레이크다운', icon: '📊' },
+  /* 코호트 */
+  { id: 'cohort_heatmap', label: '리텐션 히트맵', icon: '🟩' },
+  { id: 'cohort_trend', label: '코호트 트렌드', icon: '📉' },
+  /* 칸반 */
+  { id: 'kanban_board', label: '칸반 보드', icon: '📋' },
 ]
 
 /* ──────────────────────────────────────────
@@ -136,7 +149,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-amber-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-amber-50',
     },
-    widgetTypes: ['kpi', 'timeseries', 'bar', 'table'],
+    widgetTypes: ['sim_budget', 'sim_goal', 'sim_scenario', 'kpi', 'bar', 'table'],
   },
   funnel: {
     id: 'funnel',
@@ -151,7 +164,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-emerald-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-emerald-50',
     },
-    widgetTypes: ['kpi', 'bar', 'table'],
+    widgetTypes: ['funnel_chart', 'funnel_breakdown', 'kpi', 'bar', 'table'],
   },
   cohort: {
     id: 'cohort',
@@ -166,7 +179,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-violet-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-violet-50',
     },
-    widgetTypes: ['kpi', 'timeseries', 'table'],
+    widgetTypes: ['cohort_heatmap', 'cohort_trend', 'kpi', 'timeseries', 'table'],
   },
   kanban: {
     id: 'kanban',
@@ -181,7 +194,7 @@ export const SUB_TYPES = {
       btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-rose-500/10',
       btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-rose-50',
     },
-    widgetTypes: [],
+    widgetTypes: ['kanban_board', 'kpi', 'table'],
   },
 }
 
@@ -231,6 +244,31 @@ export const DEFAULT_WIDGET_CONFIG = {
   bar: { metric: 'cost', groupBy: 'channel', title: '채널별 성과' },
   donut: { metric: 'cost', groupBy: 'channel', title: '구성 비율' },
   table: { metrics: ['cost', 'installs', 'conv', 'revenue'], groupBy: 'channel', title: '성과 테이블' },
+  /* 시뮬레이션 */
+  sim_budget:   { totalBudget: 1000000, targetMetric: 'revenue', allocations: {}, title: '예산 배분 시뮬레이션' },
+  sim_goal:     { targetMetric: 'revenue', targetValue: 10000000, title: '목표 역산' },
+  sim_scenario: { totalBudget: 1000000, targetMetric: 'revenue', scenarios: [], title: '시나리오 비교' },
+  /* 퍼널 */
+  funnel_chart: { stages: [
+    { id: 's1', label: '노출', metric: 'impr' },
+    { id: 's2', label: '클릭', metric: 'clicks' },
+    { id: 's3', label: '가입', metric: 'signup' },
+    { id: 's4', label: '구매', metric: 'conv' },
+  ], title: '전환 퍼널' },
+  funnel_breakdown: { stages: [
+    { id: 's1', label: '노출', metric: 'impr' },
+    { id: 's2', label: '클릭', metric: 'clicks' },
+    { id: 's3', label: '구매', metric: 'conv' },
+  ], groupBy: 'channel', title: '퍼널 브레이크다운' },
+  /* 코호트 */
+  cohort_heatmap: { granularity: 'week', cohortEvent: 'signup', retentionEvent: 'conv', periods: 8, title: '리텐션 히트맵' },
+  cohort_trend:   { granularity: 'week', cohortEvent: 'signup', retentionEvent: 'conv', periods: 8, title: '코호트 트렌드' },
+  /* 칸반 */
+  kanban_board: { columns: [
+    { id: 'c1', title: 'To Do', cards: [] },
+    { id: 'c2', title: 'In Progress', cards: [] },
+    { id: 'c3', title: 'Done', cards: [] },
+  ], title: '칸반 보드' },
 }
 
 /* ──────────────────────────────────────────
@@ -260,46 +298,7 @@ export const TYPE_TEMPLATES = {
    대시보드 초기값 생성 (타입별)
 ─────────────────────────────────────────── */
 export function makeDashboard(subType = 'report', templateId = null) {
-  if (subType === 'report' || !subType) return { slots: [] }
-
-  if (subType === 'simulation') {
-    const mode = templateId === 'SIM_TARGET' ? 'target' : 'budget'
-    return { type: 'simulation', mode, channels: [], totalBudget: 0, targetMetric: 'revenue', targetValue: 0, scenarios: [] }
-  }
-  if (subType === 'funnel') {
-    if (templateId === 'FNL_CUSTOM') {
-      return { type: 'funnel', stages: [
-        { id: 's1', label: '단계 1', metric: 'impr' },
-        { id: 's2', label: '단계 2', metric: 'clicks' },
-      ]}
-    }
-    return { type: 'funnel', stages: [
-      { id: 's1', label: '노출', metric: 'impr' },
-      { id: 's2', label: '클릭', metric: 'clicks' },
-      { id: 's3', label: '상세조회', metric: 'view_content' },
-      { id: 's4', label: '가입', metric: 'signup' },
-      { id: 's5', label: '구매', metric: 'conv' },
-    ]}
-  }
-  if (subType === 'cohort') {
-    const granularity = templateId === 'COH_MONTHLY' ? 'month' : 'week'
-    return { type: 'cohort', granularity, cohortEvent: 'signup', retentionEvent: 'conv', periods: granularity === 'month' ? 6 : 8 }
-  }
-  if (subType === 'kanban') {
-    if (templateId === 'KAN_CAMPAIGN') {
-      return { type: 'kanban', columns: [
-        { id: 'c1', title: '기획', cards: [] },
-        { id: 'c2', title: '진행중', cards: [] },
-        { id: 'c3', title: '분석', cards: [] },
-        { id: 'c4', title: '완료', cards: [] },
-      ]}
-    }
-    return { type: 'kanban', columns: [
-      { id: 'c1', title: 'To Do', cards: [] },
-      { id: 'c2', title: 'In Progress', cards: [] },
-      { id: 'c3', title: 'Done', cards: [] },
-    ]}
-  }
+  /* 모든 탭은 DashboardGrid (slots 배열) — 타입별 전체 페이지는 제거됨 */
   return { slots: [] }
 }
 
