@@ -368,11 +368,12 @@ export default function Tables({ dark }) {
                   <div className="flex flex-col gap-3">
                     {computed.map(cc => {
                       /* 미리보기 수식 생성 */
+                      const signSymbol = { '+': '+ ', '-': '- ', '*': '× ', '/': '÷ ' }
                       const preview = cc.terms
                         .filter(t => t.col)
                         .map(t => {
                           const alias = columns[t.col]?.alias || t.col
-                          return `${t.sign === '-' ? '- ' : '+ '}${alias}`
+                          return `${signSymbol[t.sign] || '+ '}${alias}`
                         })
                         .join(' ')
                         .replace(/^\+ /, '')
@@ -420,6 +421,8 @@ export default function Tables({ dark }) {
                                 >
                                   <option value="+">+</option>
                                   <option value="-">−</option>
+                                  <option value="*">×</option>
+                                  <option value="/">÷</option>
                                 </select>
 
                                 {/* 컬럼 드롭다운 */}

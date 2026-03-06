@@ -81,7 +81,12 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
       let val = 0
       cc.terms.forEach(term => {
         const v = parseFloat(newRow[term.col]) || 0
-        val = term.sign === '-' ? val - v : val + v
+        switch (term.sign) {
+          case '-': val -= v; break
+          case '*': val *= v; break
+          case '/': val = v !== 0 ? val / v : 0; break
+          default:  val += v; break
+        }
       })
       newRow[cc.id] = val
     })
