@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfig } from '../../store/useConfig'
-import { Table2, RefreshCw, ChevronDown, ChevronRight, Eye, EyeOff, Layers, Plus, Trash2, Save, Calculator } from 'lucide-react'
+import { Table2, RefreshCw, ChevronDown, ChevronRight, Eye, EyeOff, Layers, Plus, Trash2, Save, Calculator, Check } from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
 
 const TABLES = ['marketing_data', 'product_revenue_raw']
@@ -32,7 +32,9 @@ export default function Tables({ dark }) {
   const [loading, setLoading] = useState(true)
   const [open, setOpen]       = useState({})
   const [editCfg, setEditCfg] = useState({}) // { tableName: localCopy }
+  const [saved, setSaved]     = useState({}) // { tableName: true } — 저장 피드백
   const saveTimer = useRef({})
+  const savedTimer = useRef({})
 
   const loadTables = async () => {
     if (!supabase) { setLoading(false); return }
@@ -82,13 +84,23 @@ export default function Tables({ dark }) {
     })
   }
 
+  /* 저장 완료 피드백 */
+  const flashSaved = useCallback((tableName) => {
+    setSaved(prev => ({ ...prev, [tableName]: true }))
+    clearTimeout(savedTimer.current[tableName])
+    savedTimer.current[tableName] = setTimeout(() => {
+      setSaved(prev => ({ ...prev, [tableName]: false }))
+    }, 2000)
+  }, [])
+
   /* debounce 저장 */
   const debounceSave = useCallback((tableName, cfg) => {
     clearTimeout(saveTimer.current[tableName])
     saveTimer.current[tableName] = setTimeout(() => {
       setColumnConfig(tableName, cfg)
+      flashSaved(tableName)
     }, 800)
-  }, [setColumnConfig])
+  }, [setColumnConfig, flashSaved])
 
   /* 컬럼 설정 업데이트 */
   const updateCol = (tableName, col, updates) => {
@@ -187,7 +199,11 @@ export default function Tables({ dark }) {
   /* 즉시 저장 */
   const saveNow = tableName => {
     const cfg = editCfg[tableName]
-    if (cfg) setColumnConfig(tableName, cfg)
+    if (cfg) {
+      clearTimeout(saveTimer.current[tableName])
+      setColumnConfig(tableName, cfg)
+      flashSaved(tableName)
+    }
   }
 
   /* ── 스타일 ── */
@@ -372,8 +388,10 @@ export default function Tables({ dark }) {
                       const preview = cc.terms
                         .filter(t => t.col)
                         .map(t => {
-                          const alias = columns[t.col]?.alias || t.col
-                          return `${signSymbol[t.sign] || '+ '}${alias}`
+                          const label = t.col === '__const__'
+                            ? String(t.value ?? '')
+                            : (columns[t.col]?.alias || t.col)
+                          return `${signSymbol[t.sign] || '+ '}${label}`
                         })
                         .join(' ')
                         .replace(/^\+ /, '')
@@ -427,11 +445,12 @@ export default function Tables({ dark }) {
 
                                 {/* 컬럼 드롭다운 */}
                                 <select
-                                  className={`${sel} flex-1`}
+                                  className={`${sel} ${term.col === '__const__' ? 'w-24' : 'flex-1'}`}
                                   value={term.col}
-                                  onChange={e => updateTerm(t, cc.id, idx, { col: e.target.value })}
+                                  onChange={e => updateTerm(t, cc.id, idx, { col: e.target.value, ...(e.target.value === '__const__' ? { value: term.value ?? 1 } : {}) })}
                                 >
                                   <option value="">컬럼 선택...</option>
+                                  <option value="__const__">상수 (직접 입력)</option>
                                   <optgroup label="컬럼">
                                     {(info?.columns || [])
                                       .filter(c => columns[c]?.visible !== false && !LIKELY_DATE.has(c) && !LIKELY_DIMENSION.has(c))
@@ -451,6 +470,17 @@ export default function Tables({ dark }) {
                                     </optgroup>
                                   )}
                                 </select>
+
+                                {/* 상수 입력 */}
+                                {term.col === '__const__' && (
+                                  <input
+                                    type="number"
+                                    className={`${inp} w-20 h-7 text-center`}
+                                    placeholder="1000"
+                                    value={term.value ?? ''}
+                                    onChange={e => updateTerm(t, cc.id, idx, { value: e.target.value })}
+                                  />
+                                )}
 
                                 {/* term 삭제 */}
                                 {cc.terms.length > 1 && (
@@ -492,14 +522,22 @@ export default function Tables({ dark }) {
                   ${dark ? 'bg-[#13151C]' : 'bg-slate-50'}`}>
                   <p className={`text-[10px] ${sub}`}>
                     변경사항은 자동 저장됩니다 · 다른 유저에게도 실시간 반영
+                    {saved[t] && (
+                      <span className="ml-2 text-emerald-500 font-semibold animate-pulse">
+                        저장 완료
+                      </span>
+                    )}
                   </p>
                   <button
                     onClick={() => saveNow(t)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
-                      ${dark ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
-                             : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300
+                      ${saved[t]
+                        ? dark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                        : dark ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
+                               : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                      }`}
                   >
-                    <Save size={12} /> 저장
+                    {saved[t] ? <><Check size={12} /> 저장됨</> : <><Save size={12} /> 저장</>}
                   </button>
                 </div>
 

@@ -66,7 +66,8 @@ export function buildTableGroupBy(tableName, columnConfig) {
 
 /* ═══════════════════════════════════════════
    applyComputedColumns — 계산 컬럼 값을 각 row에 추가
-   terms 방식: [{ col, sign }] → 순차 합산
+   terms 방식: [{ col, sign, value? }] → 순차 평가
+   col === '__const__' 이면 value 사용 (상수)
    ═══════════════════════════════════════════ */
 export function applyComputedColumns(rows, tableName, columnConfig) {
   const tCfg = columnConfig?.[tableName]
@@ -80,7 +81,9 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
       if (!cc.terms || cc.terms.length === 0) { newRow[cc.id] = 0; return }
       let val = 0
       cc.terms.forEach(term => {
-        const v = parseFloat(newRow[term.col]) || 0
+        const v = term.col === '__const__'
+          ? (parseFloat(term.value) || 0)
+          : (parseFloat(newRow[term.col]) || 0)
         switch (term.sign) {
           case '-': val -= v; break
           case '*': val *= v; break
