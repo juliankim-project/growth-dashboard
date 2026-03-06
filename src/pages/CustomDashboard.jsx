@@ -1121,31 +1121,118 @@ function normalizeDashboard(d) {
 /* ══════════════════════════════════════════
    카드 추가 모달
 ══════════════════════════════════════════ */
-function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', metrics: metricsProp, groupByOptions }) {
-  const [step, setStep] = useState(1)   // 1:타입 선택  2:설정
+/* ── 위젯 타입 메타 (Step 3 미리보기용) ── */
+const WTYPE_META = {
+  kpi:        { icon: '💳', label: 'KPI 카드',      desc: '핵심 지표 하나를 크게 표시하고 전일/전주 대비 변화율을 함께 보여줍니다', metricTag: '메트릭 1개', needsGroup: false },
+  timeseries: { icon: '📈', label: '시계열 차트',   desc: '날짜별 추이를 라인 차트로 시각화, 여러 지표를 동시에 비교할 수 있습니다', metricTag: '메트릭 1~5개', needsGroup: false },
+  bar:        { icon: '📊', label: '바 차트',       desc: '그룹별 지표를 막대로 비교, 채널·캠페인별 성과 비교에 적합합니다', metricTag: '메트릭 1~3개', needsGroup: true },
+  donut:      { icon: '🍩', label: '도넛 차트',     desc: '그룹별 비중을 한눈에 파악, 채널 점유율·매출 비중 분석에 최적', metricTag: '메트릭 1개', needsGroup: true },
+  table:      { icon: '📋', label: '데이터 테이블', desc: '상세 데이터를 표로 확인, 정렬·필터링으로 세부 분석이 가능합니다', metricTag: '메트릭 1~10개', needsGroup: true },
+}
+
+/* ── Step 3 미니 프리뷰 SVG들 ── */
+function MiniKpi({ dark }) {
+  return (
+    <div className="text-center w-full">
+      <div className={`text-sm font-extrabold ${dark ? 'text-white' : 'text-slate-800'}`}>₩ 1.2M</div>
+      <div className="text-[8px] text-emerald-400 mt-0.5">▲ 3.2%</div>
+    </div>
+  )
+}
+function MiniTimeseries() {
+  return (
+    <svg viewBox="0 0 64 40" fill="none" className="w-full h-10">
+      <polyline points="2,32 12,28 22,18 32,22 42,10 52,14 62,6" stroke="#6366F1" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="2,34 12,30 22,26 32,28 42,20 52,24 62,16" stroke="#818CF8" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity=".4"/>
+    </svg>
+  )
+}
+function MiniBar() {
+  return (
+    <div className="flex items-end gap-[3px] h-10 w-full">
+      {[65,100,45,80,55].map((h, i) => (
+        <div key={i} className="flex-1 rounded-t-sm" style={{ height: `${h}%`, background: i % 2 ? '#818CF8' : '#6366F1' }} />
+      ))}
+    </div>
+  )
+}
+function MiniDonut() {
+  return (
+    <svg viewBox="0 0 44 44" className="w-11 h-11">
+      <circle cx="22" cy="22" r="16" fill="none" stroke="#252836" strokeWidth="6"/>
+      <circle cx="22" cy="22" r="16" fill="none" stroke="#6366F1" strokeWidth="6" strokeDasharray="40 100" strokeDashoffset="0" transform="rotate(-90 22 22)"/>
+      <circle cx="22" cy="22" r="16" fill="none" stroke="#818CF8" strokeWidth="6" strokeDasharray="28 100" strokeDashoffset="-40" transform="rotate(-90 22 22)"/>
+      <circle cx="22" cy="22" r="16" fill="none" stroke="#A5B4FC" strokeWidth="6" strokeDasharray="18 100" strokeDashoffset="-68" transform="rotate(-90 22 22)"/>
+    </svg>
+  )
+}
+function MiniTable({ dark }) {
+  return (
+    <div className="w-full flex flex-col gap-[2px]">
+      {[true, false, false, false].map((hdr, i) => (
+        <div key={i} className="flex gap-[2px]">
+          {[1,2,3].map(j => <div key={j} className={`flex-1 rounded-[1px] ${hdr ? 'h-[7px] bg-indigo-500/50' : 'h-[6px]'} ${!hdr ? (dark ? 'bg-[#252836]' : 'bg-slate-200') : ''}`} />)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const MINI_PREVIEW = { kpi: MiniKpi, timeseries: MiniTimeseries, bar: MiniBar, donut: MiniDonut, table: MiniTable }
+
+/* ── 카테고리 메타 ── */
+const CATEGORY_META = {
+  report:     { icon: '📈', label: '리포트',      desc: 'KPI, 차트, 테이블 등 데이터 시각화 카드' },
+  simulation: { icon: '🧪', label: '시뮬레이션',  desc: '예산 배분, ROAS 목표 시뮬레이터 카드' },
+  funnel:     { icon: '🔻', label: '퍼널',        desc: '노출→클릭→전환 단계별 전환율 분석' },
+}
+
+function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', metrics: metricsProp, groupByOptions, columnConfig }) {
+  const [step, setStep] = useState(1)   // 1:테이블 2:카테고리 3:위젯타입 4:설정
+  const [selTable, setSelTable] = useState('marketing_data')
+  const [selCategory, setSelCategory] = useState('report')
   const [type, setType] = useState('kpi')
-  const [config, setConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
+  const [wConfig, setWConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
   const [filters, setFilters] = useState({})
 
-  const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
+  const upd = (k, v) => setWConfig(c => ({ ...c, [k]: v }))
 
-  const changeType = t => { setType(t); setConfig({ ...DEFAULT_WIDGET_CONFIG[t] }); setStep(2) }
+  /* 선택한 테이블 기준 메트릭/그룹바이 동적 생성 */
+  const dynMetrics = useMemo(
+    () => buildTableMetrics(selTable, columnConfig),
+    [selTable, columnConfig]
+  )
+  const dynGroupBy = useMemo(
+    () => buildTableGroupBy(selTable, columnConfig),
+    [selTable, columnConfig]
+  )
+
+  /* 사용 가능한 테이블 목록: marketing_data + columnConfig에 등록된 테이블들 */
+  const availableTables = useMemo(() => {
+    const tables = [{ id: 'marketing_data', label: '마케팅 데이터', icon: '📊' }]
+    if (columnConfig) {
+      Object.keys(columnConfig).forEach(t => {
+        if (t === 'marketing_data') return
+        tables.push({ id: t, label: t.replace(/_/g, ' '), icon: '🏨' })
+      })
+    }
+    return tables
+  }, [columnConfig])
+
+  /* 카테고리별 허용 위젯 */
+  const allowedTypes = SUB_TYPES[selCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
 
   const toggleMetric = mid => {
-    const cur = config.metrics || []
-    setConfig(c => ({ ...c, metrics: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] }))
+    const cur = wConfig.metrics || []
+    setWConfig(c => ({ ...c, metrics: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] }))
   }
 
   const handleAdd = () => {
-    onAdd({ id: `w_${Date.now()}`, widthPct: 33.33, type, config: { ...config, filters } })
+    onAdd({ id: `w_${Date.now()}`, widthPct: 33.33, type, config: { ...wConfig, filters, _table: selTable } })
     onClose()
   }
 
   const S = {
-    card: (on) => `flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
-      ${on ? 'border-indigo-500 bg-indigo-500/10'
-        : dark ? 'border-[#252836] hover:border-indigo-500/40 hover:bg-[#252836]/60'
-          : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'}`,
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -1156,11 +1243,11 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
         : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-700 hover:border-indigo-300'}`,
   }
 
-  const STEPS = ['타입 선택', '설정']
+  const STEPS = ['데이터 소스', '카드 유형', '위젯 선택', '설정']
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-3xl flex flex-col max-h-[90vh]
+      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-xl flex flex-col max-h-[90vh]
         ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
 
         {/* 헤더 */}
@@ -1168,7 +1255,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
           ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <div>
             <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>카드 추가</p>
-            <div className="flex items-center gap-1.5 mt-2">
+            <div className="flex items-center gap-1 mt-2">
               {STEPS.map((s, i) => (
                 <div key={s} className="flex items-center gap-1">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
@@ -1177,11 +1264,11 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
                         : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
                     {step > i + 1 ? '✓' : i + 1}
                   </div>
-                  <span className={`text-[10px] font-medium
+                  <span className={`text-[10px] font-medium hidden sm:inline
                     ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-600'}`}>
                     {s}
                   </span>
-                  {i < 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>›</span>}
+                  {i < 3 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>›</span>}
                 </div>
               ))}
             </div>
@@ -1192,163 +1279,300 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
           </button>
         </div>
 
+        {/* 선택 요약 칩 */}
+        {step > 1 && (
+          <div className="flex items-center gap-1.5 px-5 pt-3 flex-wrap">
+            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+              {availableTables.find(t => t.id === selTable)?.icon} {selTable}
+            </span>
+            {step > 2 && (
+              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                {CATEGORY_META[selCategory]?.icon} {CATEGORY_META[selCategory]?.label}
+              </span>
+            )}
+            {step > 3 && (
+              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                {WTYPE_META[type]?.icon} {WTYPE_META[type]?.label}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* 바디 */}
         <div className="flex-1 overflow-y-auto p-5 min-h-0">
 
-          {/* Step 1: 타입 */}
-          {step === 1 && (() => {
-            const filtered = getFilteredWidgetMeta(subType)
-            return (
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries(filtered).map(([id, meta]) => (
-                  <button key={id} onClick={() => changeType(id)}
-                    className={S.card(type === id)}>
-                    <span className="text-3xl">{meta.icon}</span>
-                    <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
-                    <span className={`text-[10px] leading-tight ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</span>
+          {/* ─── Step 1: 데이터 소스 선택 ─── */}
+          {step === 1 && (
+            <div className="flex flex-col gap-2">
+              <p className={`${S.lab} mb-1`}>데이터 소스 선택</p>
+              {availableTables.map(t => {
+                const on = selTable === t.id
+                return (
+                  <button key={t.id} onClick={() => setSelTable(t.id)}
+                    className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all
+                      ${on ? 'border-indigo-500 bg-indigo-500/10'
+                        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                    <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-base ${dark ? 'bg-[#0F1117]' : 'bg-slate-100'}`}>
+                      {t.icon}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-bold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{t.id}</p>
+                      <p className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-700'}`}>{t.label}</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] transition-colors
+                      ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+                      {on && '✓'}
+                    </div>
                   </button>
-                ))}
-              </div>
-            )
-          })()}
+                )
+              })}
+              <p className={`text-[10px] mt-2 p-2.5 rounded-lg border-l-2 border-indigo-500 leading-relaxed
+                ${dark ? 'text-slate-500 bg-indigo-500/5' : 'text-slate-700 bg-indigo-50'}`}>
+                선택한 테이블의 컬럼 설정(별칭, 계산 컬럼)이 위젯 메트릭에 반영됩니다.
+              </p>
+            </div>
+          )}
 
-          {/* Step 2: 설정 */}
+          {/* ─── Step 2: 카드 유형 선택 ─── */}
           {step === 2 && (
+            <div className="flex flex-col gap-2">
+              <p className={`${S.lab} mb-1`}>카드 유형</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(CATEGORY_META).map(([id, meta]) => {
+                  const on = selCategory === id
+                  return (
+                    <button key={id} onClick={() => setSelCategory(id)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
+                        ${on ? 'border-indigo-500 bg-indigo-500/10'
+                          : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                      <span className="text-2xl">{meta.icon}</span>
+                      <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
+                      <span className={`text-[10px] leading-tight ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</span>
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                        {(SUB_TYPES[id]?.widgetTypes || []).length}개 위젯
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ─── Step 3: 위젯 타입 선택 + 미리보기 ─── */}
+          {step === 3 && (
+            <div className="flex flex-col gap-2">
+              <p className={`${S.lab} mb-1`}>위젯 선택</p>
+              {allowedTypes.filter(id => WTYPE_META[id]).map(id => {
+                const meta = WTYPE_META[id]
+                const on = type === id
+                const Preview = MINI_PREVIEW[id]
+                return (
+                  <button key={id} onClick={() => { setType(id); setWConfig({ ...DEFAULT_WIDGET_CONFIG[id] }) }}
+                    className={`flex items-stretch gap-3 p-3 rounded-xl border text-left transition-all
+                      ${on ? 'border-indigo-500 bg-indigo-500/10'
+                        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                    {/* 미니 프리뷰 */}
+                    <div className={`w-[72px] shrink-0 rounded-lg flex items-center justify-center p-2
+                      ${dark ? 'bg-[#0F1117]' : 'bg-slate-50'}`}>
+                      <Preview dark={dark} />
+                    </div>
+                    {/* 정보 */}
+                    <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                      <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{meta.label}</p>
+                      <p className={`text-[10px] leading-snug ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</p>
+                      <div className="flex gap-1 mt-0.5">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                          {meta.metricTag}
+                        </span>
+                        {meta.needsGroup && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                            그룹 기준 1개
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* 체크 */}
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] self-center shrink-0 transition-colors
+                      ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+                      {on && '✓'}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* ─── Step 4: 메트릭 설정 ─── */}
+          {step === 4 && (
             <div className="flex flex-col gap-4">
+              {/* 메트릭 힌트 */}
+              <div className={`text-[10px] p-2 rounded-lg flex items-center gap-2
+                ${dark ? 'bg-indigo-500/5 text-slate-400' : 'bg-indigo-50 text-slate-700'}`}>
+                <span className="text-indigo-400">ℹ</span>
+                {WTYPE_META[type]?.metricTag}{WTYPE_META[type]?.needsGroup ? ' + 그룹 기준 1개가 필요합니다' : '가 필요합니다'}
+              </div>
+
+              {/* KPI — 단일 메트릭 */}
               {type === 'kpi' && (
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
                     <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => (
-                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                                {m.label}
-                              </button>
-                            ))}
+                      {['metric', 'computed', 'rate'].map(group => {
+                        const items = dynMetrics.filter(m => m.group === group)
+                        if (!items.length) return null
+                        return (
+                          <div key={group}>
+                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {items.map(m => (
+                                <button key={m.id} onClick={() => upd('metric', m.id)}
+                                  className={`${S.btn(wConfig.metric === m.id)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
+                                  {m.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
-                    <input className={S.inp} value={config.label || ''}
+                    <input className={S.inp} value={wConfig.label || ''}
                       onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용" />
                   </div>
                 </>
               )}
 
+              {/* 시계열 — 복수 메트릭 */}
               {type === 'timeseries' && (
                 <>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={config.title || ''}
+                    <input className={S.inp} value={wConfig.title || ''}
                       onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
                     <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => {
-                              const on = (config.metrics || []).includes(m.id)
-                              return (
-                                <button key={m.id} onClick={() => toggleMetric(m.id)} className={S.btn(on)}>
-                                  {on ? '✓ ' : ''}{m.label}
-                                </button>
-                              )
-                            })}
+                      {['metric', 'computed', 'rate'].map(group => {
+                        const items = dynMetrics.filter(m => m.group === group)
+                        if (!items.length) return null
+                        return (
+                          <div key={group}>
+                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {items.map(m => {
+                                const on = (wConfig.metrics || []).includes(m.id)
+                                return (
+                                  <button key={m.id} onClick={() => toggleMetric(m.id)}
+                                    className={`${S.btn(on)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
+                                    {on ? '✓ ' : ''}{m.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 </>
               )}
 
+              {/* 바/도넛 — 단일 메트릭 + 그룹 */}
               {(type === 'bar' || type === 'donut') && (
                 <>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={config.title || ''}
+                    <input className={S.inp} value={wConfig.title || ''}
                       onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
                     <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => (
-                              <button key={m.id} onClick={() => upd('metric', m.id)} className={S.btn(config.metric === m.id)}>
-                                {m.label}
-                              </button>
-                            ))}
+                      {['metric', 'computed', 'rate'].map(group => {
+                        const items = dynMetrics.filter(m => m.group === group)
+                        if (!items.length) return null
+                        return (
+                          <div key={group}>
+                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {items.map(m => (
+                                <button key={m.id} onClick={() => upd('metric', m.id)}
+                                  className={`${S.btn(wConfig.metric === m.id)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
+                                  {m.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <select className={S.sel} value={config.groupBy || 'channel'}
+                    <select className={S.sel} value={wConfig.groupBy || dynGroupBy[0]?.id || 'channel'}
                       onChange={e => upd('groupBy', e.target.value)}>
-                      {(groupByOptions || GROUP_BY).map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                     </select>
                   </div>
                 </>
               )}
 
+              {/* 테이블 — 복수 메트릭 + 그룹 */}
               {type === 'table' && (
                 <>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={config.title || ''}
+                    <input className={S.inp} value={wConfig.title || ''}
                       onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
                     <div className="flex flex-col gap-3">
-                      {['metric', 'rate'].map(group => (
-                        <div key={group}>
-                          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                            {group === 'metric' ? '지표' : '단가'}
-                          </p>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {(metricsProp || METRICS).filter(m => m.group === group).map(m => {
-                              const on = (config.metrics || []).includes(m.id)
-                              return (
-                                <button key={m.id} onClick={() => {
-                                  const cur = config.metrics || []
-                                  upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
-                                }} className={S.btn(on)}>
-                                  {on ? '✓ ' : ''}{m.label}
-                                </button>
-                              )
-                            })}
+                      {['metric', 'computed', 'rate'].map(group => {
+                        const items = dynMetrics.filter(m => m.group === group)
+                        if (!items.length) return null
+                        return (
+                          <div key={group}>
+                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {items.map(m => {
+                                const on = (wConfig.metrics || []).includes(m.id)
+                                return (
+                                  <button key={m.id} onClick={() => {
+                                    const cur = wConfig.metrics || []
+                                    upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
+                                  }} className={`${S.btn(on)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
+                                    {on ? '✓ ' : ''}{m.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <select className={S.sel} value={config.groupBy || 'channel'}
+                    <select className={S.sel} value={wConfig.groupBy || dynGroupBy[0]?.id || 'channel'}
                       onChange={e => upd('groupBy', e.target.value)}>
-                      {(groupByOptions || GROUP_BY).map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                     </select>
                   </div>
                 </>
@@ -1357,12 +1581,12 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
               {/* 데이터 필터 — 모든 카드 타입 공통 */}
               <FilterSection
                 filters={filters}
-                groupBy={config.groupBy}
+                groupBy={wConfig.groupBy}
                 data={data}
                 dark={dark}
                 onChange={setFilters}
                 onGroupByChange={['bar', 'donut', 'table'].includes(type)
-                  ? (dim) => upd('groupBy', dim ?? 'channel')
+                  ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
                   : undefined}
               />
             </div>
@@ -1379,7 +1603,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
                 : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
             {step > 1 ? '← 이전' : '취소'}
           </button>
-          {step < 2 ? (
+          {step < 4 ? (
             <button onClick={() => setStep(s => s + 1)}
               className="text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
               다음 →
@@ -1399,7 +1623,7 @@ function AddWidgetModal({ dark, data = [], onAdd, onClose, subType = 'report', m
 /* ══════════════════════════════════════════
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd, subType = 'report', tableMetrics, tableGroupBy }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, showAdd, onOpenAdd, onCloseAdd, subType = 'report', tableMetrics, tableGroupBy, columnConfig }) {
   const [editSlot, setEditSlot] = useState(null)   // 편집 모달 대상 slotId
   const [activeId, setActiveId] = useState(null)   // 드래그 중인 slotId
   const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
@@ -1537,7 +1761,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, data, dark, editMode, s
 
       {/* 카드 추가 모달 */}
       {showAdd && (
-        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} subType={subType} metrics={tableMetrics} groupByOptions={tableGroupBy} />
+        <AddWidgetModal dark={dark} data={data} onAdd={handleAddSlot} onClose={onCloseAdd} subType={subType} metrics={tableMetrics} groupByOptions={tableGroupBy} columnConfig={columnConfig} />
       )}
 
       {/* 위젯 편집 모달 (카드 밖 전체화면) */}
@@ -1783,6 +2007,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
               subType={subType}
               tableMetrics={tableMetrics}
               tableGroupBy={tableGroupBy}
+              columnConfig={config.columnConfig}
             />
           )}
         </div>

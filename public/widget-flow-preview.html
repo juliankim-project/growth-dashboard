@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Widget Add Flow Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'Pretendard', sans-serif; background: #0F1117; color: #fff; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+
+  .modal-overlay { width: 100%; max-width: 580px; }
+  .modal { background: #1A1D27; border: 1px solid #252836; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.5); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+  .modal-header h2 { font-size: 15px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: #64748b; cursor: pointer; font-size: 18px; padding: 4px; }
+  .modal-body { padding: 20px 24px 24px; }
+
+  /* Steps indicator */
+  .steps { display: flex; gap: 6px; margin-bottom: 20px; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #252836; transition: all .3s; }
+  .step-dot.active { background: #6366F1; width: 24px; border-radius: 4px; }
+  .step-dot.done { background: #6366F1; opacity: .4; }
+
+  /* Step labels */
+  .step-label { font-size: 11px; color: #64748b; margin-bottom: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+
+  /* Table selection */
+  .table-grid { display: flex; flex-direction: column; gap: 8px; }
+  .table-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: #13151C; border: 1px solid #252836; border-radius: 14px; cursor: pointer; transition: all .2s; }
+  .table-card:hover { border-color: #6366F1; background: rgba(99,102,241,.05); }
+  .table-card.selected { border-color: #6366F1; background: rgba(99,102,241,.1); }
+  .table-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .table-icon.indigo { background: rgba(99,102,241,.15); }
+  .table-icon.violet { background: rgba(139,92,246,.15); }
+  .table-info { flex: 1; }
+  .table-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .table-desc { font-size: 11px; color: #64748b; }
+  .table-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; background: rgba(99,102,241,.1); color: #818CF8; font-weight: 600; }
+  .table-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #252836; display: flex; align-items: center; justify-content: center; font-size: 11px; color: transparent; transition: all .2s; }
+  .table-card.selected .table-check { border-color: #6366F1; background: #6366F1; color: #fff; }
+
+  /* Category cards */
+  .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cat-card { padding: 18px 16px; background: #13151C; border: 1px solid #252836; border-radius: 14px; cursor: pointer; transition: all .2s; text-align: center; }
+  .cat-card:hover { border-color: #6366F1; background: rgba(99,102,241,.05); }
+  .cat-card.selected { border-color: #6366F1; background: rgba(99,102,241,.1); }
+  .cat-card.disabled { opacity: .35; pointer-events: none; }
+  .cat-emoji { font-size: 28px; margin-bottom: 8px; display: block; }
+  .cat-name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+  .cat-desc { font-size: 10px; color: #64748b; line-height: 1.4; }
+  .cat-badge { display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(99,102,241,.15); color: #818CF8; font-weight: 600; margin-top: 6px; }
+  .cat-badge.soon { background: rgba(100,116,139,.15); color: #64748b; }
+
+  /* ──── Step 3: Widget type cards (redesigned with preview) ──── */
+  .wtype-list { display: flex; flex-direction: column; gap: 8px; }
+  .wtype-card {
+    display: flex; gap: 14px; padding: 14px 16px;
+    background: #13151C; border: 1px solid #252836; border-radius: 14px;
+    cursor: pointer; transition: all .2s; align-items: stretch;
+  }
+  .wtype-card:hover { border-color: #6366F1; background: rgba(99,102,241,.05); }
+  .wtype-card.selected { border-color: #6366F1; background: rgba(99,102,241,.1); }
+
+  /* Mini preview area */
+  .wtype-preview {
+    width: 80px; min-height: 60px; flex-shrink: 0;
+    background: #0F1117; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative; padding: 8px;
+  }
+
+  /* Right info */
+  .wtype-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+  .wtype-name { font-size: 13px; font-weight: 700; }
+  .wtype-desc { font-size: 10px; color: #64748b; line-height: 1.4; }
+  .wtype-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .wtype-tag {
+    font-size: 9px; padding: 2px 7px; border-radius: 4px; font-weight: 600;
+  }
+  .wtype-tag.metric { background: rgba(99,102,241,.12); color: #818CF8; }
+  .wtype-tag.group { background: rgba(245,158,11,.1); color: #F59E0B; }
+  .wtype-tag.optional { background: rgba(100,116,139,.1); color: #64748b; }
+
+  /* Check indicator */
+  .wtype-check {
+    width: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .wtype-check-dot {
+    width: 18px; height: 18px; border-radius: 50%; border: 2px solid #252836;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: transparent; transition: all .2s;
+  }
+  .wtype-card.selected .wtype-check-dot {
+    border-color: #6366F1; background: #6366F1; color: #fff;
+  }
+
+  /* ──── Mini chart CSS art ──── */
+  /* KPI mini */
+  .mini-kpi { text-align: center; width: 100%; }
+  .mini-kpi-val { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -.5px; }
+  .mini-kpi-delta { font-size: 8px; color: #10B981; margin-top: 1px; }
+
+  /* Timeseries mini */
+  .mini-ts { width: 100%; height: 40px; position: relative; }
+  .mini-ts svg { width: 100%; height: 100%; }
+
+  /* Bar mini */
+  .mini-bars { display: flex; align-items: flex-end; gap: 3px; height: 40px; width: 100%; }
+  .mini-bar { flex: 1; border-radius: 2px 2px 0 0; transition: height .3s; }
+
+  /* Donut mini */
+  .mini-donut { width: 44px; height: 44px; }
+  .mini-donut svg { width: 100%; height: 100%; }
+
+  /* Table mini */
+  .mini-table { width: 100%; }
+  .mini-table-row { display: flex; gap: 2px; margin-bottom: 2px; }
+  .mini-table-cell {
+    height: 6px; border-radius: 1px; flex: 1;
+  }
+  .mini-table-hdr { background: #6366F1; opacity: .5; height: 7px; }
+  .mini-table-data { background: #252836; }
+
+  /* Config section */
+  .config-section { margin-top: 16px; }
+  .config-label { font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 600; }
+  .config-select { width: 100%; padding: 10px 12px; background: #13151C; border: 1px solid #252836; border-radius: 10px; color: #fff; font-size: 12px; outline: none; appearance: none; cursor: pointer; }
+  .config-select:focus { border-color: #6366F1; }
+  .metric-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .metric-chip { padding: 6px 12px; background: #13151C; border: 1px solid #252836; border-radius: 8px; font-size: 11px; cursor: pointer; transition: all .2s; }
+  .metric-chip:hover { border-color: #6366F1; }
+  .metric-chip.selected { background: rgba(99,102,241,.15); border-color: #6366F1; color: #818CF8; }
+  .metric-chip.computed { border-left: 3px solid #8B5CF6; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; margin-top: 20px; }
+  .btn { flex: 1; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .2s; }
+  .btn-back { background: #252836; color: #94a3b8; }
+  .btn-back:hover { background: #2d3142; }
+  .btn-primary { background: #6366F1; color: #fff; }
+  .btn-primary:hover { background: #5558e6; }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Navigator */
+  .nav-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: #13151C; border-radius: 10px; padding: 3px; }
+  .nav-tab { flex: 1; padding: 8px; text-align: center; font-size: 11px; font-weight: 600; border-radius: 8px; cursor: pointer; color: #64748b; transition: all .2s; }
+  .nav-tab.active { background: #252836; color: #fff; }
+
+  /* Divider */
+  .divider { height: 1px; background: #252836; margin: 16px 0; }
+
+  /* Preview card */
+  .preview-card { background: #13151C; border: 1px solid #252836; border-radius: 12px; padding: 16px; margin-top: 12px; }
+  .preview-label { font-size: 10px; color: #64748b; margin-bottom: 8px; font-weight: 600; }
+  .preview-kpi { font-size: 28px; font-weight: 800; color: #fff; }
+  .preview-kpi-sub { font-size: 11px; color: #818CF8; margin-top: 2px; }
+
+  /* Info text */
+  .info-text { font-size: 10px; color: #475569; margin-top: 12px; padding: 10px 12px; background: rgba(99,102,241,.05); border-radius: 8px; border-left: 3px solid #6366F1; line-height: 1.5; }
+
+  /* Selected summary at top */
+  .selected-summary { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .summary-chip { font-size: 10px; padding: 4px 10px; border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .summary-chip.table { background: rgba(99,102,241,.1); color: #818CF8; }
+  .summary-chip.cat { background: rgba(16,185,129,.1); color: #10B981; }
+
+  /* ──── Step 3: Live preview panel ──── */
+  .live-preview {
+    margin-top: 14px; padding: 16px; background: #13151C;
+    border: 1px solid #252836; border-radius: 14px;
+    animation: fadeSlide .25s ease;
+  }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .live-preview-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .live-preview-title { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  .live-preview-badge { font-size: 9px; padding: 2px 8px; border-radius: 4px; background: rgba(99,102,241,.1); color: #818CF8; font-weight: 600; }
+
+  /* KPI preview */
+  .pv-kpi { text-align: left; }
+  .pv-kpi-label { font-size: 10px; color: #64748b; margin-bottom: 6px; }
+  .pv-kpi-value { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+  .pv-kpi-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .pv-kpi-delta { font-size: 11px; color: #10B981; font-weight: 600; }
+  .pv-kpi-sub { font-size: 10px; color: #475569; }
+
+  /* Timeseries preview */
+  .pv-ts svg { width: 100%; height: 80px; display: block; }
+  .pv-ts-legend { display: flex; gap: 12px; margin-top: 8px; }
+  .pv-ts-legend-item { display: flex; align-items: center; gap: 4px; font-size: 9px; color: #64748b; }
+  .pv-ts-legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Bar preview */
+  .pv-bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; padding-top: 4px; }
+  .pv-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+  .pv-bar-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; }
+  .pv-bar-label { font-size: 8px; color: #475569; white-space: nowrap; }
+  .pv-bar-val { font-size: 8px; color: #94a3b8; font-weight: 600; }
+
+  /* Donut preview */
+  .pv-donut-wrap { display: flex; align-items: center; gap: 16px; }
+  .pv-donut-chart { width: 80px; height: 80px; flex-shrink: 0; position: relative; }
+  .pv-donut-chart svg { width: 100%; height: 100%; }
+  .pv-donut-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+  .pv-donut-legend { display: flex; flex-direction: column; gap: 5px; }
+  .pv-donut-legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+  .pv-donut-legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .pv-donut-legend-pct { color: #64748b; margin-left: auto; font-size: 9px; }
+
+  /* Table preview */
+  .pv-tbl { width: 100%; border-collapse: collapse; }
+  .pv-tbl th { font-size: 9px; color: #64748b; font-weight: 600; text-align: left; padding: 6px 8px; border-bottom: 1px solid #252836; }
+  .pv-tbl td { font-size: 10px; padding: 5px 8px; border-bottom: 1px solid #1e2130; }
+  .pv-tbl tr:last-child td { border-bottom: none; }
+  .pv-tbl td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay">
+  <!-- Step Navigator -->
+  <div class="nav-tabs" style="margin-bottom: 16px;">
+    <div class="nav-tab active" onclick="goStep(1)">Step 1</div>
+    <div class="nav-tab" onclick="goStep(2)">Step 2</div>
+    <div class="nav-tab" onclick="goStep(3)">Step 3</div>
+    <div class="nav-tab" onclick="goStep(4)">Step 4</div>
+  </div>
+
+  <!-- ============ STEP 1: 테이블 선택 ============ -->
+  <div class="modal" id="step1">
+    <div class="modal-header">
+      <h2>카드 추가</h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+      <div class="step-label">1. 데이터 소스 선택</div>
+
+      <div class="table-grid">
+        <div class="table-card selected" onclick="selectTable(this, 'marketing')">
+          <div class="table-icon indigo">📊</div>
+          <div class="table-info">
+            <div class="table-name">marketing_data</div>
+            <div class="table-desc">에어브릿지 마케팅 데이터</div>
+          </div>
+          <div class="table-badge">12,847행</div>
+          <div class="table-check">✓</div>
+        </div>
+
+        <div class="table-card" onclick="selectTable(this, 'product')">
+          <div class="table-icon violet">🏨</div>
+          <div class="table-info">
+            <div class="table-name">product_revenue_raw</div>
+            <div class="table-desc">상품 매출 원장 데이터</div>
+          </div>
+          <div class="table-badge">3,241행</div>
+          <div class="table-check">✓</div>
+        </div>
+      </div>
+
+      <div class="info-text">
+        선택한 테이블의 컬럼 설정(별칭, 계산 컬럼)이<br>위젯 메트릭에 반영됩니다.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goStep(2)">다음 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 2: 카드 유형 선택 ============ -->
+  <div class="modal" id="step2" style="display:none">
+    <div class="modal-header">
+      <h2>카드 추가</h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+        <div class="step-dot done"></div>
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+
+      <div class="selected-summary">
+        <span class="summary-chip table" id="sumTable2">📊 marketing_data</span>
+      </div>
+
+      <div class="step-label">2. 카드 유형</div>
+
+      <div class="cat-grid">
+        <div class="cat-card selected" onclick="selectCat(this, 'report')">
+          <span class="cat-emoji">📈</span>
+          <div class="cat-name">리포트</div>
+          <div class="cat-desc">KPI, 차트, 테이블 등<br>데이터 시각화 카드</div>
+          <span class="cat-badge">5개 위젯</span>
+        </div>
+
+        <div class="cat-card" onclick="selectCat(this, 'simulation')">
+          <span class="cat-emoji">🧪</span>
+          <div class="cat-name">시뮬레이션</div>
+          <div class="cat-desc">예산 배분, ROAS 목표<br>시뮬레이터 카드</div>
+          <span class="cat-badge">2개 위젯</span>
+        </div>
+
+        <div class="cat-card" onclick="selectCat(this, 'funnel')">
+          <span class="cat-emoji">🔻</span>
+          <div class="cat-name">퍼널</div>
+          <div class="cat-desc">노출→클릭→전환<br>단계별 전환율 분석</div>
+          <span class="cat-badge">1개 위젯</span>
+        </div>
+
+        <div class="cat-card disabled">
+          <span class="cat-emoji">🤖</span>
+          <div class="cat-name">AI 인사이트</div>
+          <div class="cat-desc">자동 이상치 탐지,<br>트렌드 요약 카드</div>
+          <span class="cat-badge soon">준비 중</span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="goStep(1)">← 이전</button>
+        <button class="btn btn-primary" onclick="goStep(3)">다음 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 3: 위젯 타입 선택 (with preview + column info) ============ -->
+  <div class="modal" id="step3" style="display:none">
+    <div class="modal-header">
+      <h2>카드 추가</h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+        <div class="step-dot done"></div>
+        <div class="step-dot done"></div>
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+      </div>
+
+      <div class="selected-summary">
+        <span class="summary-chip table" id="sumTable3">📊 marketing_data</span>
+        <span class="summary-chip cat">📈 리포트</span>
+      </div>
+
+      <div class="step-label">3. 위젯 선택</div>
+
+      <div class="wtype-list">
+        <!-- KPI -->
+        <div class="wtype-card selected" onclick="selectType(this, 'kpi')">
+          <div class="wtype-preview">
+            <div class="mini-kpi">
+              <div class="mini-kpi-val">₩ 1.2M</div>
+              <div class="mini-kpi-delta">▲ 3.2%</div>
+            </div>
+          </div>
+          <div class="wtype-info">
+            <div class="wtype-name">KPI 카드</div>
+            <div class="wtype-desc">핵심 지표 하나를 크게 표시하고<br>전일/전주 대비 변화율을 함께 보여줍니다</div>
+            <div class="wtype-tags">
+              <span class="wtype-tag metric">메트릭 1개</span>
+            </div>
+          </div>
+          <div class="wtype-check"><div class="wtype-check-dot">✓</div></div>
+        </div>
+
+        <!-- Timeseries -->
+        <div class="wtype-card" onclick="selectType(this, 'timeseries')">
+          <div class="wtype-preview">
+            <div class="mini-ts">
+              <svg viewBox="0 0 64 40" fill="none">
+                <polyline points="2,32 12,28 22,18 32,22 42,10 52,14 62,6" stroke="#6366F1" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <polyline points="2,34 12,30 22,26 32,28 42,20 52,24 62,16" stroke="#818CF8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/>
+              </svg>
+            </div>
+          </div>
+          <div class="wtype-info">
+            <div class="wtype-name">시계열 차트</div>
+            <div class="wtype-desc">날짜별 추이를 라인 차트로 시각화<br>여러 지표를 동시에 비교할 수 있습니다</div>
+            <div class="wtype-tags">
+              <span class="wtype-tag metric">메트릭 1~5개</span>
+            </div>
+          </div>
+          <div class="wtype-check"><div class="wtype-check-dot">✓</div></div>
+        </div>
+
+        <!-- Bar -->
+        <div class="wtype-card" onclick="selectType(this, 'bar')">
+          <div class="wtype-preview">
+            <div class="mini-bars">
+              <div class="mini-bar" style="height:65%; background:#6366F1;"></div>
+              <div class="mini-bar" style="height:100%; background:#818CF8;"></div>
+              <div class="mini-bar" style="height:45%; background:#6366F1;"></div>
+              <div class="mini-bar" style="height:80%; background:#818CF8;"></div>
+              <div class="mini-bar" style="height:55%; background:#6366F1;"></div>
+            </div>
+          </div>
+          <div class="wtype-info">
+            <div class="wtype-name">바 차트</div>
+            <div class="wtype-desc">그룹별 지표를 막대로 비교<br>채널, 캠페인별 성과 비교에 적합합니다</div>
+            <div class="wtype-tags">
+              <span class="wtype-tag metric">메트릭 1~3개</span>
+              <span class="wtype-tag group">그룹 기준 1개</span>
+            </div>
+          </div>
+          <div class="wtype-check"><div class="wtype-check-dot">✓</div></div>
+        </div>
+
+        <!-- Donut -->
+        <div class="wtype-card" onclick="selectType(this, 'donut')">
+          <div class="wtype-preview">
+            <div class="mini-donut">
+              <svg viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="16" fill="none" stroke="#252836" stroke-width="6"/>
+                <circle cx="22" cy="22" r="16" fill="none" stroke="#6366F1" stroke-width="6"
+                  stroke-dasharray="40 100" stroke-dashoffset="0" transform="rotate(-90 22 22)"/>
+                <circle cx="22" cy="22" r="16" fill="none" stroke="#818CF8" stroke-width="6"
+                  stroke-dasharray="28 100" stroke-dashoffset="-40" transform="rotate(-90 22 22)"/>
+                <circle cx="22" cy="22" r="16" fill="none" stroke="#A5B4FC" stroke-width="6"
+                  stroke-dasharray="18 100" stroke-dashoffset="-68" transform="rotate(-90 22 22)"/>
+              </svg>
+            </div>
+          </div>
+          <div class="wtype-info">
+            <div class="wtype-name">도넛 차트</div>
+            <div class="wtype-desc">그룹별 비중을 한눈에 파악<br>채널 점유율, 매출 비중 분석에 최적</div>
+            <div class="wtype-tags">
+              <span class="wtype-tag metric">메트릭 1개</span>
+              <span class="wtype-tag group">그룹 기준 1개</span>
+            </div>
+          </div>
+          <div class="wtype-check"><div class="wtype-check-dot">✓</div></div>
+        </div>
+
+        <!-- Table -->
+        <div class="wtype-card" onclick="selectType(this, 'table')">
+          <div class="wtype-preview">
+            <div class="mini-table">
+              <div class="mini-table-row">
+                <div class="mini-table-cell mini-table-hdr"></div>
+                <div class="mini-table-cell mini-table-hdr"></div>
+                <div class="mini-table-cell mini-table-hdr"></div>
+              </div>
+              <div class="mini-table-row">
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+              </div>
+              <div class="mini-table-row">
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+              </div>
+              <div class="mini-table-row">
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+              </div>
+              <div class="mini-table-row">
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+                <div class="mini-table-cell mini-table-data"></div>
+              </div>
+            </div>
+          </div>
+          <div class="wtype-info">
+            <div class="wtype-name">데이터 테이블</div>
+            <div class="wtype-desc">상세 데이터를 표로 확인<br>정렬, 필터링으로 세부 분석이 가능합니다</div>
+            <div class="wtype-tags">
+              <span class="wtype-tag metric">메트릭 1~10개</span>
+              <span class="wtype-tag group">그룹 기준 1개</span>
+            </div>
+          </div>
+          <div class="wtype-check"><div class="wtype-check-dot">✓</div></div>
+        </div>
+      </div>
+
+      <!-- Live Preview Panel (changes based on selected widget) -->
+      <div class="live-preview" id="livePreview">
+        <div class="live-preview-header">
+          <span class="live-preview-title" id="lpTitle">KPI 카드 미리보기</span>
+          <span class="live-preview-badge" id="lpBadge">메트릭 1개</span>
+        </div>
+
+        <!-- KPI Preview -->
+        <div id="lpKpi">
+          <div class="pv-kpi">
+            <div class="pv-kpi-label">광고비</div>
+            <div class="pv-kpi-value">₩ 12,456,000</div>
+            <div class="pv-kpi-row">
+              <span class="pv-kpi-delta">▲ 3.2%</span>
+              <span class="pv-kpi-sub">전일 대비</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeseries Preview -->
+        <div id="lpTimeseries" style="display:none">
+          <div class="pv-ts">
+            <svg viewBox="0 0 300 80" fill="none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#6366F1" stop-opacity=".2"/>
+                  <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,60 30,52 60,40 90,44 120,28 150,32 180,18 210,22 240,12 270,16 300,8 300,80 0,80Z" fill="url(#grad1)"/>
+              <polyline points="0,60 30,52 60,40 90,44 120,28 150,32 180,18 210,22 240,12 270,16 300,8" stroke="#6366F1" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="0,65 30,60 60,52 90,56 120,44 150,48 180,38 210,42 240,34 270,38 300,28" stroke="#F59E0B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+            </svg>
+          </div>
+          <div class="pv-ts-legend">
+            <div class="pv-ts-legend-item"><div class="pv-ts-legend-dot" style="background:#6366F1"></div>광고비</div>
+            <div class="pv-ts-legend-item"><div class="pv-ts-legend-dot" style="background:#F59E0B"></div>매출</div>
+          </div>
+        </div>
+
+        <!-- Bar Preview -->
+        <div id="lpBar" style="display:none">
+          <div class="pv-bar-chart">
+            <div class="pv-bar-col">
+              <div class="pv-bar-val">4.2M</div>
+              <div class="pv-bar-bar" style="height:65%; background:#6366F1;"></div>
+              <div class="pv-bar-label">Meta</div>
+            </div>
+            <div class="pv-bar-col">
+              <div class="pv-bar-val">6.1M</div>
+              <div class="pv-bar-bar" style="height:95%; background:#818CF8;"></div>
+              <div class="pv-bar-label">Google</div>
+            </div>
+            <div class="pv-bar-col">
+              <div class="pv-bar-val">3.0M</div>
+              <div class="pv-bar-bar" style="height:47%; background:#A5B4FC;"></div>
+              <div class="pv-bar-label">Kakao</div>
+            </div>
+            <div class="pv-bar-col">
+              <div class="pv-bar-val">5.3M</div>
+              <div class="pv-bar-bar" style="height:82%; background:#6366F1;"></div>
+              <div class="pv-bar-label">Naver</div>
+            </div>
+            <div class="pv-bar-col">
+              <div class="pv-bar-val">2.1M</div>
+              <div class="pv-bar-bar" style="height:33%; background:#818CF8;"></div>
+              <div class="pv-bar-label">TikTok</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Donut Preview -->
+        <div id="lpDonut" style="display:none">
+          <div class="pv-donut-wrap">
+            <div class="pv-donut-chart">
+              <svg viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#1e2130" stroke-width="10"/>
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#6366F1" stroke-width="10"
+                  stroke-dasharray="67.5 188.5" stroke-dashoffset="0" transform="rotate(-90 40 40)"/>
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#818CF8" stroke-width="10"
+                  stroke-dasharray="47.1 188.5" stroke-dashoffset="-67.5" transform="rotate(-90 40 40)"/>
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#A5B4FC" stroke-width="10"
+                  stroke-dasharray="37.7 188.5" stroke-dashoffset="-114.6" transform="rotate(-90 40 40)"/>
+                <circle cx="40" cy="40" r="30" fill="none" stroke="#C7D2FE" stroke-width="10"
+                  stroke-dasharray="36.1 188.5" stroke-dashoffset="-152.3" transform="rotate(-90 40 40)"/>
+              </svg>
+              <div class="pv-donut-center">100%</div>
+            </div>
+            <div class="pv-donut-legend">
+              <div class="pv-donut-legend-item"><div class="pv-donut-legend-dot" style="background:#6366F1"></div>Meta<span class="pv-donut-legend-pct">35.8%</span></div>
+              <div class="pv-donut-legend-item"><div class="pv-donut-legend-dot" style="background:#818CF8"></div>Google<span class="pv-donut-legend-pct">25.0%</span></div>
+              <div class="pv-donut-legend-item"><div class="pv-donut-legend-dot" style="background:#A5B4FC"></div>Naver<span class="pv-donut-legend-pct">20.0%</span></div>
+              <div class="pv-donut-legend-item"><div class="pv-donut-legend-dot" style="background:#C7D2FE"></div>기타<span class="pv-donut-legend-pct">19.2%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Preview -->
+        <div id="lpTable" style="display:none">
+          <table class="pv-tbl">
+            <thead>
+              <tr><th>채널</th><th style="text-align:right">광고비</th><th style="text-align:right">클릭수</th><th style="text-align:right">ROAS</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Meta</td><td class="num">₩ 4,230,000</td><td class="num">12,340</td><td class="num">320%</td></tr>
+              <tr><td>Google</td><td class="num">₩ 6,100,000</td><td class="num">18,920</td><td class="num">285%</td></tr>
+              <tr><td>Kakao</td><td class="num">₩ 3,010,000</td><td class="num">8,450</td><td class="num">410%</td></tr>
+              <tr><td>Naver</td><td class="num">₩ 5,340,000</td><td class="num">15,670</td><td class="num">352%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="goStep(2)">← 이전</button>
+        <button class="btn btn-primary" onclick="goStep(4)">다음 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 4: 메트릭 설정 ============ -->
+  <div class="modal" id="step4" style="display:none">
+    <div class="modal-header">
+      <h2>카드 추가</h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+        <div class="step-dot done"></div>
+        <div class="step-dot done"></div>
+        <div class="step-dot done"></div>
+        <div class="step-dot active"></div>
+      </div>
+
+      <div class="selected-summary" id="step4Summary">
+        <span class="summary-chip table" id="sumTable4">📊 marketing_data</span>
+        <span class="summary-chip cat">📈 리포트</span>
+        <span class="summary-chip" id="sumWidget" style="background:rgba(245,158,11,.1);color:#F59E0B;">💳 KPI 카드</span>
+      </div>
+
+      <div class="step-label">4. 메트릭 설정</div>
+
+      <!-- Metric requirement hint -->
+      <div id="metricHint" style="font-size:10px; color:#64748b; margin-bottom:10px; padding:8px 10px; background:rgba(99,102,241,.04); border-radius:8px; display:flex; align-items:center; gap:6px;">
+        <span style="color:#818CF8;">ℹ</span>
+        <span id="metricHintText">이 위젯은 메트릭 1개가 필요합니다</span>
+      </div>
+
+      <!-- Marketing metrics example -->
+      <div id="marketingMetrics">
+        <div class="config-label">표시할 지표 선택</div>
+        <div class="metric-chips">
+          <div class="metric-chip selected" onclick="this.classList.toggle('selected')">광고비</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">노출수</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">클릭수</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">설치수</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">회원가입</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">구매수</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">매출</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">ROAS</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">CTR</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">CPM</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">CPA</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">CPS</div>
+        </div>
+      </div>
+
+      <!-- Product metrics example (hidden by default) -->
+      <div id="productMetrics" style="display:none">
+        <div class="config-label">표시할 지표 선택</div>
+        <div class="config-label" style="color:#818CF8; margin-top:8px; font-size:10px;">테이블 관리에서 설정된 메트릭</div>
+        <div class="metric-chips">
+          <div class="metric-chip selected" onclick="this.classList.toggle('selected')">결제금액</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">원가</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">스테이패스 할인</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">프로모 할인</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">쿠폰 할인</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">포인트 사용</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">숙박일수</div>
+          <div class="metric-chip" onclick="this.classList.toggle('selected')">인원수</div>
+        </div>
+        <div class="config-label" style="color:#8B5CF6; margin-top:12px; font-size:10px;">🧮 계산 컬럼</div>
+        <div class="metric-chips">
+          <div class="metric-chip computed" onclick="this.classList.toggle('selected')">최종매출액</div>
+          <div class="metric-chip computed" onclick="this.classList.toggle('selected')">CPM</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- GroupBy (for bar/donut/table) -->
+      <div class="config-section" id="groupBySection" style="display:none">
+        <div class="config-label">그룹 기준</div>
+        <select class="config-select" id="groupBySelect">
+          <option>채널</option>
+          <option>캠페인</option>
+          <option>광고그룹</option>
+          <option>소재</option>
+        </select>
+      </div>
+
+      <!-- Label -->
+      <div class="config-section">
+        <div class="config-label">카드 제목 (선택)</div>
+        <input type="text" placeholder="예: 이번 달 광고비" style="width:100%; padding:10px 12px; background:#13151C; border:1px solid #252836; border-radius:10px; color:#fff; font-size:12px; outline:none;" onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#252836'">
+      </div>
+
+      <!-- Preview -->
+      <div class="preview-card">
+        <div class="preview-label">미리보기</div>
+        <div class="preview-kpi">₩ 12,456,000</div>
+        <div class="preview-kpi-sub">광고비 · 전일 대비 +3.2%</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="goStep(3)">← 이전</button>
+        <button class="btn btn-primary">추가하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentStep = 1
+  let selectedTableName = 'marketing'
+  let selectedWidgetType = 'kpi'
+
+  const widgetMeta = {
+    kpi:        { emoji: '💳', name: 'KPI 카드',     hint: '이 위젯은 메트릭 1개가 필요합니다', needsGroup: false, badgeText: '메트릭 1개' },
+    timeseries: { emoji: '📈', name: '시계열 차트',  hint: '이 위젯은 메트릭 1~5개를 선택할 수 있습니다', needsGroup: false, badgeText: '메트릭 1~5개' },
+    bar:        { emoji: '📊', name: '바 차트',      hint: '메트릭 1~3개 + 그룹 기준 1개가 필요합니다', needsGroup: true, badgeText: '메트릭 + 그룹' },
+    donut:      { emoji: '🍩', name: '도넛 차트',    hint: '메트릭 1개 + 그룹 기준 1개가 필요합니다', needsGroup: true, badgeText: '메트릭 + 그룹' },
+    table:      { emoji: '📋', name: '데이터 테이블', hint: '메트릭 1~10개 + 그룹 기준 1개가 필요합니다', needsGroup: true, badgeText: '메트릭 + 그룹' },
+  }
+
+  function goStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('step' + i).style.display = i === n ? 'block' : 'none'
+    }
+    document.querySelectorAll('.nav-tab').forEach((t, i) => {
+      t.classList.toggle('active', i + 1 === n)
+    })
+    currentStep = n
+    window.scrollTo(0, 0)
+
+    // Show correct metrics based on selected table
+    if (n === 4) {
+      document.getElementById('marketingMetrics').style.display = selectedTableName === 'marketing' ? 'block' : 'none'
+      document.getElementById('productMetrics').style.display = selectedTableName === 'product' ? 'block' : 'none'
+
+      const meta = widgetMeta[selectedWidgetType]
+      document.getElementById('sumWidget').innerHTML = meta.emoji + ' ' + meta.name
+      document.getElementById('metricHintText').textContent = meta.hint
+      document.getElementById('groupBySection').style.display = meta.needsGroup ? 'block' : 'none'
+    }
+  }
+
+  function selectTable(el, table) {
+    selectedTableName = table
+    document.querySelectorAll('.table-card').forEach(c => c.classList.remove('selected'))
+    el.classList.add('selected')
+
+    // Update all summary chips
+    const name = table === 'marketing' ? 'marketing_data' : 'product_revenue_raw'
+    const icon = table === 'marketing' ? '📊' : '🏨'
+    ;['sumTable2','sumTable3','sumTable4'].forEach(id => {
+      const el = document.getElementById(id)
+      if (el) el.innerHTML = icon + ' ' + name
+    })
+  }
+
+  function selectCat(el, cat) {
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'))
+    el.classList.add('selected')
+  }
+
+  function selectType(el, type) {
+    selectedWidgetType = type
+    document.querySelectorAll('.wtype-card').forEach(c => c.classList.remove('selected'))
+    el.classList.add('selected')
+    updateLivePreview(type)
+  }
+
+  function updateLivePreview(type) {
+    const meta = widgetMeta[type]
+    document.getElementById('lpTitle').textContent = meta.name + ' 미리보기'
+    document.getElementById('lpBadge').textContent = meta.badgeText
+
+    // Toggle preview panels
+    const panels = ['lpKpi','lpTimeseries','lpBar','lpDonut','lpTable']
+    const map = { kpi:'lpKpi', timeseries:'lpTimeseries', bar:'lpBar', donut:'lpDonut', table:'lpTable' }
+    panels.forEach(id => {
+      document.getElementById(id).style.display = id === map[type] ? 'block' : 'none'
+    })
+
+    // Re-trigger animation
+    const lp = document.getElementById('livePreview')
+    lp.style.animation = 'none'
+    lp.offsetHeight // reflow
+    lp.style.animation = ''
+  }
+</script>
+</body>
+</html>
