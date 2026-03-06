@@ -6,6 +6,7 @@ import {
   SUB_TYPES,
   useConfig,
 } from '../store/useConfig'
+import { useColumnConfig } from '../store/useColumnConfig'
 import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useMultiTableData } from '../hooks/useTableData'
@@ -2206,6 +2207,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
 ══════════════════════════════════════════ */
 export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
   const { config } = useConfig()
+  const { columnConfig } = useColumnConfig()
   const tabs = tabsConfig?.tabs || []
 
   /* 활성 탭 */
@@ -2256,23 +2258,23 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     const tables = []
     DB_TABLES.forEach(t => {
       seen.add(t)
-      const tCfg = config.columnConfig?.[t]
+      const tCfg = columnConfig?.[t]
       const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
-      const displayName = getTableDisplayName(t, config.columnConfig)
+      const displayName = getTableDisplayName(t, columnConfig)
       tables.push({ id: t, label: displayName + (colCount ? ` · ${colCount}컬럼` : ''), displayName, icon: t === 'marketing_data' ? '📊' : '🏨' })
     })
-    if (config.columnConfig) {
-      Object.keys(config.columnConfig).forEach(t => {
+    if (columnConfig) {
+      Object.keys(columnConfig).forEach(t => {
         if (seen.has(t)) return
         seen.add(t)
-        const tCfg = config.columnConfig[t]
+        const tCfg = columnConfig[t]
         const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
-        const displayName = getTableDisplayName(t, config.columnConfig)
+        const displayName = getTableDisplayName(t, columnConfig)
         tables.push({ id: t, label: displayName + (colCount ? ` · ${colCount}컬럼` : ''), displayName, icon: '🏨' })
       })
     }
     return tables
-  }, [config.columnConfig])
+  }, [columnConfig])
 
   /* 탭 추가 — 자동 이동 없음 */
   const handleAddTab = (label, templateId = null) => {
@@ -2362,7 +2364,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             showAdd={showAdd}
             onOpenAdd={() => setShowAdd(true)}
             onCloseAdd={() => setShowAdd(false)}
-            columnConfig={config.columnConfig}
+            columnConfig={columnConfig}
             availableTables={availableTables}
           />
         </div>

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { sanitizeWidgetConfig } from './columnUtils'
 
 const STORAGE_KEY = 'growth_config_v4'   // v4: 빌트인 숨기기 + 서브 데이터소스
 const DB_ROW_ID = 'default'              // Supabase dashboard_config 행 ID
@@ -27,8 +26,8 @@ export const DEFAULT_CONFIG = {
   sectionIcons: {},        // { 'sectionId': 'IconName' }
   subIcons: {},        // { 'sectionId.subId': 'IconName' }
   l3subIcons: {},        // { 'sectionId.subId.l3subId': 'IconName' }
-  /* ── 테이블 컬럼 설정 ── */
-  columnConfig: {},        // { 'tableName': { columns, dimensionColumns, computed } }
+  /* ── 테이블 컬럼 설정 (레거시 — useColumnConfig로 이전됨) ── */
+  columnConfig: {},        // 하위호환용 유지, 실제 데이터는 column_configs 테이블 사용
 }
 
 /* ──────────────────────────────────────────
@@ -415,34 +414,7 @@ function migrateConfig(raw) {
     if (changed) merged.subDataSources = newDS
   }
 
-  /* columnConfig 자동 시딩: 시드 config가 없거나 비어있으면 적용 */
-  if (!merged.columnConfig) merged.columnConfig = {}
-  const mkCfg = merged.columnConfig.marketing_data
-  if (!mkCfg || !mkCfg.columns || Object.keys(mkCfg.columns).length === 0) {
-    merged.columnConfig = { ...merged.columnConfig, marketing_data: { ...MARKETING_SEED_CONFIG } }
-    changed = true
-  }
-  const prCfg = merged.columnConfig.product_revenue_raw
-  if (!prCfg || !prCfg.columns || Object.keys(prCfg.columns).length === 0) {
-    merged.columnConfig = { ...merged.columnConfig, product_revenue_raw: { ...PRODUCT_SEED_CONFIG } }
-    changed = true
-  }
-
-  /* 대시보드 위젯 slots → 테이블 기준 메트릭 sanitize */
-  if (merged.dashboards && merged.columnConfig) {
-    Object.entries(merged.dashboards).forEach(([dashKey, dash]) => {
-      if (!Array.isArray(dash?.slots)) return
-      dash.slots.forEach((slot, idx) => {
-        if (!slot?.config || !slot?.type) return
-        const tbl = slot.config._table || 'marketing_data'
-        const sanitized = sanitizeWidgetConfig(slot.type, slot.config, tbl, merged.columnConfig)
-        if (sanitized !== slot.config) {
-          dash.slots[idx] = { ...slot, config: sanitized }
-          changed = true
-        }
-      })
-    })
-  }
+  /* columnConfig는 useColumnConfig 훅으로 이전됨 — 여기서는 시딩/sanitize 안함 */
 
   if (changed) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch { }
@@ -834,15 +806,7 @@ export function useConfig() {
   const getSubLabel = (sid, s) => config.subLabels[`${sid}.${s}`] || null
   const getCustomSubs = sid => config.customSubs[sid] || []
 
-  /* ── 컬럼 설정 ── */
-  const getColumnConfig = tableName =>
-    config.columnConfig?.[tableName] || { columns: {}, computed: [], dimensionColumns: [] }
-
-  const setColumnConfig = (tableName, tableConfig) =>
-    persist(prev => ({
-      ...prev,
-      columnConfig: { ...(prev.columnConfig || {}), [tableName]: tableConfig },
-    }))
+  /* ── 컬럼 설정 → useColumnConfig 훅으로 이전 ── */
 
   return {
     config,
@@ -855,7 +819,6 @@ export function useConfig() {
     hideBuiltinSub, showBuiltinSub, isBuiltinSubHidden,
     getSubColor, setSubColor,
     getSubDataSource, setSubDataSource,
-    getColumnConfig, setColumnConfig,
     getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, reorderL3Subs,
     getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, reorderL3Tabs,
   }

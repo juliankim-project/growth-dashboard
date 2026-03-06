@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useConfig, MARKETING_SEED_CONFIG, PRODUCT_SEED_CONFIG } from '../../store/useConfig'
+import { MARKETING_SEED_CONFIG, PRODUCT_SEED_CONFIG } from '../../store/useConfig'
+import { useColumnConfig } from '../../store/useColumnConfig'
 import { getColumnLabel } from '../../store/columnUtils'
 import {
   Table2, RefreshCw, ChevronDown, ChevronRight,
@@ -48,7 +49,7 @@ const CC_TYPE_OPTIONS = [
 ]
 
 export default function Tables({ dark }) {
-  const { getColumnConfig, setColumnConfig } = useConfig()
+  const { getColumnConfig, setColumnConfig } = useColumnConfig()
   const [tables, setTables]   = useState({})
   const [loading, setLoading] = useState(true)
   const [open, setOpen]       = useState({})
