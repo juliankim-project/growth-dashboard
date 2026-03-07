@@ -250,6 +250,7 @@ export const GROUP_BY = [
    — migrateConfig / Tables.jsx 자동 초기화 시 사용
 ─────────────────────────────────────────── */
 export const MARKETING_SEED_CONFIG = {
+  seedVersion: 2,    // ← 시드 변경 시 +1 → 기존 데이터 자동 갱신
   displayName: '마케팅 데이터',
   dateColumn: 'date',
   columns: {
@@ -279,6 +280,7 @@ export const MARKETING_SEED_CONFIG = {
    product_revenue_raw 기본 columnConfig 시드
 ─────────────────────────────────────────── */
 export const PRODUCT_SEED_CONFIG = {
+  seedVersion: 2,    // ← 시드 변경 시 +1 → 기존 데이터 자동 갱신
   displayName: '상품 매출',
   dateColumn: 'reservation_date',
   columns: {

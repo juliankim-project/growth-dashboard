@@ -29,7 +29,9 @@ function saveLocal(cc) {
 }
 
 /**
- * 시드 config 적용: 키가 없거나 columns가 비어있으면 시드로 채움
+ * 시드 config 적용
+ * 1) 키가 없거나 columns가 비어있으면 → 시드 전체 적용
+ * 2) 시드 seedVersion이 기존보다 높으면 → 시드로 교체 (시드 업데이트 자동 반영)
  * @returns {object} { merged, changed }
  */
 function applySeed(cc) {
@@ -38,7 +40,10 @@ function applySeed(cc) {
 
   for (const [tableName, seed] of Object.entries(SEED_CONFIGS)) {
     const existing = merged[tableName]
-    if (!existing || !existing.columns || Object.keys(existing.columns).length === 0) {
+    const existingVer = existing?.seedVersion || 0
+    const seedVer = seed.seedVersion || 1
+
+    if (!existing || !existing.columns || Object.keys(existing.columns).length === 0 || existingVer < seedVer) {
       merged[tableName] = { ...seed }
       changed = true
     }
@@ -83,9 +88,36 @@ export function useColumnConfig() {
         // DB에 데이터 있음 → state에 반영
         const remote = {}
         data.forEach(row => { remote[row.table_name] = row.config })
-        const { merged } = applySeed(remote)
+        const { merged, changed } = applySeed(remote)
         _setColumnConfig(merged)
         saveLocal(merged)
+
+        // 시드 버전 업데이트로 인해 변경된 테이블 → DB에도 반영
+        if (changed) {
+          const upsertRows = Object.entries(SEED_CONFIGS)
+            .filter(([tn]) => {
+              const oldVer = remote[tn]?.seedVersion || 0
+              const newVer = SEED_CONFIGS[tn]?.seedVersion || 1
+              return oldVer < newVer
+            })
+            .map(([tn]) => ({
+              table_name: tn,
+              config: merged[tn],
+              updated_at: new Date().toISOString(),
+            }))
+
+          if (upsertRows.length > 0) {
+            lastPersistTs.current = {}
+            upsertRows.forEach(r => { lastPersistTs.current[r.table_name] = Date.now() })
+            supabase
+              .from('column_configs')
+              .upsert(upsertRows, { onConflict: 'table_name' })
+              .then(({ error: upErr }) => {
+                if (upErr) console.warn('[useColumnConfig] 시드 업데이트 DB 반영 실패:', upErr.message)
+                else console.log('[useColumnConfig] 시드 버전 업데이트 DB 반영 완료:', upsertRows.map(r => r.table_name))
+              })
+          }
+        }
       } else {
         // DB에 데이터 없음 → 마이그레이션 또는 시드 업로드
         if (!migrationDone.current) {
