@@ -226,6 +226,87 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 }
 
 /* ══════════════════════════════════════════
+   공유 Picker 컴포넌트 — 지표/그룹바이 통일 UI
+══════════════════════════════════════════ */
+const GROUP_LABELS = { metric: '지표', computed: '🧮 계산 컬럼', rate: '단가' }
+
+/** 메트릭을 그룹별로 분류 */
+function groupMetrics(metrics) {
+  const groups = {}
+  metrics.forEach(m => {
+    const g = m._computed ? 'computed' : (m.group || 'metric')
+    if (!groups[g]) groups[g] = []
+    groups[g].push(m)
+  })
+  return groups
+}
+
+/** 지표 선택 Picker (단일/복수 모드 통합) */
+function MetricPicker({ metrics, selected, onSelect, multi = false, dark }) {
+  const groups = useMemo(() => groupMetrics(metrics), [metrics])
+  const selectedSet = useMemo(() => new Set(
+    multi ? (Array.isArray(selected) ? selected : []) : [selected]
+  ), [selected, multi])
+
+  const handleClick = (mid) => {
+    if (multi) {
+      const cur = Array.isArray(selected) ? selected : []
+      onSelect(cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid])
+    } else {
+      onSelect(mid)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {Object.entries(groups).map(([group, items]) => (
+        <div key={group}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
+            ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {GROUP_LABELS[group] || group}
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {items.map(m => {
+              const on = selectedSet.has(m.id)
+              return (
+                <button key={m.id} onClick={() => handleClick(m.id)}
+                  className={`text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
+                    ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}
+                    ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
+                      : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40'
+                        : 'border-slate-200 text-slate-600 hover:border-indigo-300'}`}>
+                  {multi && on ? '✓ ' : ''}{m.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** 그룹 기준 선택 Picker (버튼 그리드 스타일 — 지표 Picker와 동일 UX) */
+function GroupByPicker({ options, selected, onSelect, dark }) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {options.map(g => {
+        const on = selected === g.id
+        return (
+          <button key={g.id} onClick={() => onSelect(g.id)}
+            className={`text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
+              ${on ? 'border-violet-500 bg-violet-500/10 text-violet-400'
+                : dark ? 'border-[#252836] text-slate-400 hover:border-violet-500/40'
+                  : 'border-slate-200 text-slate-600 hover:border-violet-300'}`}>
+            {g.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════
    위젯 에디터 모달 — 3스텝 퍼널
    Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
 ══════════════════════════════════════════ */
@@ -260,10 +341,6 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
   }
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
-  const toggleMetric = mid => {
-    const cur = config.metrics || []
-    setConfig(c => ({ ...c, metrics: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] }))
-  }
   const changeType = t => {
     setType(t)
     const base = { ...DEFAULT_WIDGET_CONFIG[t] }
@@ -292,71 +369,9 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
-    btn: (on, computed) => `text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
-      ${computed ? 'border-l-2 !border-l-violet-500' : ''}
-      ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
-        : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-700 hover:border-indigo-300'}`,
   }
 
   const STEPS = ['위젯 타입', '설정', '데이터 필터']
-
-  /* 메트릭 그룹 분류 */
-  const metricGroups = useMemo(() => {
-    const groups = {}
-    dynMetrics.forEach(m => {
-      const g = m._computed ? 'computed' : (m.group || 'metric')
-      if (!groups[g]) groups[g] = []
-      groups[g].push(m)
-    })
-    return groups
-  }, [dynMetrics])
-
-  const GROUP_LABELS = { metric: '지표', computed: '🧮 계산 컬럼', rate: '단가' }
-
-  /* 메트릭 버튼 렌더 (단일 선택) */
-  const renderMetricSingle = (selectedId, onSelect) => (
-    <div className="flex flex-col gap-3">
-      {Object.entries(metricGroups).map(([group, items]) => (
-        <div key={group}>
-          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
-            ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
-            {GROUP_LABELS[group] || group}
-          </p>
-          <div className="grid grid-cols-3 gap-1.5">
-            {items.map(m => (
-              <button key={m.id} onClick={() => onSelect(m.id)} className={S.btn(selectedId === m.id, m._computed)}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-
-  /* 메트릭 버튼 렌더 (복수 선택) */
-  const renderMetricMulti = (selectedIds, onToggle) => (
-    <div className="flex flex-col gap-3">
-      {Object.entries(metricGroups).map(([group, items]) => (
-        <div key={group}>
-          <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
-            ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
-            {GROUP_LABELS[group] || group}
-          </p>
-          <div className="grid grid-cols-3 gap-1.5">
-            {items.map(m => {
-              const on = selectedIds.includes(m.id)
-              return (
-                <button key={m.id} onClick={() => onToggle(m.id)} className={S.btn(on, m._computed)}>
-                  {on ? '✓ ' : ''}{m.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
@@ -471,7 +486,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    {renderMetricSingle(config.metric, mid => upd('metric', mid))}
+                    <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
@@ -484,7 +499,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
               {type === 'timeseries' && (
                 <div>
                   <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                  {renderMetricMulti(config.metrics || [], toggleMetric)}
+                  <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
                 </div>
               )}
 
@@ -492,14 +507,11 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    {renderMetricSingle(config.metric, mid => upd('metric', mid))}
+                    <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <select className={S.sel} value={config.groupBy || 'channel'}
-                      onChange={e => upd('groupBy', e.target.value)}>
-                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                    </select>
+                    <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
                   </div>
                 </>
               )}
@@ -508,17 +520,11 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    {renderMetricMulti(config.metrics || [], mid => {
-                      const cur = config.metrics || []
-                      upd('metrics', cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid])
-                    })}
+                    <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <select className={S.sel} value={config.groupBy || 'channel'}
-                      onChange={e => upd('groupBy', e.target.value)}>
-                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                    </select>
+                    <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
                   </div>
                 </>
               )}
@@ -532,11 +538,8 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                       onChange={e => upd('totalBudget', Number(e.target.value))} />
                   </div>
                   <div>
-                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
-                    <select className={S.sel} value={config.targetMetric || 'revenue'}
-                      onChange={e => upd('targetMetric', e.target.value)}>
-                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
+                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
+                    <MetricPicker metrics={dynMetrics} selected={config.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
                   </div>
                 </>
               )}
@@ -545,11 +548,8 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
               {type === 'sim_goal' && (
                 <>
                   <div>
-                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
-                    <select className={S.sel} value={config.targetMetric || 'revenue'}
-                      onChange={e => upd('targetMetric', e.target.value)}>
-                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
+                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
+                    <MetricPicker metrics={dynMetrics} selected={config.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>목표값</p>
@@ -568,11 +568,8 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                       onChange={e => upd('totalBudget', Number(e.target.value))} />
                   </div>
                   <div>
-                    <p className={`${S.lab} mb-1.5`}>비교 메트릭</p>
-                    <select className={S.sel} value={config.targetMetric || 'revenue'}
-                      onChange={e => upd('targetMetric', e.target.value)}>
-                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
+                    <p className={`${S.lab} mb-2`}>비교 메트릭</p>
+                    <MetricPicker metrics={dynMetrics} selected={config.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
                   </div>
                 </>
               )}
@@ -609,10 +606,7 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
                   {type === 'funnel_breakdown' && (
                     <div>
                       <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                      <select className={S.sel} value={config.groupBy || 'channel'}
-                        onChange={e => upd('groupBy', e.target.value)}>
-                        {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                      </select>
+                      <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
                     </div>
                   )}
                 </>
@@ -1424,11 +1418,6 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
   /* 카테고리별 허용 위젯 */
   const allowedTypes = SUB_TYPES[selCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
 
-  const toggleMetric = mid => {
-    const cur = wConfig.metrics || []
-    setWConfig(c => ({ ...c, metrics: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] }))
-  }
-
   const handleAdd = () => {
     const cfg = { ...wConfig, filters }
     if (NEEDS_DATA[selCategory]) cfg._table = selTable
@@ -1442,9 +1431,6 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
       ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
-    btn: (on) => `text-xs px-2 py-1.5 rounded-lg border text-left transition-colors
-      ${on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
-        : dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/40' : 'border-slate-200 text-slate-700 hover:border-indigo-300'}`,
   }
 
   /* 카테고리에 따라 동적 스텝 구성 */
@@ -1664,28 +1650,7 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                 <>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'computed', 'rate'].map(group => {
-                        const items = dynMetrics.filter(m => m.group === group)
-                        if (!items.length) return null
-                        return (
-                          <div key={group}>
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
-                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
-                            </p>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {items.map(m => (
-                                <button key={m.id} onClick={() => upd('metric', m.id)}
-                                  className={`${S.btn(wConfig.metric === m.id)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
-                                  {m.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
@@ -1705,31 +1670,7 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'computed', 'rate'].map(group => {
-                        const items = dynMetrics.filter(m => m.group === group)
-                        if (!items.length) return null
-                        return (
-                          <div key={group}>
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
-                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
-                            </p>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {items.map(m => {
-                                const on = (wConfig.metrics || []).includes(m.id)
-                                return (
-                                  <button key={m.id} onClick={() => toggleMetric(m.id)}
-                                    className={`${S.btn(on)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
-                                    {on ? '✓ ' : ''}{m.label}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
                   </div>
                 </>
               )}
@@ -1744,35 +1685,11 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>지표</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'computed', 'rate'].map(group => {
-                        const items = dynMetrics.filter(m => m.group === group)
-                        if (!items.length) return null
-                        return (
-                          <div key={group}>
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
-                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
-                            </p>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {items.map(m => (
-                                <button key={m.id} onClick={() => upd('metric', m.id)}
-                                  className={`${S.btn(wConfig.metric === m.id)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
-                                  {m.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <select className={S.sel} value={wConfig.groupBy || dynGroupBy[0]?.id || 'channel'}
-                      onChange={e => upd('groupBy', e.target.value)}>
-                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                    </select>
+                    <GroupByPicker options={dynGroupBy} selected={wConfig.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
                   </div>
                 </>
               )}
@@ -1787,40 +1704,11 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                   </div>
                   <div>
                     <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    <div className="flex flex-col gap-3">
-                      {['metric', 'computed', 'rate'].map(group => {
-                        const items = dynMetrics.filter(m => m.group === group)
-                        if (!items.length) return null
-                        return (
-                          <div key={group}>
-                            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5
-                              ${group === 'computed' ? 'text-violet-400' : dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                              {group === 'metric' ? '지표' : group === 'computed' ? '🧮 계산 컬럼' : '단가'}
-                            </p>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {items.map(m => {
-                                const on = (wConfig.metrics || []).includes(m.id)
-                                return (
-                                  <button key={m.id} onClick={() => {
-                                    const cur = wConfig.metrics || []
-                                    upd('metrics', on ? cur.filter(x => x !== m.id) : [...cur, m.id])
-                                  }} className={`${S.btn(on)} ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}`}>
-                                    {on ? '✓ ' : ''}{m.label}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <select className={S.sel} value={wConfig.groupBy || dynGroupBy[0]?.id || 'channel'}
-                      onChange={e => upd('groupBy', e.target.value)}>
-                      {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                    </select>
+                    <GroupByPicker options={dynGroupBy} selected={wConfig.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
                   </div>
                 </>
               )}
@@ -1838,11 +1726,8 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                       onChange={e => upd('totalBudget', Number(e.target.value))} />
                   </div>
                   <div>
-                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
-                    <select className={S.sel} value={wConfig.targetMetric || 'revenue'}
-                      onChange={e => upd('targetMetric', e.target.value)}>
-                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
+                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
                   </div>
                 </>
               )}
@@ -1855,11 +1740,8 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                     <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="목표 역산" />
                   </div>
                   <div>
-                    <p className={`${S.lab} mb-1.5`}>목표 메트릭</p>
-                    <select className={S.sel} value={wConfig.targetMetric || 'revenue'}
-                      onChange={e => upd('targetMetric', e.target.value)}>
-                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
+                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
                   </div>
                   <div>
                     <p className={`${S.lab} mb-1.5`}>목표값</p>
@@ -1882,11 +1764,8 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                       onChange={e => upd('totalBudget', Number(e.target.value))} />
                   </div>
                   <div>
-                    <p className={`${S.lab} mb-1.5`}>비교 메트릭</p>
-                    <select className={S.sel} value={wConfig.targetMetric || 'revenue'}
-                      onChange={e => upd('targetMetric', e.target.value)}>
-                      {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
+                    <p className={`${S.lab} mb-2`}>비교 메트릭</p>
+                    <MetricPicker metrics={dynMetrics} selected={wConfig.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
                   </div>
                 </>
               )}
@@ -1927,10 +1806,7 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                   {type === 'funnel_breakdown' && (
                     <div>
                       <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                      <select className={S.sel} value={wConfig.groupBy || 'channel'}
-                        onChange={e => upd('groupBy', e.target.value)}>
-                        {dynGroupBy.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                      </select>
+                      <GroupByPicker options={dynGroupBy} selected={wConfig.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
                     </div>
                   )}
                 </>
