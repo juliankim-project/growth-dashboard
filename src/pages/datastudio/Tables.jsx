@@ -427,6 +427,10 @@ export default function Tables({ dark }) {
         const dims    = new Set(tCfg.dimensionColumns || [])
         const computed = tCfg.computed || []
         const displayName = tCfg.displayName || ''
+        const dateColumn = tCfg.dateColumn || ''
+
+        /* 날짜 컬럼 후보: fmt이 date인 컬럼들 */
+        const dateCols = (info?.columns || []).filter(c => columns[c]?.fmt === 'date' || LIKELY_DATE.has(c))
 
         /* 디멘전 추가 후보: visible이면서 아직 dims에 없는 컬럼 */
         const dimCandidates = (info?.columns || []).filter(c =>
@@ -478,8 +482,8 @@ export default function Tables({ dark }) {
             {isOpen && info && (
               <div className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
 
-                {/* ─── 테이블 표시명 ─── */}
-                <div className={`px-5 py-3 border-b flex items-center gap-3
+                {/* ─── 테이블 표시명 + 날짜 컬럼 ─── */}
+                <div className={`px-5 py-3 border-b flex items-center gap-3 flex-wrap
                   ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
                   <span className={`text-[11px] font-semibold shrink-0 ${sub}`}>표시명</span>
                   <input
@@ -488,6 +492,23 @@ export default function Tables({ dark }) {
                     value={displayName}
                     onChange={e => updateDisplayName(t, e.target.value)}
                   />
+                  <span className={`text-[11px] font-semibold shrink-0 ml-4 ${sub}`}>📅 날짜 컬럼</span>
+                  <select
+                    className={`${sel} min-w-[140px]`}
+                    value={dateColumn}
+                    onChange={e => {
+                      setEditCfg(prev => {
+                        const cfg = { ...(prev[t] || {}), dateColumn: e.target.value }
+                        debounceSave(t, cfg)
+                        return { ...prev, [t]: cfg }
+                      })
+                    }}
+                  >
+                    <option value="">자동 감지</option>
+                    {dateCols.map(c => (
+                      <option key={c} value={c}>{columns[c]?.alias || c}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* ─── GroupBy 칩 섹션 ─── */}

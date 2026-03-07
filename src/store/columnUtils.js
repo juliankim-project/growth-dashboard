@@ -47,6 +47,8 @@ const MARKETING_DERIVED = [
   { id: 'cpa_view', label: 'CPA(조회)',  field: null, fmt: 'currency', derived: true, group: 'rate' },
   { id: 'cac',      label: 'CAC',        field: null, fmt: 'currency', derived: true, group: 'rate' },
   { id: 'cps',      label: 'CPS',        field: null, fmt: 'currency', derived: true, group: 'rate' },
+  { id: 'cvr_c',    label: 'CVR-C',      field: null, fmt: 'pct',      derived: true, group: 'rate' },
+  { id: 'cvr_s',    label: 'CVR-S',      field: null, fmt: 'pct',      derived: true, group: 'rate' },
 ]
 
 export function buildTableMetrics(tableName, columnConfig) {

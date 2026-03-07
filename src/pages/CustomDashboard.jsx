@@ -816,10 +816,11 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
   /* ── 위젯별 데이터 해석: _table 기반 ── */
   const widgetTable = slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
+  const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
   const widgetData = useMemo(() => {
-    const filtered = filterByDate ? filterByDate(widgetRawData) : widgetRawData
+    const filtered = filterByDate ? filterByDate(widgetRawData, widgetDateCol) : widgetRawData
     return applyComputedColumns(filtered, widgetTable, columnConfig)
-  }, [widgetRawData, filterByDate, widgetTable, columnConfig])
+  }, [widgetRawData, filterByDate, widgetTable, columnConfig, widgetDateCol])
   const widgetMetrics = useMemo(
     () => buildTableMetrics(widgetTable, columnConfig),
     [widgetTable, columnConfig]
@@ -1401,11 +1402,12 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
   const availableTables = availableTablesProp || []
 
   /* AddWidgetModal 내부 데이터: 선택된 테이블 기반 */
+  const addDateCol = columnConfig?.[selTable]?.dateColumn
   const widgetData = useMemo(() => {
     const raw = dataMap[selTable] || dataMap[defaultTable] || []
-    const filtered = filterByDate ? filterByDate(raw) : raw
+    const filtered = filterByDate ? filterByDate(raw, addDateCol) : raw
     return applyComputedColumns(filtered, selTable, columnConfig)
-  }, [dataMap, selTable, defaultTable, filterByDate, columnConfig])
+  }, [dataMap, selTable, defaultTable, filterByDate, columnConfig, addDateCol])
 
   /* 카테고리별 허용 위젯 */
   const allowedTypes = SUB_TYPES[selCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
@@ -2146,7 +2148,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
             {activeSlot && (() => {
               const t = activeSlot.config?._table || defaultTable
               const raw = dataMap[t] || dataMap[defaultTable] || []
-              const d = filterByDate ? filterByDate(raw) : raw
+              const d = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
               const processed = applyComputedColumns(d, t, columnConfig)
               const m = buildTableMetrics(t, columnConfig)
               const sCfg = sanitizeWidgetConfig(activeSlot.type, activeSlot.config, t, columnConfig)
@@ -2174,7 +2176,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       {editingSlot && (() => {
         const t = editingSlot.config?._table || defaultTable
         const raw = dataMap[t] || dataMap[defaultTable] || []
-        const d = filterByDate ? filterByDate(raw) : raw
+        const d = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
         const processed = applyComputedColumns(d, t, columnConfig)
         return (
           <WidgetEditor

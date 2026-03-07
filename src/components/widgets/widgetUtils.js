@@ -78,6 +78,8 @@ function calcDerived(row, metrics) {
   if (metrics.includes('cpa_view')) row.cpa_view = vc > 0  ? c  / vc      : 0
   if (metrics.includes('cac'))      row.cac      = sg > 0  ? c  / sg      : 0
   if (metrics.includes('cps'))      row.cps      = cv > 0  ? c  / cv      : 0
+  if (metrics.includes('cvr_c'))    row.cvr_c    = cl > 0  ? (sg / cl) * 100 : 0  // 클릭 대비 회원가입율
+  if (metrics.includes('cvr_s'))    row.cvr_s    = cl > 0  ? (cv / cl) * 100 : 0  // 클릭 대비 전환율
 }
 
 /* 그룹핑 (SUM / COUNT / AVG 지원) */
