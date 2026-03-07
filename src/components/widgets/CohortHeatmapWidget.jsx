@@ -1,13 +1,12 @@
 import { useMemo } from 'react'
-import { METRICS } from '../../store/useConfig'
 import { fmtNum } from './widgetUtils'
 
 /* ── cohort data builder (shared logic from CohortPage) ── */
-export function buildCohortData(data, granularity, cohortEvent, retentionEvent, periods) {
+export function buildCohortData(data, granularity, cohortEvent, retentionEvent, periods, metrics) {
   if (!data?.length) return { cohorts: [], averages: [] }
 
-  const cohortMetric = METRICS.find(m => m.id === cohortEvent)
-  const retMetric = METRICS.find(m => m.id === retentionEvent)
+  const cohortMetric = metrics?.find(m => m.id === cohortEvent)
+  const retMetric = metrics?.find(m => m.id === retentionEvent)
   if (!cohortMetric?.field || !retMetric?.field) return { cohorts: [], averages: [] }
 
   const byDate = {}
@@ -78,7 +77,7 @@ export function getHeatColor(value, dark) {
 }
 
 /* ── CohortHeatmapWidget ── */
-export default function CohortHeatmapWidget({ data, config, dark }) {
+export default function CohortHeatmapWidget({ data, config, dark, metrics }) {
   const {
     granularity = 'week',
     cohortEvent = 'signup',
@@ -88,8 +87,8 @@ export default function CohortHeatmapWidget({ data, config, dark }) {
   } = config || {}
 
   const { cohorts, averages } = useMemo(
-    () => buildCohortData(data, granularity, cohortEvent, retentionEvent, periods),
-    [data, granularity, cohortEvent, retentionEvent, periods]
+    () => buildCohortData(data, granularity, cohortEvent, retentionEvent, periods, metrics),
+    [data, granularity, cohortEvent, retentionEvent, periods, metrics]
   )
 
   const maxPeriods = useMemo(

@@ -1,10 +1,7 @@
 import { useMemo, useState, useCallback } from 'react'
-import { METRICS } from '../../store/useConfig'
 import { groupData, fmtMetric } from './widgetUtils'
 
-const REVENUE_METRICS = METRICS.filter(m =>
-  ['cost', 'revenue', 'conv', 'clicks', 'impr', 'installs', 'signup'].includes(m.id),
-)
+const SIM_METRIC_IDS = ['cost', 'revenue', 'conv', 'clicks', 'impr', 'installs', 'signup']
 
 /* ── channel efficiency hook (extracted from SimulationPage) ── */
 function useChannelEfficiency(data) {
@@ -57,7 +54,7 @@ function BudgetSlider({ channel, pct, onChange, dark, efficiency }) {
    SimBudgetWidget
    - Budget allocation sliders + projected KPIs
    ══════════════════════════════════════════ */
-export default function SimBudgetWidget({ data, config, dark, onConfigUpdate }) {
+export default function SimBudgetWidget({ data, config, dark, onConfigUpdate, metrics: metricsProp }) {
   const {
     totalBudget = 0,
     targetMetric = 'revenue',
@@ -118,7 +115,12 @@ export default function SimBudgetWidget({ data, config, dark, onConfigUpdate }) 
     onConfigUpdate?.({ ...config, allocations: next })
   }, [config, activeAlloc, onConfigUpdate])
 
-  const metricLabel = METRICS.find(m => m.id === targetMetric)?.label || targetMetric
+  const revenueMetrics = useMemo(
+    () => metricsProp?.filter(m => SIM_METRIC_IDS.includes(m.id)) || [],
+    [metricsProp],
+  )
+
+  const metricLabel = metricsProp?.find(m => m.id === targetMetric)?.label || targetMetric
 
   return (
     <div className={`rounded-xl border p-4 space-y-3
@@ -142,7 +144,7 @@ export default function SimBudgetWidget({ data, config, dark, onConfigUpdate }) 
           <select value={targetMetric} onChange={e => handleMetricChange(e.target.value)}
             className={`text-xs px-2 py-1.5 rounded-lg border outline-none
               ${dark ? 'bg-[#1A1D27] border-[#252836] text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
-            {REVENUE_METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+            {revenueMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
       </div>

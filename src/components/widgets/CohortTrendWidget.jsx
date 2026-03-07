@@ -3,7 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { buildCohortData } from './CohortHeatmapWidget'
 
 /* ── CohortTrendWidget ── */
-export default function CohortTrendWidget({ data, config, dark }) {
+export default function CohortTrendWidget({ data, config, dark, metrics }) {
   const {
     granularity = 'week',
     cohortEvent = 'signup',
@@ -13,8 +13,8 @@ export default function CohortTrendWidget({ data, config, dark }) {
   } = config || {}
 
   const { averages } = useMemo(
-    () => buildCohortData(data, granularity, cohortEvent, retentionEvent, periods),
-    [data, granularity, cohortEvent, retentionEvent, periods]
+    () => buildCohortData(data, granularity, cohortEvent, retentionEvent, periods, metrics),
+    [data, granularity, cohortEvent, retentionEvent, periods, metrics]
   )
 
   /* unique gradient id so multiple instances don't collide */

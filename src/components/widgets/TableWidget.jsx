@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { ArrowUpDown } from 'lucide-react'
-import { METRICS, GROUP_BY } from '../../store/useConfig'
 import { groupData, fmtMetric } from './widgetUtils'
 
 export default function TableWidget({ data, config, dark, metrics: metricsProp }) {
@@ -31,7 +30,7 @@ export default function TableWidget({ data, config, dark, metrics: metricsProp }
             <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
               <th className={th} onClick={() => toggle('name')}>이름</th>
               {metrics.map(mid => {
-                const meta = (metricsProp || METRICS).find(x => x.id === mid)
+                const meta = metricsProp?.find(x => x.id === mid)
                 return (
                   <th key={mid} className={th} onClick={() => toggle(mid)}>
                     <span className="flex items-center gap-1">
@@ -48,7 +47,7 @@ export default function TableWidget({ data, config, dark, metrics: metricsProp }
               <tr key={i} className={`border-t transition-colors ${dark ? 'border-[#252836] hover:bg-[#13151C]' : 'border-slate-100 hover:bg-slate-50'}`}>
                 <td className={`${td} font-medium ${dark ? 'text-white' : 'text-slate-700'}`}>{row.name}</td>
                 {metrics.map(mid => {
-                  const meta = (metricsProp || METRICS).find(x => x.id === mid)
+                  const meta = metricsProp?.find(x => x.id === mid)
                   const isRoas = meta?.fmt === 'roas'
                   return (
                     <td key={mid} className={td}>

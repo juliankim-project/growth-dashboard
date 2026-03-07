@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
-import { METRICS } from '../../store/useConfig'
 import { calcMetric, fmtMetric } from './widgetUtils'
 
 const COLOR_MAP = {
@@ -48,7 +47,7 @@ const ICON_MAP = {
 
 export default function KPIWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', label = '' } = config
-  const metaDef  = (metricsProp || METRICS).find(m => m.id === metric)
+  const metaDef  = metricsProp?.find(m => m.id === metric)
   const title    = label || metaDef?.label || metric
   const value    = useMemo(() => calcMetric(data, metric, metricsProp), [data, metric, metricsProp])
   const display  = fmtMetric(metric, value, metricsProp)

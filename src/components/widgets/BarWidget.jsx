@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { METRICS } from '../../store/useConfig'
 import { groupData, fmtW, CHART_COLORS } from './widgetUtils'
 
 function Tip({ active, payload, label, dark }) {
@@ -28,7 +27,7 @@ export default function BarWidget({ data, config, dark, metrics: metricsProp }) 
 
   const tick = dark ? '#64748B' : '#475569'
   const grid = dark ? '#1E2130' : '#F1F5F9'
-  const meta = (metricsProp || METRICS).find(x => x.id === metric)
+  const meta = metricsProp?.find(x => x.id === metric)
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>

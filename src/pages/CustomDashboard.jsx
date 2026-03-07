@@ -214,12 +214,12 @@ const WIDGET_MAP = {
 /* 상태형 위젯 (onConfigUpdate 필요) */
 const STATEFUL_WIDGETS = new Set(['sim_budget', 'sim_goal', 'sim_scenario', 'kanban_board'])
 
-const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate) => {
+const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn) => {
   const C = WIDGET_MAP[type]
   if (!C) return null
   return (
     <ErrorBoundary dark={dark} label={type}>
-      <C data={data} config={cfg} dark={dark} metrics={metrics}
+      <C data={data} config={cfg} dark={dark} metrics={metrics} dateColumn={dateColumn}
         {...(STATEFUL_WIDGETS.has(type) && onConfigUpdate ? { onConfigUpdate } : {})} />
     </ErrorBoundary>
   )
@@ -264,7 +264,19 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
     const cur = config.metrics || []
     setConfig(c => ({ ...c, metrics: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] }))
   }
-  const changeType = t => { setType(t); setConfig(prev => ({ ...DEFAULT_WIDGET_CONFIG[t], _table: prev._table, filters: prev.filters })) }
+  const changeType = t => {
+    setType(t)
+    const base = { ...DEFAULT_WIDGET_CONFIG[t] }
+    const first = dynMetrics[0]?.id
+    const firstGb = dynGroupBy[0]?.id
+    /* 레거시 기본값을 현재 테이블 메트릭으로 교체 */
+    if (first) {
+      if ('metric' in base) base.metric = first
+      if (Array.isArray(base.metrics)) base.metrics = [first]
+    }
+    if (firstGb && 'groupBy' in base) base.groupBy = firstGb
+    setConfig(prev => ({ ...base, _table: prev._table, filters: prev.filters }))
+  }
   const handleSave = () => onSave(slotId, { type, config: { ...config, filters, _table: selTable } })
 
   /* 현재 위젯의 카테고리 자동 감지 → 같은 카테고리 위젯만 타입 변경 허용 */
@@ -924,7 +936,7 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
       )}
       <div className={heightPx ? 'h-full overflow-hidden rounded-xl' : ''}>
         {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
-          onConfigUpdate ? (newCfg) => onConfigUpdate(slot.id, newCfg) : undefined)}
+          onConfigUpdate ? (newCfg) => onConfigUpdate(slot.id, newCfg) : undefined, widgetDateCol)}
       </div>
     </div>
   )
@@ -1531,7 +1543,12 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                       // 카테고리 변경 시 해당 카테고리 첫 위젯으로 초기화
                       const firstType = (SUB_TYPES[id]?.widgetTypes || ['kpi'])[0]
                       setType(firstType)
-                      setWConfig({ ...DEFAULT_WIDGET_CONFIG[firstType] })
+                      const base = { ...DEFAULT_WIDGET_CONFIG[firstType] }
+                      const first = dynMetrics[0]?.id
+                      const firstGb = dynGroupBy[0]?.id
+                      if (first) { if ('metric' in base) base.metric = first; if (Array.isArray(base.metrics)) base.metrics = [first] }
+                      if (firstGb && 'groupBy' in base) base.groupBy = firstGb
+                      setWConfig(base)
                     }}
                       className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
                         ${on ? 'border-indigo-500 bg-indigo-500/10'
@@ -1590,7 +1607,14 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
                 const on = type === id
                 const Preview = MINI_PREVIEW[id]
                 return (
-                  <button key={id} onClick={() => { setType(id); setWConfig({ ...DEFAULT_WIDGET_CONFIG[id] }) }}
+                  <button key={id} onClick={() => {
+                    setType(id)
+                    const base = { ...DEFAULT_WIDGET_CONFIG[id] }
+                    const first = dynMetrics[0]?.id; const firstGb = dynGroupBy[0]?.id
+                    if (first) { if ('metric' in base) base.metric = first; if (Array.isArray(base.metrics)) base.metrics = [first] }
+                    if (firstGb && 'groupBy' in base) base.groupBy = firstGb
+                    setWConfig(base)
+                  }}
                     className={`flex items-stretch gap-3 p-3 rounded-xl border text-left transition-all
                       ${on ? 'border-indigo-500 bg-indigo-500/10'
                         : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
@@ -2158,7 +2182,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
                     width: pctToWidth(activeSlot.widthPct ?? 33.33),
                     ...(activeSlot.type !== 'kpi' && { minHeight: 210 }),
                   }}>
-                  {renderWidget(activeSlot.type, applyWidgetFilters(processed, sCfg.filters), sCfg, dark, m, null)}
+                  {renderWidget(activeSlot.type, applyWidgetFilters(processed, sCfg.filters), sCfg, dark, m, null, columnConfig?.[t]?.dateColumn)}
                 </div>
               )
             })()}

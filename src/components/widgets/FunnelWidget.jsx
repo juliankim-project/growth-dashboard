@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { METRICS } from '../../store/useConfig'
 import { calcMetric, fmtMetric } from './widgetUtils'
 
 /* ── 퍼널 바 SVG ── */

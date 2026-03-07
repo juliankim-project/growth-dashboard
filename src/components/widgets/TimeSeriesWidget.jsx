@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { METRICS } from '../../store/useConfig'
 import { dailyData, fmtW, CHART_COLORS } from './widgetUtils'
 
 function Tip({ active, payload, label, dark }) {
@@ -19,10 +18,10 @@ function Tip({ active, payload, label, dark }) {
   )
 }
 
-export default function TimeSeriesWidget({ data, config, dark, metrics: metricsProp }) {
+export default function TimeSeriesWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const { metrics = ['cost','revenue'], title = '일별 트렌드' } = config
 
-  const chartData = useMemo(() => dailyData(data, metrics, metricsProp), [data, metrics, metricsProp])
+  const chartData = useMemo(() => dailyData(data, metrics, metricsProp, dateColumn), [data, metrics, metricsProp, dateColumn])
   const tick  = dark ? '#64748B' : '#475569'
   const grid  = dark ? '#1E2130' : '#F1F5F9'
 
@@ -46,7 +45,7 @@ export default function TimeSeriesWidget({ data, config, dark, metrics: metricsP
             <Tooltip content={<Tip dark={dark}/>}/>
             <Legend wrapperStyle={{ fontSize:11, color:tick }}/>
             {metrics.map((m, i) => {
-              const meta = (metricsProp || METRICS).find(x => x.id === m)
+              const meta = metricsProp?.find(x => x.id === m)
               return (
                 <Area key={m} type="monotone" dataKey={m} name={meta?.label || m}
                   stroke={CHART_COLORS[i]} fill={`url(#grad_${m})`} strokeWidth={2} dot={false}/>

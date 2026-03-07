@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { METRICS } from '../../store/useConfig'
 import { groupData, fmtW, CHART_COLORS } from './widgetUtils'
 
 export default function DonutWidget({ data, config, dark, metrics: metricsProp }) {
@@ -14,7 +13,7 @@ export default function DonutWidget({ data, config, dark, metrics: metricsProp }
       .slice(0, 6)
   }, [data, metric, groupBy, metricsProp])
 
-  const meta = (metricsProp || METRICS).find(x => x.id === metric)
+  const meta = metricsProp?.find(x => x.id === metric)
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>

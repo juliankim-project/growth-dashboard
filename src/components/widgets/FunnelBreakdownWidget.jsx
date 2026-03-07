@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { METRICS } from '../../store/useConfig'
 import { groupData, fmtMetric } from './widgetUtils'
 
 export default function FunnelBreakdownWidget({ data, config, dark, metrics: metricsProp }) {

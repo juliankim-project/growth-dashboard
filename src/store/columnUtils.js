@@ -77,13 +77,31 @@ export function buildTableMetrics(tableName, columnConfig) {
   /* 2) 계산 컬럼 → 메트릭 */
   ;(tCfg.computed || []).forEach(cc => {
     const isCount = cc.aggType === 'count'
+
+    /* 비율 지표 감지: terms에 '/' 연산이 있으면 분자/분모 분리
+       예: LOS = [{ col:'nights', sign:'+' }, { col:'cc_order_count', sign:'/' }]
+       → _ratioTerms: { num: 'nights', den: 'cc_order_count' }
+       집계 시 SUM(분자) / SUM(분모) 로 정확히 계산 */
+    let _ratioTerms = null
+    if (!isCount && cc.terms?.length >= 2) {
+      const divIdx = cc.terms.findIndex(t => t.sign === '/')
+      if (divIdx > 0) {
+        const numCols = cc.terms.slice(0, divIdx).map(t => t.col).filter(Boolean)
+        const denTerm = cc.terms[divIdx]
+        if (numCols.length === 1 && denTerm?.col) {
+          _ratioTerms = { num: numCols[0], den: denTerm.col }
+        }
+      }
+    }
+
     metrics.push({
       id: cc.id,
       label: cc.name,
       field: cc.id,
       fmt: cc.fmt || 'number',
-      agg: cc.aggType || 'sum',
+      agg: _ratioTerms ? 'ratio' : (cc.aggType || 'sum'),
       _countType: isCount,
+      _ratioTerms,
       group: 'computed',
       _computed: true,
     })
