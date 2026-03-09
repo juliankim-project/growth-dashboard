@@ -2,30 +2,19 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useColumnConfig } from '../../store/useColumnConfig'
 import {
   buildTableMetrics, buildTableGroupBy,
-  buildWidgetMetrics, buildWidgetGroupBy,
   getTableDisplayName,
 } from '../../store/columnUtils'
 import { TABLES } from './Tables'
-import { Pencil, X, Plus, Check, Save, RotateCcw } from 'lucide-react'
-
-/* ── 그룹 라벨/색상 (MetricPicker와 동일) ── */
-const GROUP_LABELS = { metric: '지표', computed: '🧮 계산 컬럼', rate: '단가' }
-const GROUP_COLORS = {
-  metric:   { dark: 'text-slate-400', light: 'text-slate-500' },
-  computed: { dark: 'text-violet-400', light: 'text-violet-500' },
-  rate:     { dark: 'text-amber-400',  light: 'text-amber-500' },
-}
-
-/** 메트릭을 그룹별로 분류 (MetricPicker와 동일 로직) */
-function groupItems(items) {
-  const groups = {}
-  items.forEach(m => {
-    const g = m._computed ? 'computed' : (m.group || 'metric')
-    if (!groups[g]) groups[g] = []
-    groups[g].push(m)
-  })
-  return groups
-}
+import { Pencil, X, Plus, Check, Save, RotateCcw, GripVertical } from 'lucide-react'
+import {
+  DndContext, closestCenter,
+  PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable,
+  rectSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 /* ═══════════ 인라인 라벨 편집 ═══════════ */
 function InlineEdit({ value, dark, onSave }) {
@@ -45,7 +34,7 @@ function InlineEdit({ value, dark, onSave }) {
 
   if (!editing) {
     return (
-      <button onClick={() => setEditing(true)}
+      <button onClick={(e) => { e.stopPropagation(); setEditing(true) }}
         className={`flex items-center gap-1 text-xs text-left truncate group/edit
           ${dark ? 'text-slate-300' : 'text-slate-700'}`}
         title="클릭하여 라벨 수정">
@@ -61,19 +50,29 @@ function InlineEdit({ value, dark, onSave }) {
       onChange={e => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false) } }}
+      onClick={e => e.stopPropagation()}
       className={`text-xs px-1 py-0.5 rounded border outline-none w-full
         ${dark ? 'bg-[#0F1117] border-indigo-500 text-white' : 'bg-white border-indigo-400 text-slate-800'}`}
     />
   )
 }
 
-/* ═══════════ 메트릭/그룹바이 카드 (MetricPicker 스타일) ═══════════ */
-function ItemCard({ id, label, customLabel, group, dark, onLabelChange, onDelete }) {
-  const isComputed = group === 'computed'
+/* ═══════════ Sortable 카드 (드래그 + 라벨편집 + 삭제) ═══════════ */
+function SortableCard({ id, label, customLabel, dark, onLabelChange, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
   return (
-    <div className={`relative flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-left transition-colors group/card
-      ${isComputed ? 'border-l-2 !border-l-violet-500' : ''}
-      ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+    <div ref={setNodeRef} style={style}
+      className={`relative flex items-center gap-1.5 px-2 py-2 rounded-lg border text-left transition-colors group/card
+        ${isDragging ? 'z-50 shadow-lg ring-2 ring-indigo-500/30' : ''}
+        ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+      {/* 드래그 핸들 */}
+      <button {...attributes} {...listeners}
+        className={`cursor-grab active:cursor-grabbing shrink-0 touch-none
+          ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
+        <GripVertical size={14} />
+      </button>
       {/* 라벨 (인라인 편집) */}
       <div className="flex-1 min-w-0">
         <InlineEdit value={customLabel || label} dark={dark} onSave={onLabelChange} />
@@ -84,7 +83,7 @@ function ItemCard({ id, label, customLabel, group, dark, onLabelChange, onDelete
         )}
       </div>
       {/* 삭제 버튼 */}
-      <button onClick={onDelete}
+      <button onClick={(e) => { e.stopPropagation(); onDelete() }}
         className={`shrink-0 p-0.5 rounded opacity-0 group-hover/card:opacity-100 transition-opacity
           ${dark ? 'text-slate-600 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}>
         <X size={12} />
@@ -107,10 +106,11 @@ function DeletedItem({ id, label, dark, onRestore }) {
 }
 
 /* ═══════════════════════════════════════════
-   ConfigSection — 지표 또는 그룹바이 설정 (MetricPicker 스타일)
+   ConfigSection — 지표 또는 그룹바이 설정
+   그룹 구분 없이 단일 리스트 + 드래그 재정렬
    ═══════════════════════════════════════════ */
-function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
-  /* items: [{ id, visible, label? }] — 현재 설정 상태 */
+function ConfigSection({ title, allItems, items, dark, onChange }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const itemMap = useMemo(() => {
     const m = new Map()
@@ -118,20 +118,18 @@ function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
     return m
   }, [items])
 
-  /* 표시 중인 항목 (items 순서 유지, items에 없으면 allItems 순서대로 끝에) */
+  /* 표시 중인 항목 (items 순서 유지) */
   const visibleItems = useMemo(() => {
     if (!items || items.length === 0) {
       return allItems.map(m => ({ ...m, _customLabel: null }))
     }
     const result = []
     const allMap = new Map(allItems.map(m => [m.id, m]))
-    // items 순서대로 visible인 것
     items.forEach(it => {
       if (it.visible === false) return
       const base = allMap.get(it.id)
       if (base) result.push({ ...base, _customLabel: it.label || null })
     })
-    // items에 없는 새 항목 추가
     allItems.forEach(m => {
       if (!itemMap.has(m.id)) result.push({ ...m, _customLabel: null })
     })
@@ -146,17 +144,14 @@ function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
       .map(it => ({ ...it, label: it.label || allMap.get(it.id)?.label || it.id }))
   }, [allItems, items])
 
-  /* 그룹별 분류 (지표 섹션만) */
-  const grouped = useMemo(() => {
-    if (isGroupBy) return null
-    return groupItems(visibleItems)
-  }, [visibleItems, isGroupBy])
+  /* 헬퍼: items가 없으면 allItems 기반으로 초기화 */
+  const ensureItems = () => items || allItems.map(m => ({ id: m.id, visible: true }))
 
   /* 핸들러: 라벨 변경 */
   const handleLabelChange = (id, newLabel) => {
     const baseItem = allItems.find(m => m.id === id)
     const isOriginal = baseItem && newLabel === baseItem.label
-    const next = [...(items || allItems.map(m => ({ id: m.id, visible: true })))]
+    const next = [...ensureItems()]
     const idx = next.findIndex(it => it.id === id)
     if (idx >= 0) {
       next[idx] = { ...next[idx], label: isOriginal ? undefined : newLabel }
@@ -166,7 +161,7 @@ function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
 
   /* 핸들러: 삭제 (숨김) */
   const handleDelete = (id) => {
-    const next = [...(items || allItems.map(m => ({ id: m.id, visible: true })))]
+    const next = [...ensureItems()]
     const idx = next.findIndex(it => it.id === id)
     if (idx >= 0) {
       next[idx] = { ...next[idx], visible: false }
@@ -186,6 +181,27 @@ function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
     onChange(next)
   }
 
+  /* 핸들러: 드래그 재정렬 */
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const ids = visibleItems.map(m => m.id)
+    const oldIdx = ids.indexOf(active.id)
+    const newIdx = ids.indexOf(over.id)
+    if (oldIdx < 0 || newIdx < 0) return
+    const reordered = arrayMove(visibleItems, oldIdx, newIdx)
+    // 기존 삭제 항목 유지 + 순서 변경 반영
+    const hiddenItems = (items || []).filter(it => it.visible === false)
+    const nextItems = [
+      ...reordered.map(m => {
+        const existing = itemMap.get(m.id)
+        return { id: m.id, visible: true, label: existing?.label || m._customLabel || undefined }
+      }),
+      ...hiddenItems,
+    ]
+    onChange(nextItems)
+  }
+
   const sub = dark ? 'text-slate-500' : 'text-slate-400'
   const visCount = visibleItems.length
   const totalCount = allItems.length
@@ -198,48 +214,26 @@ function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
         <div>
           <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{title}</p>
           <p className={`text-[10px] mt-0.5 ${sub}`}>
-            {visCount}/{totalCount}개 표시 · 클릭하여 라벨 수정, ✕ 삭제
+            {visCount}/{totalCount}개 표시 · 드래그로 순서 변경, 클릭하여 라벨 수정, ✕ 삭제
           </p>
         </div>
       </div>
 
-      {/* 카드 그리드 */}
+      {/* 카드 그리드 — 드래그 재정렬 */}
       <div className="p-4 flex flex-col gap-4">
-        {isGroupBy ? (
-          /* 그룹바이: 단일 그리드 */
-          <div className="grid grid-cols-3 gap-2">
-            {visibleItems.map(m => (
-              <ItemCard key={m.id} id={m.id}
-                label={m.label} customLabel={m._customLabel}
-                group="metric" dark={dark}
-                onLabelChange={(v) => handleLabelChange(m.id, v)}
-                onDelete={() => handleDelete(m.id)} />
-            ))}
-          </div>
-        ) : (
-          /* 지표: 그룹별 분류 (MetricPicker와 동일) */
-          Object.entries(grouped || {}).map(([group, list]) => {
-            const gc = GROUP_COLORS[group] || GROUP_COLORS.metric
-            return (
-              <div key={group}>
-                <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2
-                  ${dark ? gc.dark : gc.light}`}>
-                  {GROUP_LABELS[group] || group}
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {list.map(m => (
-                    <ItemCard key={m.id} id={m.id}
-                      label={m.label} customLabel={m._customLabel}
-                      group={m._computed ? 'computed' : (m.group || 'metric')}
-                      dark={dark}
-                      onLabelChange={(v) => handleLabelChange(m.id, v)}
-                      onDelete={() => handleDelete(m.id)} />
-                  ))}
-                </div>
-              </div>
-            )
-          })
-        )}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={visibleItems.map(m => m.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-3 gap-2">
+              {visibleItems.map(m => (
+                <SortableCard key={m.id} id={m.id}
+                  label={m.label} customLabel={m._customLabel}
+                  dark={dark}
+                  onLabelChange={(v) => handleLabelChange(m.id, v)}
+                  onDelete={() => handleDelete(m.id)} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         {/* 삭제된 항목 복원 */}
         {deletedItems.length > 0 && (
@@ -263,42 +257,16 @@ function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
 /* ═══════════════════════════════════════════
    PickerPreview — 위젯 편집기에서 보이는 모습 미리보기
    ═══════════════════════════════════════════ */
-function PickerPreview({ items, type, dark }) {
+function PickerPreview({ items, dark }) {
   if (!items.length) return (
     <p className={`text-[10px] italic ${dark ? 'text-slate-600' : 'text-slate-400'}`}>표시할 항목 없음</p>
   )
-
-  if (type === 'metrics') {
-    const groups = groupItems(items)
-    return (
-      <div className="flex flex-col gap-2">
-        {Object.entries(groups).map(([g, list]) => (
-          <div key={g}>
-            <p className={`text-[9px] font-semibold uppercase tracking-wider mb-1
-              ${g === 'computed' ? 'text-violet-400' : dark ? 'text-slate-500' : 'text-slate-400'}`}>
-              {GROUP_LABELS[g] || g}
-            </p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {list.map(m => (
-                <span key={m.id} className={`text-[10px] px-2 py-1.5 rounded-lg border text-left truncate
-                  ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}
-                  ${dark ? 'border-[#252836] text-slate-400 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
-                  {m.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   return (
     <div className="grid grid-cols-3 gap-1.5">
-      {items.map(g => (
-        <span key={g.id} className={`text-[10px] px-2 py-1.5 rounded-lg border text-left truncate
+      {items.map(m => (
+        <span key={m.id} className={`text-[10px] px-2 py-1.5 rounded-lg border text-left truncate
           ${dark ? 'border-[#252836] text-slate-400 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
-          {g.label}
+          {m.label}
         </span>
       ))}
     </div>
@@ -343,15 +311,13 @@ export default function WidgetConfig({ dark }) {
   )
 
   /* 위젯 필터 적용 후 (미리보기용 — draft 기반 시뮬레이션) */
-  const previewMetrics = useMemo(() => {
-    if (!draft.metrics) return allMetrics
-    const wmCfg = { enabled: true, items: draft.metrics }
-    // inline apply
+  const applyDraft = (all, draftItems) => {
+    if (!draftItems) return all
     const orderMap = new Map()
-    wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false, label: item.label }))
+    draftItems.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false, label: item.label }))
     const configured = []
     const unconfigured = []
-    allMetrics.forEach(m => {
+    all.forEach(m => {
       const entry = orderMap.get(m.id)
       if (entry) {
         if (entry.visible) {
@@ -364,29 +330,10 @@ export default function WidgetConfig({ dark }) {
     })
     configured.sort((a, b) => a.order - b.order)
     return [...configured.map(c => c.item), ...unconfigured]
-  }, [allMetrics, draft.metrics])
+  }
 
-  const previewGroupBy = useMemo(() => {
-    if (!draft.groupBy) return allGroupBy
-    const wmCfg = { enabled: true, items: draft.groupBy }
-    const orderMap = new Map()
-    wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false, label: item.label }))
-    const configured = []
-    const unconfigured = []
-    allGroupBy.forEach(m => {
-      const entry = orderMap.get(m.id)
-      if (entry) {
-        if (entry.visible) {
-          const item = entry.label ? { ...m, label: entry.label } : m
-          configured.push({ item, order: entry.order })
-        }
-      } else {
-        unconfigured.push(m)
-      }
-    })
-    configured.sort((a, b) => a.order - b.order)
-    return [...configured.map(c => c.item), ...unconfigured]
-  }, [allGroupBy, draft.groupBy])
+  const previewMetrics = useMemo(() => applyDraft(allMetrics, draft.metrics), [allMetrics, draft.metrics])
+  const previewGroupBy = useMemo(() => applyDraft(allGroupBy, draft.groupBy), [allGroupBy, draft.groupBy])
 
   /* draft 변경 핸들러 */
   const handleMetricsChange = useCallback((newItems) => {
@@ -418,7 +365,7 @@ export default function WidgetConfig({ dark }) {
     setTimeout(() => setSaved(false), 3000)
   }, [columnConfig, selTable, draft, setColumnConfig])
 
-  /* 초기화 (원래 상태 복원) */
+  /* 초기화 */
   const handleReset = useCallback(() => {
     setDraft(getInitial(selTable))
     setDirty(false)
@@ -491,7 +438,6 @@ export default function WidgetConfig({ dark }) {
         items={draft.groupBy}
         dark={dark}
         onChange={handleGroupByChange}
-        isGroupBy
       />
 
       {/* 미리보기 */}
@@ -499,15 +445,14 @@ export default function WidgetConfig({ dark }) {
         <p className={`text-xs font-bold mb-3 ${dark ? 'text-white' : 'text-slate-800'}`}>
           미리보기 — 위젯 편집기에서 보이는 모습
         </p>
-
         <div className="flex flex-col gap-4">
           <div>
             <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${sub}`}>지표 Picker</p>
-            <PickerPreview items={previewMetrics} type="metrics" dark={dark} />
+            <PickerPreview items={previewMetrics} dark={dark} />
           </div>
           <div>
             <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${sub}`}>그룹바이 Picker</p>
-            <PickerPreview items={previewGroupBy} type="groupBy" dark={dark} />
+            <PickerPreview items={previewGroupBy} dark={dark} />
           </div>
         </div>
       </div>
