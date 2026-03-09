@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useColumnConfig } from '../../store/useColumnConfig'
 import {
   buildTableMetrics, buildTableGroupBy,
@@ -6,85 +6,270 @@ import {
   getTableDisplayName,
 } from '../../store/columnUtils'
 import { TABLES } from './Tables'
-import { Eye, EyeOff, GripVertical, Save, Check } from 'lucide-react'
-import {
-  DndContext, closestCenter,
-  PointerSensor, useSensor, useSensors,
-} from '@dnd-kit/core'
-import {
-  SortableContext, useSortable,
-  verticalListSortingStrategy, arrayMove,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { Pencil, X, Plus, Check, Save, RotateCcw } from 'lucide-react'
 
 /* ── 그룹 라벨/색상 (MetricPicker와 동일) ── */
-const GROUP_LABELS = { metric: '지표', computed: '계산', rate: '파생' }
+const GROUP_LABELS = { metric: '지표', computed: '🧮 계산 컬럼', rate: '단가' }
 const GROUP_COLORS = {
-  metric:   { dark: 'bg-indigo-500/15 text-indigo-400', light: 'bg-indigo-50 text-indigo-600' },
-  computed: { dark: 'bg-violet-500/15 text-violet-400', light: 'bg-violet-50 text-violet-600' },
-  rate:     { dark: 'bg-amber-500/15 text-amber-400',   light: 'bg-amber-50 text-amber-600' },
+  metric:   { dark: 'text-slate-400', light: 'text-slate-500' },
+  computed: { dark: 'text-violet-400', light: 'text-violet-500' },
+  rate:     { dark: 'text-amber-400',  light: 'text-amber-500' },
 }
 
-/* ═══════════ Sortable Card ═══════════ */
-function SortableCard({ id, label, subLabel, group, visible, dark, onToggle }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  const style = { transform: CSS.Transform.toString(transform), transition }
-  const gc = GROUP_COLORS[group] || GROUP_COLORS.metric
+/** 메트릭을 그룹별로 분류 (MetricPicker와 동일 로직) */
+function groupItems(items) {
+  const groups = {}
+  items.forEach(m => {
+    const g = m._computed ? 'computed' : (m.group || 'metric')
+    if (!groups[g]) groups[g] = []
+    groups[g].push(m)
+  })
+  return groups
+}
+
+/* ═══════════ 인라인 라벨 편집 ═══════════ */
+function InlineEdit({ value, dark, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const ref = useRef(null)
+
+  useEffect(() => { setDraft(value) }, [value])
+  useEffect(() => { if (editing) ref.current?.focus() }, [editing])
+
+  const commit = () => {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== value) onSave(trimmed)
+    else setDraft(value)
+  }
+
+  if (!editing) {
+    return (
+      <button onClick={() => setEditing(true)}
+        className={`flex items-center gap-1 text-xs text-left truncate group/edit
+          ${dark ? 'text-slate-300' : 'text-slate-700'}`}
+        title="클릭하여 라벨 수정">
+        <span className="truncate">{value}</span>
+        <Pencil size={10} className={`shrink-0 opacity-0 group-hover/edit:opacity-60 transition-opacity
+          ${dark ? 'text-slate-500' : 'text-slate-400'}`} />
+      </button>
+    )
+  }
 
   return (
-    <div ref={setNodeRef} style={style}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors
-        ${isDragging ? 'z-50 shadow-lg' : ''}
-        ${visible
-          ? dark ? 'border-[#252836] bg-[#13151F]' : 'border-slate-200 bg-white'
-          : dark ? 'border-[#252836] bg-[#0D0F18] opacity-50' : 'border-slate-100 bg-slate-50 opacity-50'
-        }`}>
-      {/* 드래그 핸들 */}
-      <button {...attributes} {...listeners} className={`cursor-grab active:cursor-grabbing shrink-0
-        ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
-        <GripVertical size={14} />
-      </button>
-      {/* 그룹 뱃지 */}
-      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${dark ? gc.dark : gc.light}`}>
-        {GROUP_LABELS[group] || group}
-      </span>
-      {/* 라벨 */}
+    <input ref={ref} value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false) } }}
+      className={`text-xs px-1 py-0.5 rounded border outline-none w-full
+        ${dark ? 'bg-[#0F1117] border-indigo-500 text-white' : 'bg-white border-indigo-400 text-slate-800'}`}
+    />
+  )
+}
+
+/* ═══════════ 메트릭/그룹바이 카드 (MetricPicker 스타일) ═══════════ */
+function ItemCard({ id, label, customLabel, group, dark, onLabelChange, onDelete }) {
+  const isComputed = group === 'computed'
+  return (
+    <div className={`relative flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-left transition-colors group/card
+      ${isComputed ? 'border-l-2 !border-l-violet-500' : ''}
+      ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+      {/* 라벨 (인라인 편집) */}
       <div className="flex-1 min-w-0">
-        <span className={`text-xs font-medium truncate block ${dark ? 'text-slate-200' : 'text-slate-700'}`}>
-          {label}
-        </span>
-        {subLabel && (
-          <span className={`text-[10px] truncate block ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
-            {subLabel}
+        <InlineEdit value={customLabel || label} dark={dark} onSave={onLabelChange} />
+        {customLabel && customLabel !== label && (
+          <span className={`text-[9px] truncate block ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
+            원본: {label}
           </span>
         )}
       </div>
-      {/* 표시/숨김 토글 */}
-      <button onClick={onToggle}
-        className={`shrink-0 p-1 rounded transition-colors
-          ${visible
-            ? dark ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-emerald-600 hover:bg-emerald-50'
-            : dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
-        {visible ? <Eye size={14} /> : <EyeOff size={14} />}
+      {/* 삭제 버튼 */}
+      <button onClick={onDelete}
+        className={`shrink-0 p-0.5 rounded opacity-0 group-hover/card:opacity-100 transition-opacity
+          ${dark ? 'text-slate-600 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}>
+        <X size={12} />
       </button>
     </div>
   )
 }
 
-/* ═══════════ 미리보기 — MetricPicker/GroupByPicker 스타일 ═══════════ */
+/* ═══════════ 삭제된 항목 복원 버튼 ═══════════ */
+function DeletedItem({ id, label, dark, onRestore }) {
+  return (
+    <button onClick={onRestore}
+      className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border transition-colors
+        ${dark ? 'border-[#252836] text-slate-600 hover:border-emerald-500/40 hover:text-emerald-400'
+          : 'border-slate-200 text-slate-400 hover:border-emerald-400 hover:text-emerald-600'}`}>
+      <Plus size={10} />
+      <span className="truncate">{label}</span>
+    </button>
+  )
+}
+
+/* ═══════════════════════════════════════════
+   ConfigSection — 지표 또는 그룹바이 설정 (MetricPicker 스타일)
+   ═══════════════════════════════════════════ */
+function ConfigSection({ title, allItems, items, dark, onChange, isGroupBy }) {
+  /* items: [{ id, visible, label? }] — 현재 설정 상태 */
+
+  const itemMap = useMemo(() => {
+    const m = new Map()
+    ;(items || []).forEach(it => m.set(it.id, it))
+    return m
+  }, [items])
+
+  /* 표시 중인 항목 (items 순서 유지, items에 없으면 allItems 순서대로 끝에) */
+  const visibleItems = useMemo(() => {
+    if (!items || items.length === 0) {
+      return allItems.map(m => ({ ...m, _customLabel: null }))
+    }
+    const result = []
+    const allMap = new Map(allItems.map(m => [m.id, m]))
+    // items 순서대로 visible인 것
+    items.forEach(it => {
+      if (it.visible === false) return
+      const base = allMap.get(it.id)
+      if (base) result.push({ ...base, _customLabel: it.label || null })
+    })
+    // items에 없는 새 항목 추가
+    allItems.forEach(m => {
+      if (!itemMap.has(m.id)) result.push({ ...m, _customLabel: null })
+    })
+    return result
+  }, [allItems, items, itemMap])
+
+  /* 삭제된(숨겨진) 항목 */
+  const deletedItems = useMemo(() => {
+    if (!items || items.length === 0) return []
+    const allMap = new Map(allItems.map(m => [m.id, m]))
+    return items.filter(it => it.visible === false && allMap.has(it.id))
+      .map(it => ({ ...it, label: it.label || allMap.get(it.id)?.label || it.id }))
+  }, [allItems, items])
+
+  /* 그룹별 분류 (지표 섹션만) */
+  const grouped = useMemo(() => {
+    if (isGroupBy) return null
+    return groupItems(visibleItems)
+  }, [visibleItems, isGroupBy])
+
+  /* 핸들러: 라벨 변경 */
+  const handleLabelChange = (id, newLabel) => {
+    const baseItem = allItems.find(m => m.id === id)
+    const isOriginal = baseItem && newLabel === baseItem.label
+    const next = [...(items || allItems.map(m => ({ id: m.id, visible: true })))]
+    const idx = next.findIndex(it => it.id === id)
+    if (idx >= 0) {
+      next[idx] = { ...next[idx], label: isOriginal ? undefined : newLabel }
+    }
+    onChange(next)
+  }
+
+  /* 핸들러: 삭제 (숨김) */
+  const handleDelete = (id) => {
+    const next = [...(items || allItems.map(m => ({ id: m.id, visible: true })))]
+    const idx = next.findIndex(it => it.id === id)
+    if (idx >= 0) {
+      next[idx] = { ...next[idx], visible: false }
+    } else {
+      next.push({ id, visible: false })
+    }
+    onChange(next)
+  }
+
+  /* 핸들러: 복원 */
+  const handleRestore = (id) => {
+    const next = [...(items || [])]
+    const idx = next.findIndex(it => it.id === id)
+    if (idx >= 0) {
+      next[idx] = { ...next[idx], visible: true }
+    }
+    onChange(next)
+  }
+
+  const sub = dark ? 'text-slate-500' : 'text-slate-400'
+  const visCount = visibleItems.length
+  const totalCount = allItems.length
+
+  return (
+    <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+      {/* 섹션 헤더 */}
+      <div className={`flex items-center justify-between px-4 py-3 border-b
+        ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+        <div>
+          <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{title}</p>
+          <p className={`text-[10px] mt-0.5 ${sub}`}>
+            {visCount}/{totalCount}개 표시 · 클릭하여 라벨 수정, ✕ 삭제
+          </p>
+        </div>
+      </div>
+
+      {/* 카드 그리드 */}
+      <div className="p-4 flex flex-col gap-4">
+        {isGroupBy ? (
+          /* 그룹바이: 단일 그리드 */
+          <div className="grid grid-cols-3 gap-2">
+            {visibleItems.map(m => (
+              <ItemCard key={m.id} id={m.id}
+                label={m.label} customLabel={m._customLabel}
+                group="metric" dark={dark}
+                onLabelChange={(v) => handleLabelChange(m.id, v)}
+                onDelete={() => handleDelete(m.id)} />
+            ))}
+          </div>
+        ) : (
+          /* 지표: 그룹별 분류 (MetricPicker와 동일) */
+          Object.entries(grouped || {}).map(([group, list]) => {
+            const gc = GROUP_COLORS[group] || GROUP_COLORS.metric
+            return (
+              <div key={group}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2
+                  ${dark ? gc.dark : gc.light}`}>
+                  {GROUP_LABELS[group] || group}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {list.map(m => (
+                    <ItemCard key={m.id} id={m.id}
+                      label={m.label} customLabel={m._customLabel}
+                      group={m._computed ? 'computed' : (m.group || 'metric')}
+                      dark={dark}
+                      onLabelChange={(v) => handleLabelChange(m.id, v)}
+                      onDelete={() => handleDelete(m.id)} />
+                  ))}
+                </div>
+              </div>
+            )
+          })
+        )}
+
+        {/* 삭제된 항목 복원 */}
+        {deletedItems.length > 0 && (
+          <div>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${sub}`}>
+              삭제된 항목 ({deletedItems.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {deletedItems.map(it => (
+                <DeletedItem key={it.id} id={it.id} label={it.label} dark={dark}
+                  onRestore={() => handleRestore(it.id)} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════
+   PickerPreview — 위젯 편집기에서 보이는 모습 미리보기
+   ═══════════════════════════════════════════ */
 function PickerPreview({ items, type, dark }) {
   if (!items.length) return (
     <p className={`text-[10px] italic ${dark ? 'text-slate-600' : 'text-slate-400'}`}>표시할 항목 없음</p>
   )
 
-  /* 지표 → 그룹별 분류 */
   if (type === 'metrics') {
-    const groups = {}
-    items.forEach(m => {
-      const g = m._computed ? 'computed' : (m.group || 'metric')
-      if (!groups[g]) groups[g] = []
-      groups[g].push(m)
-    })
+    const groups = groupItems(items)
     return (
       <div className="flex flex-col gap-2">
         {Object.entries(groups).map(([g, list]) => (
@@ -93,11 +278,11 @@ function PickerPreview({ items, type, dark }) {
               ${g === 'computed' ? 'text-violet-400' : dark ? 'text-slate-500' : 'text-slate-400'}`}>
               {GROUP_LABELS[g] || g}
             </p>
-            <div className="flex flex-wrap gap-1">
+            <div className="grid grid-cols-3 gap-1.5">
               {list.map(m => (
-                <span key={m.id} className={`text-[10px] px-2 py-1 rounded-md border
+                <span key={m.id} className={`text-[10px] px-2 py-1.5 rounded-lg border text-left truncate
                   ${m._computed ? 'border-l-2 !border-l-violet-500' : ''}
-                  ${dark ? 'border-[#252836] text-slate-300 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
+                  ${dark ? 'border-[#252836] text-slate-400 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
                   {m.label}
                 </span>
               ))}
@@ -108,154 +293,14 @@ function PickerPreview({ items, type, dark }) {
     )
   }
 
-  /* 그룹바이 */
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="grid grid-cols-3 gap-1.5">
       {items.map(g => (
-        <span key={g.id} className={`text-[10px] px-2 py-1 rounded-md border
-          ${dark ? 'border-[#252836] text-slate-300 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
+        <span key={g.id} className={`text-[10px] px-2 py-1.5 rounded-lg border text-left truncate
+          ${dark ? 'border-[#252836] text-slate-400 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
           {g.label}
         </span>
       ))}
-    </div>
-  )
-}
-
-/* ═══════════════════════════════════════════
-   ConfigSection — 지표 또는 그룹바이 설정 섹션
-   ═══════════════════════════════════════════ */
-function ConfigSection({ title, allItems, config, dark, onChange }) {
-  const enabled = config?.enabled ?? false
-  const items = config?.items ?? []
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-
-  /* items → 표시용 리스트 (config 있으면 그 순서, 없으면 allItems 순서) */
-  const displayList = useMemo(() => {
-    if (!enabled || items.length === 0) {
-      return allItems.map(m => ({ ...m, _visible: true }))
-    }
-    const orderMap = new Map()
-    items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false }))
-    const configured = []
-    const unconfigured = []
-    allItems.forEach(m => {
-      const entry = orderMap.get(m.id)
-      if (entry) {
-        configured.push({ ...m, _visible: entry.visible, _order: entry.order })
-      } else {
-        unconfigured.push({ ...m, _visible: true, _isNew: true })
-      }
-    })
-    configured.sort((a, b) => a._order - b._order)
-    return [...configured, ...unconfigured]
-  }, [allItems, items, enabled])
-
-  /* 커스텀 토글 */
-  const toggleEnabled = () => {
-    if (!enabled) {
-      // 커스텀 ON → 현재 allItems 순서로 items 초기화
-      onChange({
-        enabled: true,
-        items: allItems.map(m => ({ id: m.id, visible: true })),
-      })
-    } else {
-      onChange({ enabled: false, items: [] })
-    }
-  }
-
-  /* 개별 항목 토글 */
-  const toggleVisible = (id) => {
-    const next = items.map(it => it.id === id ? { ...it, visible: !it.visible } : it)
-    // items에 없는 경우 (새로 추가된 지표) → 추가
-    if (!next.find(it => it.id === id)) {
-      next.push({ id, visible: false })
-    }
-    onChange({ ...config, items: next })
-  }
-
-  /* 드래그 종료 → 순서 변경 */
-  const handleDragEnd = (event) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const ids = displayList.map(m => m.id)
-    const oldIdx = ids.indexOf(active.id)
-    const newIdx = ids.indexOf(over.id)
-    if (oldIdx < 0 || newIdx < 0) return
-    const reordered = arrayMove(displayList, oldIdx, newIdx)
-    onChange({
-      ...config,
-      items: reordered.map(m => ({ id: m.id, visible: m._visible })),
-    })
-  }
-
-  const sub = dark ? 'text-slate-500' : 'text-slate-400'
-
-  return (
-    <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
-      {/* 섹션 헤더 */}
-      <div className={`flex items-center justify-between px-4 py-3 border-b
-        ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-        <div>
-          <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{title}</p>
-          <p className={`text-[10px] mt-0.5 ${sub}`}>
-            {enabled
-              ? `${displayList.filter(m => m._visible).length}/${displayList.length}개 표시`
-              : '전체 표시 (기본)'
-            }
-          </p>
-        </div>
-        {/* 커스텀 토글 */}
-        <button onClick={toggleEnabled}
-          className={`flex items-center gap-1.5 text-[10px] font-semibold px-3 py-1.5 rounded-lg border transition-colors
-            ${enabled
-              ? dark ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-indigo-400 bg-indigo-50 text-indigo-600'
-              : dark ? 'border-[#252836] text-slate-500 hover:text-slate-300' : 'border-slate-200 text-slate-400 hover:text-slate-600'
-            }`}>
-          <div className={`w-7 h-4 rounded-full relative transition-colors
-            ${enabled ? 'bg-indigo-500' : dark ? 'bg-[#252836]' : 'bg-slate-200'}`}>
-            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform
-              ${enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-          </div>
-          {enabled ? '커스텀' : '전체'}
-        </button>
-      </div>
-
-      {/* 카드 리스트 */}
-      <div className="p-3 flex flex-col gap-1.5">
-        {enabled ? (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={displayList.map(m => m.id)} strategy={verticalListSortingStrategy}>
-              {displayList.map(m => (
-                <SortableCard
-                  key={m.id}
-                  id={m.id}
-                  label={m.label}
-                  subLabel={m.id !== m.label ? m.id : undefined}
-                  group={m._computed ? 'computed' : (m.group || 'metric')}
-                  visible={m._visible}
-                  dark={dark}
-                  onToggle={() => toggleVisible(m.id)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        ) : (
-          displayList.map(m => (
-            <div key={m.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border
-              ${dark ? 'border-[#252836] bg-[#13151F]' : 'border-slate-200 bg-white'}`}>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0
-                ${dark ? (GROUP_COLORS[m._computed ? 'computed' : (m.group || 'metric')]?.dark) : (GROUP_COLORS[m._computed ? 'computed' : (m.group || 'metric')]?.light)}`}>
-                {GROUP_LABELS[m._computed ? 'computed' : (m.group || 'metric')] || 'metric'}
-              </span>
-              <span className={`text-xs truncate ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{m.label}</span>
-              {m.id !== m.label && (
-                <span className={`text-[10px] truncate ${dark ? 'text-slate-600' : 'text-slate-400'}`}>{m.id}</span>
-              )}
-            </div>
-          ))
-        )}
-      </div>
     </div>
   )
 }
@@ -266,7 +311,26 @@ function ConfigSection({ title, allItems, config, dark, onChange }) {
 export default function WidgetConfig({ dark }) {
   const { columnConfig, setColumnConfig } = useColumnConfig()
   const [selTable, setSelTable] = useState(TABLES[0])
+
+  /* 로컬 draft 상태 (저장 전까지 변경사항 유지) */
+  const getInitial = useCallback((table) => {
+    const wmc = columnConfig?.[table]?.widgetMetricConfig || {}
+    return {
+      metrics: wmc.metrics?.items ? [...wmc.metrics.items] : null,
+      groupBy: wmc.groupBy?.items ? [...wmc.groupBy.items] : null,
+    }
+  }, [columnConfig])
+
+  const [draft, setDraft] = useState(() => getInitial(selTable))
+  const [dirty, setDirty] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  /* 테이블 변경 시 draft 리셋 */
+  useEffect(() => {
+    setDraft(getInitial(selTable))
+    setDirty(false)
+    setSaved(false)
+  }, [selTable, getInitial])
 
   /* 현재 테이블의 전체 지표/그룹바이 (필터 전) */
   const allMetrics = useMemo(
@@ -278,39 +342,87 @@ export default function WidgetConfig({ dark }) {
     [selTable, columnConfig]
   )
 
-  /* 위젯 필터 적용 후 (미리보기용) */
-  const previewMetrics = useMemo(
-    () => buildWidgetMetrics(selTable, columnConfig),
-    [selTable, columnConfig]
-  )
-  const previewGroupBy = useMemo(
-    () => buildWidgetGroupBy(selTable, columnConfig),
-    [selTable, columnConfig]
-  )
+  /* 위젯 필터 적용 후 (미리보기용 — draft 기반 시뮬레이션) */
+  const previewMetrics = useMemo(() => {
+    if (!draft.metrics) return allMetrics
+    const wmCfg = { enabled: true, items: draft.metrics }
+    // inline apply
+    const orderMap = new Map()
+    wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false, label: item.label }))
+    const configured = []
+    const unconfigured = []
+    allMetrics.forEach(m => {
+      const entry = orderMap.get(m.id)
+      if (entry) {
+        if (entry.visible) {
+          const item = entry.label ? { ...m, label: entry.label } : m
+          configured.push({ item, order: entry.order })
+        }
+      } else {
+        unconfigured.push(m)
+      }
+    })
+    configured.sort((a, b) => a.order - b.order)
+    return [...configured.map(c => c.item), ...unconfigured]
+  }, [allMetrics, draft.metrics])
 
-  /* 현재 widgetMetricConfig */
-  const wmCfg = columnConfig?.[selTable]?.widgetMetricConfig || {}
+  const previewGroupBy = useMemo(() => {
+    if (!draft.groupBy) return allGroupBy
+    const wmCfg = { enabled: true, items: draft.groupBy }
+    const orderMap = new Map()
+    wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false, label: item.label }))
+    const configured = []
+    const unconfigured = []
+    allGroupBy.forEach(m => {
+      const entry = orderMap.get(m.id)
+      if (entry) {
+        if (entry.visible) {
+          const item = entry.label ? { ...m, label: entry.label } : m
+          configured.push({ item, order: entry.order })
+        }
+      } else {
+        unconfigured.push(m)
+      }
+    })
+    configured.sort((a, b) => a.order - b.order)
+    return [...configured.map(c => c.item), ...unconfigured]
+  }, [allGroupBy, draft.groupBy])
 
-  /* 설정 변경 핸들러 */
-  const handleMetricsChange = useCallback((newMetricsCfg) => {
+  /* draft 변경 핸들러 */
+  const handleMetricsChange = useCallback((newItems) => {
+    setDraft(prev => ({ ...prev, metrics: newItems }))
+    setDirty(true)
+    setSaved(false)
+  }, [])
+
+  const handleGroupByChange = useCallback((newItems) => {
+    setDraft(prev => ({ ...prev, groupBy: newItems }))
+    setDirty(true)
+    setSaved(false)
+  }, [])
+
+  /* 저장 */
+  const handleSave = useCallback(() => {
     const tCfg = columnConfig?.[selTable] || {}
+    const wmCfg = tCfg.widgetMetricConfig || {}
     setColumnConfig(selTable, {
       ...tCfg,
-      widgetMetricConfig: { ...wmCfg, metrics: newMetricsCfg },
+      widgetMetricConfig: {
+        ...wmCfg,
+        metrics: draft.metrics ? { enabled: true, items: draft.metrics } : wmCfg.metrics,
+        groupBy: draft.groupBy ? { enabled: true, items: draft.groupBy } : wmCfg.groupBy,
+      },
     })
+    setDirty(false)
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }, [columnConfig, selTable, wmCfg, setColumnConfig])
+    setTimeout(() => setSaved(false), 3000)
+  }, [columnConfig, selTable, draft, setColumnConfig])
 
-  const handleGroupByChange = useCallback((newGroupByCfg) => {
-    const tCfg = columnConfig?.[selTable] || {}
-    setColumnConfig(selTable, {
-      ...tCfg,
-      widgetMetricConfig: { ...wmCfg, groupBy: newGroupByCfg },
-    })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }, [columnConfig, selTable, wmCfg, setColumnConfig])
+  /* 초기화 (원래 상태 복원) */
+  const handleReset = useCallback(() => {
+    setDraft(getInitial(selTable))
+    setDirty(false)
+  }, [selTable, getInitial])
 
   const sub = dark ? 'text-slate-500' : 'text-slate-400'
 
@@ -324,12 +436,26 @@ export default function WidgetConfig({ dark }) {
             테이블별 위젯 피커에 표시할 지표 · 그룹바이 설정
           </p>
         </div>
-        {saved && (
-          <span className={`flex items-center gap-1 text-xs font-semibold animate-pulse
-            ${dark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-            <Check size={13} /> 저장됨
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {dirty && (
+            <button onClick={handleReset}
+              className={`flex items-center gap-1 text-xs px-3 py-2 rounded-lg border transition-colors
+                ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:text-slate-700'}`}>
+              <RotateCcw size={12} /> 되돌리기
+            </button>
+          )}
+          <button onClick={handleSave}
+            disabled={!dirty}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-colors
+              ${dirty
+                ? 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-lg shadow-indigo-500/20'
+                : saved
+                  ? dark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  : dark ? 'bg-[#252836] text-slate-600 cursor-not-allowed' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}>
+            {saved ? <><Check size={13} /> 저장됨</> : <><Save size={13} /> 저장</>}
+          </button>
+        </div>
       </div>
 
       {/* 테이블 탭 */}
@@ -353,7 +479,7 @@ export default function WidgetConfig({ dark }) {
       <ConfigSection
         title="지표 설정"
         allItems={allMetrics}
-        config={wmCfg.metrics}
+        items={draft.metrics}
         dark={dark}
         onChange={handleMetricsChange}
       />
@@ -362,9 +488,10 @@ export default function WidgetConfig({ dark }) {
       <ConfigSection
         title="그룹바이 설정"
         allItems={allGroupBy}
-        config={wmCfg.groupBy}
+        items={draft.groupBy}
         dark={dark}
         onChange={handleGroupByChange}
+        isGroupBy
       />
 
       {/* 미리보기 */}

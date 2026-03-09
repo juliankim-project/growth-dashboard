@@ -159,13 +159,16 @@ export function buildTableGroupBy(tableName, columnConfig) {
 function applyWidgetFilter(all, wmCfg) {
   if (!wmCfg?.enabled || !wmCfg.items?.length) return all
   const orderMap = new Map()
-  wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false }))
+  wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false, label: item.label }))
   const configured = []
   const unconfigured = []
   all.forEach(m => {
     const entry = orderMap.get(m.id)
     if (entry) {
-      if (entry.visible) configured.push({ item: m, order: entry.order })
+      if (entry.visible) {
+        const item = entry.label ? { ...m, label: entry.label } : m
+        configured.push({ item, order: entry.order })
+      }
     } else {
       unconfigured.push(m)
     }
