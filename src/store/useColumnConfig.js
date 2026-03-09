@@ -1,196 +1,203 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { MARKETING_SEED_CONFIG, PRODUCT_SEED_CONFIG } from './useConfig'
 
-const CC_STORAGE_KEY = 'growth_column_configs_v1'
-const SAVE_DEBOUNCE_MS = 500
+const CC_STORAGE_KEY = 'growth_column_configs_v2'
+const WMC_SAVE_DEBOUNCE_MS = 500
 
 /* ──────────────────────────────────────────
-   columnConfig 전용 훅
-   — dashboard_config와 완전 독립
-   — Supabase `column_configs` 테이블 사용
+   column_definitions DB 테이블 → columnConfig 변환
+   — column_definitions: 읽기 전용 (컬럼/지표 정의)
+   — column_configs: widgetMetricConfig만 저장 (위젯 표시 설정)
 ─────────────────────────────────────────── */
 
-const SEED_CONFIGS = {
-  marketing_data: MARKETING_SEED_CONFIG,
-  product_revenue_raw: PRODUCT_SEED_CONFIG,
+/** column_definitions rows → columnConfig 형태 변환 */
+function transformRows(defRows, metaRows) {
+  const result = {}
+
+  // table_metadata → { tableName: { display_name, date_column } }
+  const metaMap = {}
+  ;(metaRows || []).forEach(r => {
+    metaMap[r.table_name] = { displayName: r.display_name, dateColumn: r.date_column }
+  })
+
+  // Group by table_name
+  const grouped = {}
+  ;(defRows || []).forEach(r => {
+    if (!grouped[r.table_name]) grouped[r.table_name] = []
+    grouped[r.table_name].push(r)
+  })
+
+  for (const [tableName, rows] of Object.entries(grouped)) {
+    const meta = metaMap[tableName] || {}
+    const columns = {}
+    const dimensionColumns = []
+    const computed = []
+
+    // Sort by sort_order
+    rows.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+
+    for (const row of rows) {
+      switch (row.category) {
+        case 'metric':
+          columns[row.column_key] = {
+            alias: row.label || '',
+            visible: true,
+            fmt: row.fmt || 'number',
+            agg: row.agg?.toLowerCase() || 'sum',
+          }
+          break
+        case 'dimension':
+          columns[row.column_key] = {
+            alias: row.label || '',
+            visible: true,
+            fmt: 'text',
+            agg: null,
+          }
+          dimensionColumns.push(row.column_key)
+          break
+        case 'hidden':
+          columns[row.column_key] = {
+            alias: row.label || '',
+            visible: false,
+            fmt: row.fmt || 'number',
+            agg: null,
+          }
+          break
+        case 'computed':
+          computed.push({
+            id: row.column_key,
+            name: row.label || row.column_key,
+            aggType: row.agg?.toLowerCase() === 'count' ? 'count' : undefined,
+            terms: row.terms_json || [],
+            fmt: row.fmt || 'number',
+          })
+          break
+        case 'derived':
+          // derived metrics — MARKETING_DERIVED 상수가 처리하므로 여기서는 무시
+          break
+      }
+    }
+
+    result[tableName] = {
+      displayName: meta.displayName || tableName,
+      dateColumn: meta.dateColumn || '',
+      columns,
+      dimensionColumns,
+      computed,
+    }
+  }
+
+  return result
 }
 
-/** localStorage에서 캐시된 columnConfig 로드 */
+/** localStorage 캐시 */
 function loadLocal() {
-  try {
-    return JSON.parse(localStorage.getItem(CC_STORAGE_KEY) || '{}')
-  } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(CC_STORAGE_KEY) || '{}') } catch { return {} }
 }
-
-/** localStorage에 columnConfig 캐시 저장 */
 function saveLocal(cc) {
   try { localStorage.setItem(CC_STORAGE_KEY, JSON.stringify(cc)) } catch {}
 }
 
-/**
- * 시드 config 적용
- * 1) 키가 없거나 columns가 비어있으면 → 시드 전체 적용
- * 2) 시드 seedVersion이 기존보다 높으면 → 시드로 교체 (시드 업데이트 자동 반영)
- * @returns {object} { merged, changed }
- */
-function applySeed(cc) {
-  let merged = { ...cc }
-  let changed = false
-
-  for (const [tableName, seed] of Object.entries(SEED_CONFIGS)) {
-    const existing = merged[tableName]
-    const existingVer = existing?.seedVersion || 0
-    const seedVer = seed.seedVersion || 1
-
-    if (!existing || !existing.columns || Object.keys(existing.columns).length === 0 || existingVer < seedVer) {
-      merged[tableName] = { ...seed }
-      changed = true
-    }
-  }
-
-  return { merged, changed }
-}
-
 export function useColumnConfig() {
-  const [columnConfig, _setColumnConfig] = useState(() => {
-    const local = loadLocal()
-    const { merged } = applySeed(local)
-    return merged
-  })
+  const [columnConfig, _setColumnConfig] = useState(() => loadLocal())
+  const [loading, setLoading] = useState(true)
 
   const latestRef = useRef(columnConfig)
-  const saveTimers = useRef({})          // 테이블별 디바운스 타이머
-  const lastPersistTs = useRef({})       // 테이블별 자기 에코 방지 타임스탬프
-  const migrationDone = useRef(false)
+  const wmcTimers = useRef({})
+  const lastPersistTs = useRef({})
 
   useEffect(() => { latestRef.current = columnConfig }, [columnConfig])
 
-  /* ── Supabase: 초기 로드 ── */
+  /* ── 초기 로드: column_definitions + table_metadata + column_configs(widgetMetricConfig) ── */
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase) { setLoading(false); return }
+
     ;(async () => {
-      const { data, error } = await supabase
-        .from('column_configs')
-        .select('table_name, config')
+      try {
+        const [defRes, metaRes, wmcRes] = await Promise.all([
+          supabase.from('column_definitions').select('*'),
+          supabase.from('table_metadata').select('*'),
+          supabase.from('column_configs').select('table_name, config'),
+        ])
 
-      if (error) {
-        console.warn('[useColumnConfig] DB 조회 실패:', error.message)
-        // DB 실패 시 — 기존 dashboard_config에서 마이그레이션 시도
-        if (!migrationDone.current) {
-          migrationDone.current = true
-          await migrateFromDashboardConfig()
+        if (defRes.error) {
+          console.warn('[useColumnConfig] column_definitions 조회 실패:', defRes.error.message)
+          setLoading(false)
+          return
         }
-        return
+
+        // 1) column_definitions → columnConfig 변환
+        const baseConfig = transformRows(defRes.data, metaRes.data)
+
+        // 2) column_configs에서 widgetMetricConfig 머지
+        if (wmcRes.data) {
+          wmcRes.data.forEach(row => {
+            if (baseConfig[row.table_name] && row.config?.widgetMetricConfig) {
+              baseConfig[row.table_name].widgetMetricConfig = row.config.widgetMetricConfig
+            }
+          })
+        }
+
+        _setColumnConfig(baseConfig)
+        saveLocal(baseConfig)
+      } catch (err) {
+        console.warn('[useColumnConfig] 로드 실패:', err)
       }
-
-      if (data && data.length > 0) {
-        // DB에 데이터 있음 → state에 반영
-        const remote = {}
-        data.forEach(row => { remote[row.table_name] = row.config })
-        const { merged, changed } = applySeed(remote)
-        _setColumnConfig(merged)
-        saveLocal(merged)
-
-        // 시드 버전 업데이트로 인해 변경된 테이블 → DB에도 반영
-        if (changed) {
-          const upsertRows = Object.entries(SEED_CONFIGS)
-            .filter(([tn]) => {
-              const oldVer = remote[tn]?.seedVersion || 0
-              const newVer = SEED_CONFIGS[tn]?.seedVersion || 1
-              return oldVer < newVer
-            })
-            .map(([tn]) => ({
-              table_name: tn,
-              config: merged[tn],
-              updated_at: new Date().toISOString(),
-            }))
-
-          if (upsertRows.length > 0) {
-            lastPersistTs.current = {}
-            upsertRows.forEach(r => { lastPersistTs.current[r.table_name] = Date.now() })
-            supabase
-              .from('column_configs')
-              .upsert(upsertRows, { onConflict: 'table_name' })
-              .then(({ error: upErr }) => {
-                if (upErr) console.warn('[useColumnConfig] 시드 업데이트 DB 반영 실패:', upErr.message)
-                else console.log('[useColumnConfig] 시드 버전 업데이트 DB 반영 완료:', upsertRows.map(r => r.table_name))
-              })
-          }
-        }
-      } else {
-        // DB에 데이터 없음 → 마이그레이션 또는 시드 업로드
-        if (!migrationDone.current) {
-          migrationDone.current = true
-          await migrateFromDashboardConfig()
-        }
-      }
+      setLoading(false)
     })()
   }, [])
 
-  /** dashboard_config.config.columnConfig에서 1회성 마이그레이션 */
-  async function migrateFromDashboardConfig() {
-    if (!supabase) return
-
-    // 1) 기존 dashboard_config에서 columnConfig 꺼내기
-    const { data: dashRow } = await supabase
-      .from('dashboard_config')
-      .select('config')
-      .eq('id', 'default')
-      .maybeSingle()
-
-    const oldCc = dashRow?.config?.columnConfig
-    let toUpload = {}
-
-    if (oldCc && Object.keys(oldCc).length > 0) {
-      // 기존 데이터 있음 → 마이그레이션
-      toUpload = { ...oldCc }
-    }
-
-    // 시드 적용
-    const { merged } = applySeed(toUpload)
-    toUpload = merged
-
-    // 2) column_configs 테이블에 일괄 INSERT
-    const rows = Object.entries(toUpload).map(([table_name, config]) => ({
-      table_name,
-      config,
-      updated_at: new Date().toISOString(),
-    }))
-
-    if (rows.length > 0) {
-      const { error } = await supabase
-        .from('column_configs')
-        .upsert(rows, { onConflict: 'table_name' })
-
-      if (error) {
-        console.warn('[useColumnConfig] 마이그레이션 실패:', error.message)
-      }
-    }
-
-    _setColumnConfig(toUpload)
-    saveLocal(toUpload)
-  }
-
-  /* ── Supabase: Realtime 구독 ── */
+  /* ── Realtime: column_definitions 변경 감지 → 전체 리로드 ── */
   useEffect(() => {
     if (!supabase) return
     const channel = supabase
-      .channel('column-config-sync')
+      .channel('coldef-sync')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'column_definitions' },
+        async () => {
+          // column_definitions가 변경되면 전체 리로드
+          const [defRes, metaRes] = await Promise.all([
+            supabase.from('column_definitions').select('*'),
+            supabase.from('table_metadata').select('*'),
+          ])
+          if (defRes.error) return
+          const baseConfig = transformRows(defRes.data, metaRes.data)
+
+          // 기존 widgetMetricConfig 보존
+          _setColumnConfig(prev => {
+            for (const tn of Object.keys(baseConfig)) {
+              if (prev[tn]?.widgetMetricConfig) {
+                baseConfig[tn].widgetMetricConfig = prev[tn].widgetMetricConfig
+              }
+            }
+            saveLocal(baseConfig)
+            return baseConfig
+          })
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  /* ── Realtime: column_configs (widgetMetricConfig) 변경 감지 ── */
+  useEffect(() => {
+    if (!supabase) return
+    const channel = supabase
+      .channel('wmc-sync')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'column_configs' },
         (payload) => {
           const tableName = payload.new?.table_name
           if (!tableName) return
-
-          // 자기 에코 방지: 최근 3초 이내에 내가 저장한 테이블이면 무시
           if (Date.now() - (lastPersistTs.current[tableName] || 0) < 3000) return
 
-          const remoteConfig = payload.new?.config
-          if (!remoteConfig) return
+          const wmCfg = payload.new?.config?.widgetMetricConfig
+          if (!wmCfg) return
 
           _setColumnConfig(prev => {
-            const next = { ...prev, [tableName]: remoteConfig }
+            if (!prev[tableName]) return prev
+            const next = { ...prev, [tableName]: { ...prev[tableName], widgetMetricConfig: wmCfg } }
             saveLocal(next)
             return next
           })
@@ -203,7 +210,7 @@ export function useColumnConfig() {
 
   /* ── cleanup ── */
   useEffect(() => () => {
-    Object.values(saveTimers.current).forEach(clearTimeout)
+    Object.values(wmcTimers.current).forEach(clearTimeout)
   }, [])
 
   /* ── getColumnConfig ── */
@@ -211,7 +218,7 @@ export function useColumnConfig() {
     return latestRef.current[tableName] || { columns: {}, computed: [], dimensionColumns: [] }
   }, [])
 
-  /* ── setColumnConfig ── */
+  /* ── setColumnConfig (하위 호환 — widgetMetricConfig만 저장) ── */
   const setColumnConfig = useCallback((tableName, tableConfig) => {
     _setColumnConfig(prev => {
       const next = { ...prev, [tableName]: tableConfig }
@@ -220,28 +227,29 @@ export function useColumnConfig() {
       return next
     })
 
-    // Supabase 디바운스 저장 (테이블별 독립)
-    if (supabase) {
-      clearTimeout(saveTimers.current[tableName])
-      saveTimers.current[tableName] = setTimeout(() => {
+    // widgetMetricConfig만 column_configs에 저장
+    if (supabase && tableConfig?.widgetMetricConfig) {
+      clearTimeout(wmcTimers.current[tableName])
+      wmcTimers.current[tableName] = setTimeout(() => {
         lastPersistTs.current[tableName] = Date.now()
         supabase
           .from('column_configs')
           .upsert({
             table_name: tableName,
-            config: latestRef.current[tableName],
+            config: { widgetMetricConfig: tableConfig.widgetMetricConfig },
             updated_at: new Date().toISOString(),
           }, { onConflict: 'table_name' })
           .then(({ error }) => {
-            if (error) console.warn('[useColumnConfig] DB 저장 실패:', error.message)
+            if (error) console.warn('[useColumnConfig] widgetMetricConfig 저장 실패:', error.message)
           })
-      }, SAVE_DEBOUNCE_MS)
+      }, WMC_SAVE_DEBOUNCE_MS)
     }
   }, [])
 
   return {
-    columnConfig,       // 전체 맵: { tableName: { columns, dimensionColumns, computed, displayName } }
+    columnConfig,
     getColumnConfig,
     setColumnConfig,
+    loading,
   }
 }
