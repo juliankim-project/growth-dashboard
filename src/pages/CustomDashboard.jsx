@@ -7,7 +7,7 @@ import {
   useConfig,
 } from '../store/useConfig'
 import { useColumnConfig } from '../store/useColumnConfig'
-import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
+import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, buildWidgetMetrics, buildWidgetGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
@@ -320,13 +320,13 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
   )
   const [filters, setFilters] = useState(widget.config.filters || {})
 
-  /* 테이블 기준 동적 메트릭/그룹바이 */
+  /* 테이블 기준 동적 메트릭/그룹바이 (widgetMetricConfig 반영) */
   const dynMetrics = useMemo(
-    () => buildTableMetrics(selTable, columnConfig),
+    () => buildWidgetMetrics(selTable, columnConfig),
     [selTable, columnConfig]
   )
   const dynGroupBy = useMemo(
-    () => buildTableGroupBy(selTable, columnConfig),
+    () => buildWidgetGroupBy(selTable, columnConfig),
     [selTable, columnConfig]
   )
 
@@ -1379,13 +1379,13 @@ function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', f
 
   const upd = (k, v) => setWConfig(c => ({ ...c, [k]: v }))
 
-  /* 선택한 테이블 기준 메트릭/그룹바이 동적 생성 */
+  /* 선택한 테이블 기준 메트릭/그룹바이 동적 생성 (widgetMetricConfig 반영) */
   const dynMetrics = useMemo(
-    () => buildTableMetrics(selTable, columnConfig),
+    () => buildWidgetMetrics(selTable, columnConfig),
     [selTable, columnConfig]
   )
   const dynGroupBy = useMemo(
-    () => buildTableGroupBy(selTable, columnConfig),
+    () => buildWidgetGroupBy(selTable, columnConfig),
     [selTable, columnConfig]
   )
 

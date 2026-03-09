@@ -12,6 +12,7 @@ import ErrorBoundary from './components/UI/ErrorBoundary'
 import DataUpload from './pages/DataStudio'
 import DataTables from './pages/datastudio/Tables'
 import DataHistory from './pages/datastudio/History'
+import WidgetConfig from './pages/datastudio/WidgetConfig'
 import SettingsGeneral from './pages/settings/General'
 import TabSettings from './pages/settings/TabSettings'
 import SettingsTeam from './pages/settings/Team'
@@ -27,6 +28,7 @@ import ComingSoon from './pages/ComingSoon'
 const FIXED_MAP = {
   'datastudio.upload': DataUpload,
   'datastudio.tables': DataTables,
+  'datastudio.widgetconfig': WidgetConfig,
   'datastudio.history': DataHistory,
   'settings.general': SettingsGeneral,
   'settings.team': SettingsTeam,

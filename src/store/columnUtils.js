@@ -152,6 +152,39 @@ export function buildTableGroupBy(tableName, columnConfig) {
 }
 
 /* ═══════════════════════════════════════════
+   buildWidgetMetrics / buildWidgetGroupBy
+   — widgetMetricConfig 적용 (표시순서 · 표시/숨김 필터)
+   — config 없으면 buildTableMetrics 그대로 반환 (하위 호환)
+   ═══════════════════════════════════════════ */
+function applyWidgetFilter(all, wmCfg) {
+  if (!wmCfg?.enabled || !wmCfg.items?.length) return all
+  const orderMap = new Map()
+  wmCfg.items.forEach((item, idx) => orderMap.set(item.id, { order: idx, visible: item.visible !== false }))
+  const configured = []
+  const unconfigured = []
+  all.forEach(m => {
+    const entry = orderMap.get(m.id)
+    if (entry) {
+      if (entry.visible) configured.push({ item: m, order: entry.order })
+    } else {
+      unconfigured.push(m)
+    }
+  })
+  configured.sort((a, b) => a.order - b.order)
+  return [...configured.map(c => c.item), ...unconfigured]
+}
+
+export function buildWidgetMetrics(tableName, columnConfig) {
+  const all = buildTableMetrics(tableName, columnConfig)
+  return applyWidgetFilter(all, columnConfig?.[tableName]?.widgetMetricConfig?.metrics)
+}
+
+export function buildWidgetGroupBy(tableName, columnConfig) {
+  const all = buildTableGroupBy(tableName, columnConfig)
+  return applyWidgetFilter(all, columnConfig?.[tableName]?.widgetMetricConfig?.groupBy)
+}
+
+/* ═══════════════════════════════════════════
    applyComputedColumns — 계산 컬럼 값을 각 row에 추가
    terms: [{ col, sign, value?, type?, children? }]
    type === 'group' → 괄호 그룹 (재귀 평가)
