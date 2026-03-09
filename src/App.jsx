@@ -10,9 +10,8 @@ import ErrorBoundary from './components/UI/ErrorBoundary'
 
 /* 항상 고정 UI (DataStudio / Settings) */
 import DataUpload from './pages/DataStudio'
-import DataTables from './pages/datastudio/Tables'
+import UnifiedColumnConfig from './pages/datastudio/UnifiedColumnConfig'
 import DataHistory from './pages/datastudio/History'
-import WidgetConfig from './pages/datastudio/WidgetConfig'
 import DataTemplates from './pages/datastudio/Templates'
 import SettingsGeneral from './pages/settings/General'
 import TabSettings from './pages/settings/TabSettings'
@@ -28,8 +27,7 @@ import ComingSoon from './pages/ComingSoon'
 ────────────────────────────────────────────── */
 const FIXED_MAP = {
   'datastudio.upload': DataUpload,
-  'datastudio.tables': DataTables,
-  'datastudio.widgetconfig': WidgetConfig,
+  'datastudio.tables': UnifiedColumnConfig,
   'datastudio.templates': DataTemplates,
   'datastudio.history': DataHistory,
   'settings.general': SettingsGeneral,
@@ -63,6 +61,13 @@ function Dashboard({ dark, setDark, user, signOut }) {
     const fallbackSub = visibleBuiltin?.id ?? customSubs[0]?.id ?? 'dashboard'
     setNav({ section: nav.section, sub: fallbackSub, l3sub: null })
   }, [nav, cfg.config.deletedBuiltinSubs])
+
+  /* ── nav 가드: 구 widgetconfig → tables 리다이렉트 ── */
+  useEffect(() => {
+    if (nav.section === 'datastudio' && nav.sub === 'widgetconfig') {
+      setNav(n => ({ ...n, sub: 'tables', l3sub: null }))
+    }
+  }, [nav.section, nav.sub])
 
   /* ── nav 가드: L3 서서브 자동 선택 / 유효성 검사 ── */
   useEffect(() => {

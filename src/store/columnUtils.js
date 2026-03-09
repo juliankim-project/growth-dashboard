@@ -4,6 +4,8 @@
  * 모든 테이블 → columnConfig 기반 동적 생성 (Single Source of Truth)
  */
 
+export const TABLES = ['marketing_data', 'product_revenue_raw']
+
 /* ── 컬럼명 → 표시명 변환 (snake_case → Readable) ── */
 function prettifyColumnName(col) {
   if (!col) return col

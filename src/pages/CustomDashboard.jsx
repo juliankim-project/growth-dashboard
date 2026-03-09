@@ -7,9 +7,8 @@ import {
   useConfig,
 } from '../store/useConfig'
 import { useColumnConfig } from '../store/useColumnConfig'
-import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, buildWidgetMetrics, buildWidgetGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
+import { TABLES as DB_TABLES, applyComputedColumns, buildTableMetrics, buildTableGroupBy, buildWidgetMetrics, buildWidgetGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
 import { DASHBOARD_TEMPLATES, generateDashboard } from '../store/dashboardTemplates'
-import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
