@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, GripVertical } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -8,6 +8,7 @@ import {
 } from '../store/useConfig'
 import { useColumnConfig } from '../store/useColumnConfig'
 import { applyComputedColumns, buildTableMetrics, buildTableGroupBy, buildWidgetMetrics, buildWidgetGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
+import { DASHBOARD_TEMPLATES, generateDashboard } from '../store/dashboardTemplates'
 import { TABLES as DB_TABLES } from './datastudio/Tables'
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
@@ -967,6 +968,114 @@ function TemplateSelector({ current, onSelect, dark, onClose }) {
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════
+   대시보드 템플릿 불러오기 모달
+══════════════════════════════════════════ */
+const TPL_TYPE_COLORS = {
+  kpi:        { bg: 'bg-indigo-500', label: 'KPI' },
+  timeseries: { bg: 'bg-emerald-500', label: '시계열' },
+  bar:        { bg: 'bg-amber-500', label: '바' },
+  donut:      { bg: 'bg-rose-500', label: '도넛' },
+  table:      { bg: 'bg-sky-500', label: '테이블' },
+}
+
+function TplMiniPreview({ slotDefs, dark }) {
+  const rows = []
+  let currentRow = [], rowWidth = 0
+  slotDefs.forEach(def => {
+    if (rowWidth + def.widthPct > 101) { rows.push(currentRow); currentRow = [def]; rowWidth = def.widthPct }
+    else { currentRow.push(def); rowWidth += def.widthPct }
+  })
+  if (currentRow.length > 0) rows.push(currentRow)
+
+  return (
+    <div className={`rounded-lg p-2 flex flex-col gap-1 ${dark ? 'bg-[#0D0F18]' : 'bg-slate-50'}`}>
+      {rows.map((row, ri) => (
+        <div key={ri} className="flex gap-1">
+          {row.map((def, ci) => {
+            const tc = TPL_TYPE_COLORS[def.type] || TPL_TYPE_COLORS.kpi
+            return (
+              <div key={ci}
+                style={{ width: `${def.widthPct}%` }}
+                className={`${tc.bg} rounded-sm flex items-center justify-center
+                  ${def.type === 'kpi' ? 'h-5' : 'h-8'} opacity-80`}>
+                <span className="text-white text-[7px] font-bold">{tc.label}</span>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TemplatePickerModal({ dark, onSelect, onClose }) {
+  const [confirm, setConfirm] = useState(null)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        className={`rounded-2xl border w-full max-w-2xl p-6
+          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 불러오기</p>
+            <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+              선택한 템플릿으로 현재 탭의 위젯을 교체합니다
+            </p>
+          </div>
+          <button onClick={onClose}
+            className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-600 hover:bg-slate-100'}`}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {DASHBOARD_TEMPLATES.map(tpl => (
+            <button key={tpl.id}
+              onClick={() => setConfirm(tpl)}
+              className={`p-4 rounded-xl border text-left transition-all
+                ${confirm?.id === tpl.id
+                  ? 'border-indigo-500 bg-indigo-500/10'
+                  : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">{tpl.icon}</span>
+                <div>
+                  <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
+                  <p className={`text-[10px] mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>
+                </div>
+              </div>
+              <TplMiniPreview slotDefs={tpl.slotDefs} dark={dark} />
+            </button>
+          ))}
+        </div>
+
+        {confirm && (
+          <div className={`mt-4 flex items-center justify-between p-3 rounded-lg border
+            ${dark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50'}`}>
+            <p className={`text-xs ${dark ? 'text-amber-400' : 'text-amber-700'}`}>
+              ⚠️ 현재 위젯이 "{confirm.name}" 템플릿으로 교체됩니다
+            </p>
+            <div className="flex gap-2 ml-3 shrink-0">
+              <button onClick={() => setConfirm(null)}
+                className={`text-xs px-3 py-1.5 rounded-lg border
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
+                취소
+              </button>
+              <button onClick={() => { onSelect(confirm); onClose() }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+                적용
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -2124,6 +2233,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   const [saved, setSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const tabBarAddRef = useRef(null)
 
   /* 탭 전환 → 대시보드 로드 + 편집 상태 초기화 */
@@ -2235,14 +2345,36 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
               </button>
             </>
           ) : (
-            <button onClick={() => setEditMode(true)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-              <Settings2 size={12} /> 대시보드 편집
-            </button>
+            <>
+              <button onClick={() => setShowTemplatePicker(true)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                <LayoutTemplate size={12} /> 템플릿 불러오기
+              </button>
+              <button onClick={() => setEditMode(true)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                <Settings2 size={12} /> 대시보드 편집
+              </button>
+            </>
           )
         ) : null}
       />
+
+      {/* ── 템플릿 불러오기 모달 ── */}
+      {showTemplatePicker && (
+        <TemplatePickerModal
+          dark={dark}
+          onClose={() => setShowTemplatePicker(false)}
+          onSelect={(tpl) => {
+            const newDash = generateDashboard(tpl, defaultTable, columnConfig)
+            setDashboard(newDash)
+            if (activeTab) tabsConfig?.saveDashboard(newDash, activeTab.id)
+            setSaved(true)
+            setTimeout(() => setSaved(false), 2000)
+          }}
+        />
+      )}
 
       {/* ── 컨텐츠 ── */}
       {activeTab ? (

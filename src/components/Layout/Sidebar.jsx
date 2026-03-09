@@ -43,6 +43,7 @@ export const DEFAULT_SECTIONS = [
       { id:'upload',  label:'CSV 업로드',  icon:'Upload'  },
       { id:'tables',       label:'테이블 관리', icon:'Table2'   },
       { id:'widgetconfig', label:'위젯 관리',   icon:'Sliders'  },
+      { id:'templates',    label:'위젯 템플릿', icon:'LayoutTemplate' },
       { id:'history',      label:'업로드 기록', icon:'History'  },
     ]
   },

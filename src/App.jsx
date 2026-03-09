@@ -13,6 +13,7 @@ import DataUpload from './pages/DataStudio'
 import DataTables from './pages/datastudio/Tables'
 import DataHistory from './pages/datastudio/History'
 import WidgetConfig from './pages/datastudio/WidgetConfig'
+import DataTemplates from './pages/datastudio/Templates'
 import SettingsGeneral from './pages/settings/General'
 import TabSettings from './pages/settings/TabSettings'
 import SettingsTeam from './pages/settings/Team'
@@ -29,6 +30,7 @@ const FIXED_MAP = {
   'datastudio.upload': DataUpload,
   'datastudio.tables': DataTables,
   'datastudio.widgetconfig': WidgetConfig,
+  'datastudio.templates': DataTemplates,
   'datastudio.history': DataHistory,
   'settings.general': SettingsGeneral,
   'settings.team': SettingsTeam,
