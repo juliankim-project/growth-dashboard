@@ -607,9 +607,9 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       ...clipboard,
       id: `w_${Date.now()}_paste`,
       config: { ...clipboard.config },
-      layout: { ...srcLayout, x: 0, y: Infinity, minW: srcLayout.minW ?? 1, minH: srcLayout.minH ?? 1 },
+      layout: { ...srcLayout, x: 0, y: 0, minW: srcLayout.minW ?? 1, minH: srcLayout.minH ?? 1 },
     }
-    setDashboard({ ...norm, slots: [...slots, clone] })
+    setDashboard({ ...norm, slots: [clone, ...slots] })
   }
 
   const handleWidgetSave = (slotId, widget) => {
