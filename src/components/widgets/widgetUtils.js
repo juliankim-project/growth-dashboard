@@ -79,6 +79,7 @@ export function fmtMetric(metricId, value, mList) {
   if (m.fmt === 'currency') return fmtKRW(value)
   if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
   if (m.fmt === 'pct')      return value.toFixed(1) + '%'
+  if (m.agg === 'avg')      return (value == null || isNaN(value)) ? '—' : value.toFixed(2)
   return fmtNum(value)
 }
 
@@ -87,12 +88,11 @@ export function fmtAxis(value, metricId, mList) {
   if (value == null || isNaN(value)) return '—'
   const m = mList?.find(x => x.id === metricId)
   if (!m) return Math.round(value).toLocaleString()
-  switch (m.fmt) {
-    case 'currency': return Math.round(value).toLocaleString() + '원'
-    case 'roas':     return Math.round(value * 100).toLocaleString() + '%'
-    case 'pct':      return value.toFixed(1) + '%'
-    default:         return Math.round(value).toLocaleString()
-  }
+  if (m.fmt === 'currency') return Math.round(value).toLocaleString() + '원'
+  if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
+  if (m.fmt === 'pct')      return value.toFixed(1) + '%'
+  if (m.agg === 'avg')      return value.toFixed(2)
+  return Math.round(value).toLocaleString()
 }
 
 /* ─── 파생지표 계산 (그룹/일별 공통) ─── */

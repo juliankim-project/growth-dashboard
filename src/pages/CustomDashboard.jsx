@@ -81,17 +81,17 @@ function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, fil
   )
 
   return (
-    <div className="relative h-full">
+    <div className="relative h-full overflow-hidden rounded-xl">
       {editMode && (
         <>
           {/* 드래그 핸들 */}
-          <div className={`drag-handle absolute top-1.5 left-1/2 -translate-x-1/2 z-20 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
+          <div className={`drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
             ${dark ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]' : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}>
             <GripVertical size={11} />
           </div>
           {/* 삭제 */}
           <button onClick={() => onDelete(slot.id)}
-            className="absolute -top-2 -right-2 z-20 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg flex items-center justify-center text-xs leading-none font-bold transition-transform hover:scale-110">×</button>
+            className="absolute top-1 right-1 z-20 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg flex items-center justify-center text-xs leading-none font-bold transition-transform hover:scale-110">×</button>
           {/* 편집 */}
           <button onClick={() => onEdit(slot.id)}
             className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
@@ -99,7 +99,7 @@ function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, fil
           </button>
         </>
       )}
-      <div className="h-full overflow-hidden rounded-xl">
+      <div className="h-full">
         {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
           undefined, widgetDateCol)}
       </div>
