@@ -38,11 +38,19 @@ export function calcMetric(data, metricId, mList) {
   /* COUNT(*) */
   if (m._countType) return data.length
 
-  /* 비율 계산컬럼 — SUM(분자) / SUM(분모) */
+  /* 비율 계산컬럼 — SUM(분자) / SUM(분모) 또는 COUNT(DISTINCT) 지원 */
   if (m._ratioTerms) {
     const { num, den } = m._ratioTerms
-    const denVal = sumField(data, den)
-    return denVal > 0 ? sumField(data, num) / denVal : 0
+    const denM = mList?.find(x => x.id === den)
+    const numM = mList?.find(x => x.id === num)
+    /* 분모/분자가 count_distinct면 Set 기반 유니크 카운트, 아니면 SUM */
+    const denVal = (denM?._countDistinct && denM._distinctCol)
+      ? new Set(data.map(r => r[denM._distinctCol]).filter(v => v != null && v !== '')).size
+      : sumField(data, den)
+    const numVal = (numM?._countDistinct && numM._distinctCol)
+      ? new Set(data.map(r => r[numM._distinctCol]).filter(v => v != null && v !== '')).size
+      : sumField(data, num)
+    return denVal > 0 ? numVal / denVal : 0
   }
 
   /* 동적 테이블 메트릭 (계산 컬럼 포함) — agg 타입 반영 */
