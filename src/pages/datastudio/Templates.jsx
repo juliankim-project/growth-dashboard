@@ -3,10 +3,15 @@ import { DASHBOARD_TEMPLATES } from '../../store/dashboardTemplates'
 /* ── 슬롯 타입별 색상 ── */
 const TYPE_COLORS = {
   kpi:        { bg: 'bg-indigo-500', label: 'KPI' },
-  timeseries: { bg: 'bg-emerald-500', label: '시계열' },
+  line:       { bg: 'bg-emerald-500', label: '라인' },
   bar:        { bg: 'bg-amber-500', label: '바' },
-  donut:      { bg: 'bg-rose-500', label: '도넛' },
+  pie:        { bg: 'bg-rose-500', label: '파이' },
   table:      { bg: 'bg-sky-500', label: '테이블' },
+  funnel:     { bg: 'bg-purple-500', label: '퍼널' },
+  comparison: { bg: 'bg-cyan-500', label: '비교' },
+  ranking:    { bg: 'bg-orange-500', label: '랭킹' },
+  alert:      { bg: 'bg-red-500', label: '알림' },
+  timeline:   { bg: 'bg-teal-500', label: '타임라인' },
 }
 
 /* ═══════════ 미니 레이아웃 프리뷰 ═══════════ */

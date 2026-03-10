@@ -235,15 +235,15 @@ export function sanitizeWidgetConfig(widgetType, config, tableName, columnConfig
   const next = { ...config }
   let changed = false
 
-  /* 단일 메트릭 (kpi, bar, donut) */
+  /* 단일 메트릭 (kpi, bar, pie, ranking) */
   if ('metric' in next) {
-    if (!validIds.has(next.metric)) {
+    if (next.metric && !validIds.has(next.metric)) {
       next.metric = first
       changed = true
     }
   }
 
-  /* 복수 메트릭 (timeseries, table) */
+  /* 복수 메트릭 (line, table, comparison, alert, timeline) */
   if (Array.isArray(next.metrics)) {
     const filtered = next.metrics.filter(mid => validIds.has(mid))
     if (filtered.length !== next.metrics.length) {
@@ -258,12 +258,6 @@ export function sanitizeWidgetConfig(widgetType, config, tableName, columnConfig
     changed = true
   }
 
-  /* 시뮬레이션/퍼널 등의 targetMetric */
-  if (next.targetMetric && !validIds.has(next.targetMetric)) {
-    next.targetMetric = first
-    changed = true
-  }
-
   /* 퍼널 stages 내 metric */
   if (Array.isArray(next.stages)) {
     const newStages = next.stages.map(s => {
@@ -274,6 +268,16 @@ export function sanitizeWidgetConfig(widgetType, config, tableName, columnConfig
       next.stages = newStages
       changed = true
     }
+  }
+
+  /* alert thresholds — 존재하지 않는 메트릭 키 제거 */
+  if (next.thresholds && typeof next.thresholds === 'object') {
+    const newTh = {}
+    let thChanged = false
+    for (const [k, v] of Object.entries(next.thresholds)) {
+      if (validIds.has(k)) { newTh[k] = v } else { thChanged = true }
+    }
+    if (thChanged) { next.thresholds = newTh; changed = true }
   }
 
   return changed ? next : config

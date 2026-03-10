@@ -263,3 +263,50 @@ export function dailyData(data, metrics, mList, dateColumn) {
 }
 
 export const CHART_COLORS = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#EC4899']
+
+/* ─── 기간 분할 (ComparisonWidget용) ─── */
+export function splitByPeriod(data, dateRange, dateColumn) {
+  if (!data || data.length === 0 || !dateRange) return { current: data || [], previous: [] }
+
+  const dateFields = dateColumn
+    ? [dateColumn]
+    : ['date', 'Event Date', 'reservation_date', 'check_in_date']
+
+  const getDate = (row) => {
+    for (const f of dateFields) { if (row[f]) return String(row[f]).slice(0, 10) }
+    return null
+  }
+
+  const start = new Date(dateRange.start)
+  const end = new Date(dateRange.end)
+  const periodMs = end.getTime() - start.getTime()
+  const prevStart = new Date(start.getTime() - periodMs - 86400000)
+  const prevEnd = new Date(start.getTime() - 86400000)
+
+  const current = []
+  const previous = []
+
+  data.forEach(row => {
+    const d = getDate(row)
+    if (!d) return
+    const dt = new Date(d)
+    if (dt >= start && dt <= end) current.push(row)
+    else if (dt >= prevStart && dt <= prevEnd) previous.push(row)
+  })
+
+  return { current, previous }
+}
+
+/* ─── 임계값 상태 판정 (AlertWidget용) ─── */
+export function getThresholdStatus(value, threshold) {
+  if (!threshold) return 'neutral'
+  const { good, warning, inverse } = threshold
+  if (inverse) {
+    if (value <= good) return 'good'
+    if (value <= warning) return 'warning'
+    return 'danger'
+  }
+  if (value >= good) return 'good'
+  if (value >= warning) return 'warning'
+  return 'danger'
+}

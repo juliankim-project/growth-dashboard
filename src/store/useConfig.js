@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const STORAGE_KEY = 'growth_config_v4'   // v4: 빌트인 숨기기 + 서브 데이터소스
+const STORAGE_KEY = 'growth_config_v5'   // v5: 위젯 10종 재설계 (timeseries→line, donut→pie 등)
 const DB_ROW_ID = 'default'              // Supabase dashboard_config 행 ID
 const SAVE_DEBOUNCE_MS = 500             // Supabase 저장 디바운스
 
@@ -36,48 +36,48 @@ export const DEFAULT_CONFIG = {
 export const TEMPLATES = {
   A: {
     id: 'A', name: 'Template A',
-    desc: 'KPI 4개 · 시계열 · 바차트 + 테이블',
+    desc: 'KPI 4개 · 라인 · 바차트 + 테이블',
     preview: '▦▦▦▦ / ────── / ▬▬ ▤▤',
     slots: [
       { id: 'a1', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'a2', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'a3', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'a4', defaultType: 'kpi', span: 'col-span-1', row: 0 },
-      { id: 'a5', defaultType: 'timeseries', span: 'col-span-4', row: 1 },
+      { id: 'a5', defaultType: 'line', span: 'col-span-4', row: 1 },
       { id: 'a6', defaultType: 'bar', span: 'col-span-2', row: 2 },
       { id: 'a7', defaultType: 'table', span: 'col-span-2', row: 2 },
     ],
   },
   B: {
     id: 'B', name: 'Template B',
-    desc: 'KPI 3개 · 도넛 · 시계열',
+    desc: 'KPI 3개 · 파이 · 라인',
     preview: '▦▦▦◎ / ────────',
     slots: [
       { id: 'b1', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'b2', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'b3', defaultType: 'kpi', span: 'col-span-1', row: 0 },
-      { id: 'b4', defaultType: 'donut', span: 'col-span-1', row: 0 },
-      { id: 'b5', defaultType: 'timeseries', span: 'col-span-4', row: 1 },
+      { id: 'b4', defaultType: 'pie', span: 'col-span-1', row: 0 },
+      { id: 'b5', defaultType: 'line', span: 'col-span-4', row: 1 },
       { id: 'b6', defaultType: 'bar', span: 'col-span-4', row: 2 },
     ],
   },
   C: {
     id: 'C', name: 'Template C',
-    desc: 'KPI 4개 · 시계열 + 도넛 · 테이블',
+    desc: 'KPI 4개 · 라인 + 파이 · 테이블',
     preview: '▦▦▦▦ / ──◎ / ▤▤▤',
     slots: [
       { id: 'c1', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'c2', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'c3', defaultType: 'kpi', span: 'col-span-1', row: 0 },
       { id: 'c4', defaultType: 'kpi', span: 'col-span-1', row: 0 },
-      { id: 'c5', defaultType: 'timeseries', span: 'col-span-3', row: 1 },
-      { id: 'c6', defaultType: 'donut', span: 'col-span-1', row: 1 },
+      { id: 'c5', defaultType: 'line', span: 'col-span-3', row: 1 },
+      { id: 'c6', defaultType: 'pie', span: 'col-span-1', row: 1 },
       { id: 'c7', defaultType: 'table', span: 'col-span-4', row: 2 },
     ],
   },
   D: {
     id: 'D', name: 'Template D',
-    desc: '미니멀 — KPI 6개 · 시계열',
+    desc: '미니멀 — KPI 6개 · 라인',
     preview: '▦▦▦ / ▦▦▦ / ──────',
     slots: [
       { id: 'd1', defaultType: 'kpi', span: 'col-span-1', row: 0 },
@@ -88,115 +88,26 @@ export const TEMPLATES = {
       { id: 'd6', defaultType: 'kpi', span: 'col-span-1', row: 1 },
       { id: 'd7', defaultType: 'kpi', span: 'col-span-1', row: 1 },
       { id: 'd8', defaultType: 'kpi', span: 'col-span-1', row: 1 },
-      { id: 'd9', defaultType: 'timeseries', span: 'col-span-4', row: 2 },
+      { id: 'd9', defaultType: 'line', span: 'col-span-4', row: 2 },
     ],
   },
 }
 
 /* ──────────────────────────────────────────
-   위젯 타입
+   위젯 타입 — 10종 플랫 리스트
 ─────────────────────────────────────────── */
 export const WIDGET_TYPES = [
-  /* 리포트 */
-  { id: 'kpi', label: 'KPI 카드', icon: '💳' },
-  { id: 'timeseries', label: '시계열 차트', icon: '📈' },
-  { id: 'bar', label: '바 차트', icon: '📊' },
-  { id: 'donut', label: '도넛 차트', icon: '🍩' },
-  { id: 'table', label: '데이터 테이블', icon: '📋' },
-  /* 시뮬레이션 */
-  { id: 'sim_budget', label: '예산 배분', icon: '💰' },
-  { id: 'sim_goal', label: '목표 역산', icon: '🎯' },
-  { id: 'sim_scenario', label: '시나리오 비교', icon: '⚖️' },
-  /* 퍼널 */
-  { id: 'funnel_chart', label: '전환 퍼널', icon: '🔻' },
-  { id: 'funnel_breakdown', label: '퍼널 브레이크다운', icon: '📊' },
-  /* 코호트 */
-  { id: 'cohort_heatmap', label: '리텐션 히트맵', icon: '🟩' },
-  { id: 'cohort_trend', label: '코호트 트렌드', icon: '📉' },
-  /* 칸반 */
-  { id: 'kanban_board', label: '칸반 보드', icon: '📋' },
+  { id: 'kpi',        label: 'KPI 카드',      icon: '💳', metricMode: 'single',  needsGroup: false },
+  { id: 'line',       label: '라인 차트',      icon: '📈', metricMode: 'multi',   needsGroup: false },
+  { id: 'bar',        label: '바 차트',        icon: '📊', metricMode: 'single',  needsGroup: true  },
+  { id: 'table',      label: '데이터 테이블',  icon: '📋', metricMode: 'multi',   needsGroup: true  },
+  { id: 'funnel',     label: '전환 퍼널',      icon: '🔻', metricMode: 'stages',  needsGroup: false },
+  { id: 'pie',        label: '파이/도넛',      icon: '🍩', metricMode: 'single',  needsGroup: true  },
+  { id: 'comparison', label: '비교 분석',      icon: '⚖️', metricMode: 'multi',   needsGroup: false },
+  { id: 'ranking',    label: '랭킹',           icon: '🏆', metricMode: 'single',  needsGroup: true  },
+  { id: 'alert',      label: '알림 모니터',    icon: '🚨', metricMode: 'multi',   needsGroup: false },
+  { id: 'timeline',   label: '타임라인',       icon: '⏱️', metricMode: 'multi',   needsGroup: false },
 ]
-
-/* ──────────────────────────────────────────
-   서브탭 타입 (L2 용도별 카테고리)
-─────────────────────────────────────────── */
-export const SUB_TYPES = {
-  report: {
-    id: 'report',
-    label: '리포트',
-    icon: '📊',
-    desc: 'KPI, 차트, 테이블 기반 리포트',
-    colorClasses: {
-      badge:     'bg-indigo-500/15 text-indigo-400',
-      badgeLight:'bg-indigo-50 text-indigo-600',
-      dot:       'bg-indigo-400',
-      btnActive: 'bg-indigo-600 text-white',
-      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-indigo-500/10',
-      btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-indigo-50',
-    },
-    widgetTypes: ['kpi', 'timeseries', 'bar', 'donut', 'table'],
-  },
-  simulation: {
-    id: 'simulation',
-    label: '시뮬레이션',
-    icon: '🎯',
-    desc: '목표 설정, 예산 배분, 시나리오 비교',
-    colorClasses: {
-      badge:     'bg-amber-500/15 text-amber-400',
-      badgeLight:'bg-amber-50 text-amber-600',
-      dot:       'bg-amber-400',
-      btnActive: 'bg-amber-600 text-white',
-      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-amber-500/10',
-      btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-amber-50',
-    },
-    widgetTypes: ['sim_budget', 'sim_goal', 'sim_scenario'],
-  },
-  funnel: {
-    id: 'funnel',
-    label: '퍼널',
-    icon: '🔻',
-    desc: '단계별 전환율 퍼널 시각화',
-    colorClasses: {
-      badge:     'bg-emerald-500/15 text-emerald-400',
-      badgeLight:'bg-emerald-50 text-emerald-600',
-      dot:       'bg-emerald-400',
-      btnActive: 'bg-emerald-600 text-white',
-      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-emerald-500/10',
-      btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-emerald-50',
-    },
-    widgetTypes: ['funnel_chart', 'funnel_breakdown'],
-  },
-  cohort: {
-    id: 'cohort',
-    label: '코호트',
-    icon: '🔷',
-    desc: '코호트/리텐션 분석',
-    colorClasses: {
-      badge:     'bg-violet-500/15 text-violet-400',
-      badgeLight:'bg-violet-50 text-violet-600',
-      dot:       'bg-violet-400',
-      btnActive: 'bg-violet-600 text-white',
-      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-violet-500/10',
-      btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-violet-50',
-    },
-    widgetTypes: ['cohort_heatmap', 'cohort_trend'],
-  },
-  kanban: {
-    id: 'kanban',
-    label: '칸반',
-    icon: '📋',
-    desc: '캠페인/태스크 칸반 보드',
-    colorClasses: {
-      badge:     'bg-rose-500/15 text-rose-400',
-      badgeLight:'bg-rose-50 text-rose-600',
-      dot:       'bg-rose-400',
-      btnActive: 'bg-rose-600 text-white',
-      btnIdle:   'bg-[#1A1D27] text-slate-400 hover:bg-rose-500/10',
-      btnIdleLight: 'bg-slate-50 text-slate-700 hover:bg-rose-50',
-    },
-    widgetTypes: ['kanban_board'],
-  },
-}
 
 /* ── 중위탭 색깔 옵션 (순수 장식용) ── */
 export const SUB_COLOR_OPTIONS = [
@@ -210,79 +121,23 @@ export const SUB_COLOR_OPTIONS = [
 ]
 
 /* ──────────────────────────────────────────
-   지표 목록 (레거시 — 하위호환용, 신규 코드는 columnConfig 사용)
-   group: 'metric' = 원시 지표 / 'rate' = 단가·비율 파생지표
-─────────────────────────────────────────── */
-export const METRICS = [
-  /* ── 지표 (원시) ── */
-  { id: 'cost', label: '광고비', field: 'spend', fmt: 'currency', group: 'metric' },
-  { id: 'impr', label: '노출', field: 'impressions', fmt: 'number', group: 'metric' },
-  { id: 'clicks', label: '클릭', field: 'clicks', fmt: 'number', group: 'metric' },
-  { id: 'view_content', label: '상세페이지 조회', field: 'view_content', fmt: 'number', group: 'metric' },
-  { id: 'signup', label: '회원가입', field: 'signups', fmt: 'number', group: 'metric' },
-  { id: 'conv', label: '구매', field: 'purchases', fmt: 'number', group: 'metric' },
-  { id: 'revenue', label: '매출', field: 'revenue', fmt: 'currency', group: 'metric' },
-  { id: 'installs', label: '인스톨', field: 'installs', fmt: 'number', group: 'metric' },
-  /* ── 단가 / 비율 (파생) ── */
-  { id: 'cpm', label: 'CPM', field: null, fmt: 'currency', group: 'rate', derived: true },
-  { id: 'cpc', label: 'CPC', field: 'cpc', fmt: 'currency', group: 'rate' },
-  { id: 'ctr', label: 'CTR', field: null, fmt: 'pct', group: 'rate', derived: true },
-  { id: 'cpa_view', label: 'CPA(조회)', field: null, fmt: 'currency', group: 'rate', derived: true },
-  { id: 'cac', label: 'CAC', field: null, fmt: 'currency', group: 'rate', derived: true },
-  { id: 'cps', label: 'CPS', field: null, fmt: 'currency', group: 'rate', derived: true },
-  { id: 'roas', label: 'ROAS', field: null, fmt: 'roas', group: 'rate', derived: true },
-]
-
-/* 파생지표 계산에 필요한 기반 지표 ID */
-export const DERIVED_BASE_METRICS = ['cost', 'impr', 'clicks', 'view_content', 'signup', 'conv', 'revenue']
-
-/* GROUP_BY: DB 컬럼명 snake_case 사용 (레거시) */
-export const GROUP_BY = [
-  { id: 'channel', label: '채널' },
-  { id: 'campaign', label: '캠페인' },
-  { id: 'ad_group', label: '광고그룹' },
-  { id: 'ad_creative', label: '크리에이티브' },
-]
-
-/* ──────────────────────────────────────────
-   columnConfig 시드는 column_definitions DB 테이블로 이동됨
-   → useColumnConfig.js 에서 DB 조회 후 변환
-─────────────────────────────────────────── */
-
-/* ──────────────────────────────────────────
-   기본 위젯 config
+   기본 위젯 config — 10종
 ─────────────────────────────────────────── */
 export const DEFAULT_WIDGET_CONFIG = {
-  kpi: { metric: 'cost', label: '' },
-  timeseries: { metrics: ['cost', 'revenue'], title: '일별 트렌드' },
-  bar: { metric: 'cost', groupBy: 'channel', title: '채널별 성과' },
-  donut: { metric: 'cost', groupBy: 'channel', title: '구성 비율' },
-  table: { metrics: ['cost', 'installs', 'conv', 'revenue'], groupBy: 'channel', title: '성과 테이블' },
-  /* 시뮬레이션 */
-  sim_budget:   { totalBudget: 1000000, targetMetric: 'revenue', allocations: {}, title: '예산 배분 시뮬레이션' },
-  sim_goal:     { targetMetric: 'revenue', targetValue: 10000000, title: '목표 역산' },
-  sim_scenario: { totalBudget: 1000000, targetMetric: 'revenue', scenarios: [], title: '시나리오 비교' },
-  /* 퍼널 */
-  funnel_chart: { stages: [
-    { id: 's1', label: '노출', metric: 'impr' },
-    { id: 's2', label: '클릭', metric: 'clicks' },
-    { id: 's3', label: '가입', metric: 'signup' },
-    { id: 's4', label: '구매', metric: 'conv' },
+  kpi:        { metric: '', label: '' },
+  line:       { metrics: [], title: '일별 트렌드' },
+  bar:        { metric: '', groupBy: '', title: '채널별 성과' },
+  table:      { metrics: [], groupBy: '', title: '성과 테이블' },
+  funnel:     { stages: [
+    { id: 's1', label: '단계1', metric: '' },
+    { id: 's2', label: '단계2', metric: '' },
+    { id: 's3', label: '단계3', metric: '' },
   ], title: '전환 퍼널' },
-  funnel_breakdown: { stages: [
-    { id: 's1', label: '노출', metric: 'impr' },
-    { id: 's2', label: '클릭', metric: 'clicks' },
-    { id: 's3', label: '구매', metric: 'conv' },
-  ], groupBy: 'channel', title: '퍼널 브레이크다운' },
-  /* 코호트 */
-  cohort_heatmap: { granularity: 'week', cohortEvent: 'signup', retentionEvent: 'conv', periods: 8, title: '리텐션 히트맵' },
-  cohort_trend:   { granularity: 'week', cohortEvent: 'signup', retentionEvent: 'conv', periods: 8, title: '코호트 트렌드' },
-  /* 칸반 */
-  kanban_board: { columns: [
-    { id: 'c1', title: 'To Do', cards: [] },
-    { id: 'c2', title: 'In Progress', cards: [] },
-    { id: 'c3', title: 'Done', cards: [] },
-  ], title: '칸반 보드' },
+  pie:        { metric: '', groupBy: '', title: '구성 비율' },
+  comparison: { metrics: [], compareMode: 'period', title: '기간 비교' },
+  ranking:    { metric: '', groupBy: '', topN: 10, sortDir: 'desc', title: '랭킹' },
+  alert:      { metrics: [], thresholds: {}, title: '알림 모니터' },
+  timeline:   { metrics: [], title: '트렌드 요약' },
 }
 
 /* ──────────────────────────────────────────
@@ -300,6 +155,13 @@ export function makeDashboard() {
 const OLD_TABLE_NAMES = new Set([
   'marketing_perf', 'meta_perf', 'perf_meta',
   'perf_google', 'perf_naver_pl', 'perf_naver_brand',
+])
+
+/* 위젯 타입 리네임 맵 */
+const TYPE_RENAME = { timeseries: 'line', donut: 'pie', funnel_chart: 'funnel' }
+const REMOVED_TYPES = new Set([
+  'sim_budget', 'sim_goal', 'sim_scenario',
+  'funnel_breakdown', 'cohort_heatmap', 'cohort_trend', 'kanban_board',
 ])
 
 function migrateConfig(raw) {
@@ -321,7 +183,25 @@ function migrateConfig(raw) {
     if (changed) merged.subDataSources = newDS
   }
 
-  /* columnConfig는 useColumnConfig 훅으로 이전됨 — 여기서는 시딩/sanitize 안함 */
+  /* 대시보드 내 위젯 타입 마이그레이션: 리네임 + 삭제된 타입 제거 + table 프로퍼티 승격 */
+  if (merged.dashboards) {
+    Object.keys(merged.dashboards).forEach(dKey => {
+      const dash = merged.dashboards[dKey]
+      if (!dash?.slots) return
+      const newSlots = []
+      dash.slots.forEach(slot => {
+        if (REMOVED_TYPES.has(slot.type)) { changed = true; return }
+        const newType = TYPE_RENAME[slot.type] || slot.type
+        if (newType !== slot.type) changed = true
+        /* table 프로퍼티 승격: config._table → slot.table */
+        const table = slot.table || slot.config?._table || null
+        const cfg = { ...slot.config }
+        delete cfg._table
+        newSlots.push({ ...slot, type: newType, table, config: cfg })
+      })
+      if (changed) dash.slots = newSlots
+    })
+  }
 
   if (changed) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch { }

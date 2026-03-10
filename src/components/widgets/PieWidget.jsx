@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { groupData, fmtW, CHART_COLORS } from './widgetUtils'
 
-export default function DonutWidget({ data, config, dark, metrics: metricsProp }) {
+export default function PieWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', groupBy = 'Channel', title = '구성 비율' } = config
 
   const chartData = useMemo(() => {
