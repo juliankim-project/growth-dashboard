@@ -353,11 +353,12 @@ function normalizeDashboard(d) {
 /* ══════════════════════════════════════════
    위젯 그리드 (react-grid-layout)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables, addRef }) {
   const [editSlot, setEditSlot] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const { containerRef, width: containerWidth } = useContainerWidth()
 
+  useEffect(() => { if (addRef) addRef.current = () => setShowAdd(true) })
   useEffect(() => { setEditSlot(null); setShowAdd(false) }, [tabId])
   useEffect(() => { if (!editMode) { setEditSlot(null); setShowAdd(false) } }, [editMode])
 
@@ -527,6 +528,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
   const [editMode, setEditMode] = useState(false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const tabBarAddRef = useRef(null)
+  const gridAddRef = useRef(null)
 
   useEffect(() => {
     if (!activeTab) return
@@ -614,6 +616,11 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             </>
           ) : (
             <>
+              <button onClick={() => gridAddRef.current?.()}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                <Plus size={12} /> 카드 추가
+              </button>
               <button onClick={() => setShowTemplatePicker(true)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -654,6 +661,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             dataMap={rawDataMap} defaultTable={defaultTable}
             filterByDate={filterByDate} dark={dark} editMode={editMode}
             columnConfig={columnConfig} availableTables={availableTables}
+            addRef={gridAddRef}
           />
         </div>
       ) : (

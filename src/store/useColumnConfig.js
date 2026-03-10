@@ -68,6 +68,7 @@ function transformRows(defRows, metaRows) {
             id: row.column_key,
             name: row.label || row.column_key,
             aggType: row.agg?.toLowerCase() === 'count' ? 'count' : undefined,
+            aggRaw: row.agg?.toLowerCase() || undefined,
             terms: row.terms_json || [],
             fmt: row.fmt || 'number',
           })

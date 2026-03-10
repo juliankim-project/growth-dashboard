@@ -101,7 +101,7 @@ export function buildTableMetrics(tableName, columnConfig) {
       label: cc.name,
       field: cc.id,
       fmt: cc.fmt || 'number',
-      agg: _ratioTerms ? 'ratio' : (cc.aggType || 'sum'),
+      agg: _ratioTerms ? 'ratio' : (cc.aggRaw || cc.aggType || 'sum'),
       _countType: isCount,
       _ratioTerms,
       group: 'computed',
