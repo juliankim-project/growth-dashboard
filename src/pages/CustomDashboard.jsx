@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2 } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -65,7 +65,7 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 const RGL_COLS = 12
 const RGL_ROW_H = 80
 
-function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, filterByDate, columnConfig, dark }) {
+function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, filterByDate, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
@@ -103,6 +103,28 @@ function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, fil
         {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
           undefined, widgetDateCol)}
       </div>
+      {showSource && (() => {
+        const cfg = sanitizedConfig
+        const ml = (mid) => widgetMetrics.find(m => m.id === mid)?.label || mid
+        return (
+          <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px] rounded-xl
+            p-3 overflow-auto font-mono text-white/90 leading-relaxed pointer-events-none">
+            <p className="text-[9px] font-bold text-indigo-300 mb-1.5 uppercase tracking-wider">{slot.type}</p>
+            <div className="space-y-0.5 text-[9px]">
+              <p><span className="text-slate-400">table:</span> {widgetTable}</p>
+              {cfg.metric && <p><span className="text-slate-400">metric:</span> {ml(cfg.metric)}</p>}
+              {cfg.metrics?.length > 0 && <p><span className="text-slate-400">metrics:</span> {cfg.metrics.map(ml).join(', ')}</p>}
+              {cfg.groupBy && <p><span className="text-slate-400">groupBy:</span> {cfg.groupBy}</p>}
+              {cfg.stages && <p><span className="text-slate-400">stages:</span> {cfg.stages.map(s => ml(s.metric)).join(' → ')}</p>}
+              {cfg.topN && <p><span className="text-slate-400">topN:</span> {cfg.topN}</p>}
+              {cfg.compareMode && <p><span className="text-slate-400">compare:</span> {cfg.compareMode}</p>}
+              {cfg.axisMode === 'dual' && cfg.rightMetrics?.length > 0 && (
+                <p><span className="text-slate-400">rightY:</span> {cfg.rightMetrics.map(ml).join(', ')}</p>
+              )}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -363,7 +385,7 @@ function normalizeDashboard(d) {
 /* ══════════════════════════════════════════
    위젯 그리드 (react-grid-layout)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables, addRef }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables, addRef, showSource }) {
   const [editSlot, setEditSlot] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const { containerRef, width: containerWidth } = useContainerWidth()
@@ -468,7 +490,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
                   <GridCard slot={slot} editMode={editMode}
                     onEdit={setEditSlot} onDelete={handleDeleteSlot}
                     dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
-                    columnConfig={columnConfig} dark={dark} />
+                    columnConfig={columnConfig} dark={dark} showSource={showSource} />
                 </div>
               ))}
             </ResponsiveGridLayout>
@@ -544,6 +566,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
   const [saved, setSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [showSource, setShowSource] = useState(false)
   const tabBarAddRef = useRef(null)
   const gridAddRef = useRef(null)
 
@@ -633,6 +656,13 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             </>
           ) : (
             <>
+              <button onClick={() => setShowSource(s => !s)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${showSource
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                <Code2 size={12} /> 소스
+              </button>
               <button onClick={() => { gridAddRef.current?.({ enterEdit: true }); setEditMode(true) }}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -678,7 +708,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             dataMap={rawDataMap} defaultTable={defaultTable}
             filterByDate={filterByDate} dark={dark} editMode={editMode}
             columnConfig={columnConfig} availableTables={availableTables}
-            addRef={gridAddRef}
+            addRef={gridAddRef} showSource={showSource}
           />
         </div>
       ) : (
