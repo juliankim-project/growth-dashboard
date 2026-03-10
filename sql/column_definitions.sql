@@ -60,7 +60,7 @@ INSERT INTO column_definitions (table_name, column_key, category, label, fmt, ag
   ('marketing_data', 'spend',        'metric', '광고비',                   'currency', 'sum', 0),
   ('marketing_data', 'impressions',  'metric', '노출',                     'number',   'sum', 1),
   ('marketing_data', 'clicks',       'metric', '클릭',                     'number',   'sum', 2),
-  ('marketing_data', 'view_content', 'metric', '상세페이지조회(web+app)',   'number',   'sum', 3),
+  ('marketing_data', 'view_content', 'metric', '상세페이지 조회',          'number',   'sum', 3),
   ('marketing_data', 'signups',      'metric', '회원가입',                 'number',   'sum', 4),
   ('marketing_data', 'purchases',    'metric', '구매',                     'number',   'sum', 5),
   ('marketing_data', 'revenue',      'metric', '매출',                     'currency', 'sum', 6),
