@@ -4,7 +4,7 @@
 import { buildWidgetMetrics, buildWidgetGroupBy } from './columnUtils'
 
 /* ═══════════════════════════════════════════
-   6개 사전 정의 템플릿
+   사전 정의 템플릿
    ═══════════════════════════════════════════ */
 export const DASHBOARD_TEMPLATES = [
   {
@@ -99,14 +99,51 @@ export const DASHBOARD_TEMPLATES = [
       { type: 'timeline',   widthPct: 100, heightPx: 300 },
     ],
   },
+  /* ── OTA 채널별 OVERVIEW ── */
+  {
+    id: 'ota_overview',
+    name: 'OTA OVERVIEW',
+    desc: 'KPI 4개 + 기간비교 + 지역/지점 랭킹 + 트렌드 + 객실타입/테이블',
+    icon: '🏨',
+    defaultTable: 'product_revenue_raw',
+    slotDefs: [
+      /* Row 1 — KPI ×4 */
+      { type: 'kpi', widthPct: 25, preset: { metric: 'payment_amount', label: '총 결제금액' } },
+      { type: 'kpi', widthPct: 25, preset: { metric: 'cc_order_count', label: '결제건수' } },
+      { type: 'kpi', widthPct: 25, preset: { metric: 'cc_adr', label: 'ADR' } },
+      { type: 'kpi', widthPct: 25, preset: { metric: 'cc_los', label: 'LOS' } },
+      /* Row 2 — 기간 비교 + 지역 파이 */
+      { type: 'comparison', widthPct: 50, heightPx: 320,
+        preset: { metrics: ['payment_amount', 'cc_order_count', 'cc_adr'], compareMode: 'period', title: '매출 기간 비교' } },
+      { type: 'pie', widthPct: 50, heightPx: 320,
+        preset: { metric: 'payment_amount', groupBy: 'area', title: '지역별 매출 비율' } },
+      /* Row 3 — 지역 랭킹 + 지점 랭킹 */
+      { type: 'ranking', widthPct: 50, heightPx: 340,
+        preset: { metric: 'payment_amount', groupBy: 'area', topN: 10, sortDir: 'desc', title: '지역별 매출 랭킹' } },
+      { type: 'ranking', widthPct: 50, heightPx: 340,
+        preset: { metric: 'payment_amount', groupBy: 'branch_name', topN: 10, sortDir: 'desc', title: '지점별 매출 TOP10' } },
+      /* Row 4 — 일별 트렌드 */
+      { type: 'line', widthPct: 100, heightPx: 320,
+        preset: { metrics: ['payment_amount', 'cc_order_count'], title: '일별 매출 트렌드' } },
+      /* Row 5 — 객실타입 바 + 지점별 테이블 */
+      { type: 'bar', widthPct: 50, heightPx: 300,
+        preset: { metric: 'payment_amount', groupBy: 'room_type_name', title: '객실타입별 매출' } },
+      { type: 'table', widthPct: 50, heightPx: 300,
+        preset: { metrics: ['payment_amount', 'nights', 'cc_order_count', 'cc_adr'], groupBy: 'branch_name', title: '지점별 상세' } },
+    ],
+  },
 ]
 
 /* ═══════════════════════════════════════════
    generateDashboard — 템플릿 + 테이블 기반 대시보드 생성
+   preset이 있는 슬롯은 해당 config 그대로 사용,
+   없으면 기존처럼 자동 할당
    ═══════════════════════════════════════════ */
 export function generateDashboard(template, tableName, columnConfig) {
-  const metrics = buildWidgetMetrics(tableName, columnConfig)
-  const groupBys = buildWidgetGroupBy(tableName, columnConfig)
+  /* 템플릿에 defaultTable이 있으면 우선 사용 */
+  const tbl = template.defaultTable || tableName
+  const metrics = buildWidgetMetrics(tbl, columnConfig)
+  const groupBys = buildWidgetGroupBy(tbl, columnConfig)
 
   if (metrics.length === 0) return { slots: [] }
 
@@ -122,6 +159,19 @@ export function generateDashboard(template, tableName, columnConfig) {
   const now = Date.now()
 
   const slots = template.slotDefs.map((def, idx) => {
+    /* ── preset이 있으면 그대로 사용 ── */
+    if (def.preset) {
+      return {
+        id: `w_${now}_${idx}`,
+        widthPct: def.widthPct,
+        ...(def.heightPx ? { heightPx: def.heightPx } : {}),
+        type: def.type,
+        table: tbl,
+        config: { ...def.preset },
+      }
+    }
+
+    /* ── preset 없으면 기존 자동 할당 ── */
     let config = {}
 
     switch (def.type) {
@@ -186,7 +236,7 @@ export function generateDashboard(template, tableName, columnConfig) {
       widthPct: def.widthPct,
       ...(def.heightPx ? { heightPx: def.heightPx } : {}),
       type: def.type,
-      table: tableName,
+      table: tbl,
       config,
     }
   })
