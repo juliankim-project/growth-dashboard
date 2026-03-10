@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { DASHBOARD_TEMPLATES } from '../../store/dashboardTemplates'
 import { useConfig } from '../../store/useConfig'
 import { Trash2 } from 'lucide-react'
@@ -111,9 +112,11 @@ export default function Templates({ dark }) {
   const sub = dark ? 'text-slate-500' : 'text-slate-400'
   const { getCustomTemplates, deleteCustomTemplate } = useConfig()
   const customTemplates = getCustomTemplates()
+  const [tab, setTab] = useState('default')
+  const templates = tab === 'default' ? DASHBOARD_TEMPLATES : customTemplates
 
   return (
-    <div className="p-6 flex flex-col gap-6 max-w-4xl mx-auto">
+    <div className="p-6 flex flex-col gap-5 max-w-4xl mx-auto">
       {/* 헤더 */}
       <div>
         <h2 className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>위젯 템플릿</h2>
@@ -122,48 +125,36 @@ export default function Templates({ dark }) {
         </p>
       </div>
 
-      {/* ── 기본 템플릿 ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <p className={`text-[11px] font-bold uppercase tracking-wider ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-            기본 템플릿
-          </p>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dark ? 'bg-indigo-500/15 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
-            {DASHBOARD_TEMPLATES.length}
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DASHBOARD_TEMPLATES.map(tpl => (
-            <TemplateCard key={tpl.id} tpl={tpl} dark={dark} sub={sub} />
-          ))}
-        </div>
+      {/* 기본 / 커스텀 탭 */}
+      <div className={`flex gap-1 p-1 rounded-lg ${dark ? 'bg-[#0D0F18]' : 'bg-slate-100'}`}>
+        {[{ id: 'default', label: '기본 템플릿', count: DASHBOARD_TEMPLATES.length },
+          { id: 'custom', label: '커스텀 템플릿', count: customTemplates.length }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex-1 text-xs py-2.5 rounded-md font-semibold transition-colors
+              ${tab === t.id
+                ? dark ? 'bg-[#1A1D27] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+            {t.label} <span className={`ml-1 ${tab === t.id ? 'text-indigo-400' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
+          </button>
+        ))}
       </div>
 
-      {/* ── 커스텀 템플릿 ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <p className={`text-[11px] font-bold uppercase tracking-wider ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-            커스텀 템플릿
-          </p>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${dark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-500'}`}>
-            {customTemplates.length}
-          </span>
+      {/* 템플릿 그리드 */}
+      {templates.length === 0 ? (
+        <div className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-16 gap-3
+          ${dark ? 'border-[#252836] text-slate-600' : 'border-slate-200 text-slate-400'}`}>
+          <span className="text-4xl">📁</span>
+          <p className="text-sm">저장된 커스텀 템플릿이 없습니다</p>
+          <p className={`text-xs ${dark ? 'text-slate-700' : 'text-slate-300'}`}>대시보드에서 "템플릿 저장" 버튼으로 추가해보세요</p>
         </div>
-        {customTemplates.length === 0 ? (
-          <div className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-12 gap-2
-            ${dark ? 'border-[#252836] text-slate-600' : 'border-slate-200 text-slate-400'}`}>
-            <span className="text-3xl">📁</span>
-            <p className="text-xs">저장된 커스텀 템플릿이 없습니다</p>
-            <p className={`text-[10px] ${dark ? 'text-slate-700' : 'text-slate-300'}`}>대시보드에서 "템플릿 저장" 버튼으로 추가해보세요</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {customTemplates.map(tpl => (
-              <TemplateCard key={tpl.id} tpl={tpl} dark={dark} sub={sub} onDelete={deleteCustomTemplate} />
-            ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {templates.map(tpl => (
+            <TemplateCard key={tpl.id} tpl={tpl} dark={dark} sub={sub}
+              onDelete={tab === 'custom' ? deleteCustomTemplate : undefined} />
+          ))}
+        </div>
+      )}
 
       {/* 안내 */}
       <div className={`rounded-lg border px-4 py-3 text-xs
