@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2 } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2, Copy } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -65,7 +65,7 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 const RGL_COLS = 12
 const RGL_ROW_H = 80
 
-function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, filterByDate, columnConfig, dark, showSource }) {
+function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTable, filterByDate, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
@@ -92,11 +92,17 @@ function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, fil
           {/* 삭제 */}
           <button onClick={() => onDelete(slot.id)}
             className="absolute top-1 right-1 z-20 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg flex items-center justify-center text-xs leading-none font-bold transition-transform hover:scale-110">×</button>
-          {/* 편집 */}
-          <button onClick={() => onEdit(slot.id)}
-            className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
-            <Settings2 size={9} /> 편집
-          </button>
+          {/* 복사 + 편집 */}
+          <div className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1">
+            <button onClick={() => onCopy(slot.id)}
+              className="flex items-center gap-1 px-2 py-0.5 bg-emerald-600 text-white text-[10px] rounded-lg hover:bg-emerald-700">
+              <Copy size={9} /> 복사
+            </button>
+            <button onClick={() => onEdit(slot.id)}
+              className="flex items-center gap-1 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
+              <Settings2 size={9} /> 편집
+            </button>
+          </div>
         </>
       )}
       <div className="h-full">
@@ -587,6 +593,20 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   }
   const handleDeleteSlot = (id) => setDashboard({ ...norm, slots: slots.filter(s => s.id !== id) })
 
+  const handleCopySlot = (id) => {
+    const src = slots.find(s => s.id === id)
+    if (!src) return
+    const newId = `w_${Date.now()}_copy`
+    const srcLayout = src.layout || {}
+    const clone = {
+      ...src,
+      id: newId,
+      config: { ...src.config },
+      layout: { ...srcLayout, x: 0, y: Infinity, minW: srcLayout.minW ?? 1, minH: srcLayout.minH ?? 1 },
+    }
+    setDashboard({ ...norm, slots: [...slots, clone] })
+  }
+
   const handleWidgetSave = (slotId, widget) => {
     setDashboard({ ...norm, slots: slots.map(s => s.id === slotId ? { ...s, ...widget } : s) })
     setEditSlot(null)
@@ -629,7 +649,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               {slots.map(slot => (
                 <div key={slot.id}>
                   <GridCard slot={slot} editMode={editMode}
-                    onEdit={setEditSlot} onDelete={handleDeleteSlot}
+                    onEdit={setEditSlot} onDelete={handleDeleteSlot} onCopy={handleCopySlot}
                     dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
                     columnConfig={columnConfig} dark={dark} showSource={showSource} />
                 </div>
