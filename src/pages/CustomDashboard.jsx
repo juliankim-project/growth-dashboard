@@ -340,7 +340,7 @@ function normalizeDashboard(d) {
 function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables }) {
   const [editSlot, setEditSlot] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [containerRef, containerWidth] = useContainerWidth()
+  const { containerRef, width: containerWidth } = useContainerWidth()
 
   useEffect(() => { setEditSlot(null); setShowAdd(false) }, [tabId])
   useEffect(() => { if (!editMode) { setEditSlot(null); setShowAdd(false) } }, [editMode])
