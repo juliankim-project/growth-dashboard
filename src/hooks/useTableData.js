@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { fetchAll, fetchByDateRange, supabase } from '../lib/supabase'
+import { getNeededColumns } from '../store/columnUtils'
 
 /**
  * 범용 Supabase 테이블 데이터 훅
@@ -45,7 +46,7 @@ export function useTableData(tableName = 'marketing_data') {
  * 여러 테이블 동시 조회 훅
  * - dateRange가 있으면 서버사이드 날짜 필터링 적용
  * - ComparisonWidget을 위해 이전 기간도 포함하도록 확장
- * - columnConfig에서 dateColumn 자동 조회
+ * - columnConfig에서 dateColumn 자동 조회 + 필요 컬럼만 SELECT
  */
 export function useMultiTableData(tableNames = [], dateRange = null, columnConfig = null) {
   const [dataMap,  setDataMap]  = useState({})
@@ -59,7 +60,9 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
   // dateRange를 캐시키에 포함 → 날짜 변경 시 재조회
   const dateKey = dateRange?.start && dateRange?.end
     ? `${dateRange.start}_${dateRange.end}` : 'all'
-  const key = uniqueTables.join(',') + '|' + dateKey
+  // columnConfig 유무도 키에 포함 (컬럼 선택 변경 시 재조회)
+  const ccReady = columnConfig && Object.keys(columnConfig).length > 0 ? '1' : '0'
+  const key = uniqueTables.join(',') + '|' + dateKey + '|' + ccReady
 
   useEffect(() => {
     if (!supabase) {
@@ -94,9 +97,10 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
     Promise.all(
       uniqueTables.map(t => {
         const dateCol = columnConfig?.[t]?.dateColumn
+        const columns = getNeededColumns(t, columnConfig)
         const fetcher = (dateCol && expandedStart && dateRange?.end)
-          ? fetchByDateRange(t, dateCol, expandedStart, dateRange.end)
-          : fetchAll(t)
+          ? fetchByDateRange(t, dateCol, expandedStart, dateRange.end, columns)
+          : fetchAll(t, columns)
 
         return fetcher
           .then(rows => ({ table: t, rows, error: null }))

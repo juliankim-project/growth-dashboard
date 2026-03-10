@@ -70,9 +70,8 @@ function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTa
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
   const widgetData = useMemo(() => {
-    const filtered = filterByDate ? filterByDate(widgetRawData, widgetDateCol) : widgetRawData
-    return applyComputedColumns(filtered, widgetTable, columnConfig)
-  }, [widgetRawData, filterByDate, widgetTable, columnConfig, widgetDateCol])
+    return filterByDate ? filterByDate(widgetRawData, widgetDateCol) : widgetRawData
+  }, [widgetRawData, filterByDate, widgetDateCol])
   const widgetMetrics = useMemo(() => buildTableMetrics(widgetTable, columnConfig), [widgetTable, columnConfig])
 
   const sanitizedConfig = useMemo(
@@ -705,7 +704,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
 
       {/* 카드 추가 모달 */}
       {showAdd && (() => {
-        const addData = applyComputedColumns(dataMap[defaultTable] || [], defaultTable, columnConfig)
+        const addData = dataMap[defaultTable] || []
         return (
           <WidgetEditor
             widget={{ type: 'kpi', table: defaultTable, config: { ...DEFAULT_WIDGET_CONFIG.kpi } }}
@@ -723,8 +722,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       {editingSlot && (() => {
         const t = editingSlot.table || editingSlot.config?._table || defaultTable
         const raw = dataMap[t] || dataMap[defaultTable] || []
-        const d = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
-        const processed = applyComputedColumns(d, t, columnConfig)
+        const processed = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
         return (
           <WidgetEditor
             slotId={editingSlot.id}
@@ -788,6 +786,15 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
 
   const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables, dateRange, columnConfig)
   const errorMsg = Object.entries(errors).map(([t, e]) => `${t}: ${e}`).join(', ')
+
+  /* 테이블 레벨 computed 캐싱 — 위젯별 중복 계산 방지 */
+  const computedDataMap = useMemo(() => {
+    const result = {}
+    for (const [table, rows] of Object.entries(rawDataMap)) {
+      result[table] = applyComputedColumns(rows, table, columnConfig)
+    }
+    return result
+  }, [rawDataMap, columnConfig])
 
   const availableTables = useMemo(() => {
     const seen = new Set(); const tables = []
@@ -917,7 +924,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
           <DashboardGrid
             key={activeTab.id} tabId={activeTab.id}
             dashboard={dashboard} setDashboard={setDashboard}
-            dataMap={rawDataMap} defaultTable={defaultTable}
+            dataMap={computedDataMap} defaultTable={defaultTable}
             filterByDate={filterByDate} dark={dark} editMode={editMode}
             columnConfig={columnConfig} availableTables={availableTables}
             addRef={gridAddRef} showSource={showSource}

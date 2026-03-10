@@ -16,12 +16,12 @@ export const supabase = isMissingEnv
 
 /**
  * 페이지네이션으로 전체 데이터 fetch
- * - supabase 클라이언트 null 방어
- * - MAX_ROWS 초과 시 자동 중단 (무한 fetch 방지)
+ * - columns: Supabase select 문자열 (기본 '*')
+ * - push 기반 누적으로 O(n) 메모리 사용
  */
 const MAX_ROWS = 100_000
 
-export async function fetchAll(tableName) {
+export async function fetchAll(tableName, columns = '*') {
   if (!supabase) {
     console.warn('[fetchAll] supabase 클라이언트가 초기화되지 않았습니다. 환경변수를 확인하세요.')
     return []
@@ -29,18 +29,18 @@ export async function fetchAll(tableName) {
 
   const PAGE = 1000
   let from = 0
-  let all = []
+  const all = []
 
   while (true) {
     const { data, error } = await supabase
       .from(tableName)
-      .select('*')
+      .select(columns)
       .range(from, from + PAGE - 1)
 
     if (error) throw error
     if (!data || data.length === 0) break
 
-    all = [...all, ...data]
+    all.push(...data)
 
     if (all.length >= MAX_ROWS) {
       console.warn(`[fetchAll] ${tableName}: ${MAX_ROWS.toLocaleString()}행 제한 도달 — 데이터가 잘릴 수 있습니다.`)
@@ -59,23 +59,23 @@ export async function fetchAll(tableName) {
  * - dateColumn, startDate, endDate가 모두 있으면 WHERE 절 추가
  * - 없으면 fetchAll 폴백
  */
-export async function fetchByDateRange(tableName, dateColumn, startDate, endDate) {
+export async function fetchByDateRange(tableName, dateColumn, startDate, endDate, columns = '*') {
   if (!supabase) {
     console.warn('[fetchByDateRange] supabase 클라이언트가 초기화되지 않았습니다.')
     return []
   }
   if (!dateColumn || !startDate || !endDate) {
-    return fetchAll(tableName)
+    return fetchAll(tableName, columns)
   }
 
   const PAGE = 1000
   let from = 0
-  let all = []
+  const all = []
 
   while (true) {
     const { data, error } = await supabase
       .from(tableName)
-      .select('*')
+      .select(columns)
       .gte(dateColumn, startDate)
       .lte(dateColumn, endDate)
       .range(from, from + PAGE - 1)
@@ -83,7 +83,7 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
     if (error) throw error
     if (!data || data.length === 0) break
 
-    all = [...all, ...data]
+    all.push(...data)
 
     if (all.length >= MAX_ROWS) {
       console.warn(`[fetchByDateRange] ${tableName}: ${MAX_ROWS.toLocaleString()}행 제한 도달`)
