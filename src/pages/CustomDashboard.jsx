@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2, Copy } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2, Copy, ClipboardPaste } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -529,6 +529,7 @@ function normalizeDashboard(d) {
 function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables, addRef, showSource }) {
   const [editSlot, setEditSlot] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [clipboard, setClipboard] = useState(null)  // 복사된 위젯 슬롯
   const { containerRef, width: containerWidth } = useContainerWidth()
 
   const pendingAdd = useRef(false)
@@ -538,7 +539,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   }})
   useEffect(() => { setEditSlot(null); setShowAdd(false) }, [tabId])
   useEffect(() => {
-    if (!editMode) { setEditSlot(null); setShowAdd(false) }
+    if (!editMode) { setEditSlot(null); setShowAdd(false); setClipboard(null) }
     else if (pendingAdd.current) { pendingAdd.current = false; setShowAdd(true) }
   }, [editMode])
 
@@ -596,12 +597,16 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   const handleCopySlot = (id) => {
     const src = slots.find(s => s.id === id)
     if (!src) return
-    const newId = `w_${Date.now()}_copy`
-    const srcLayout = src.layout || {}
+    setClipboard(src)
+  }
+
+  const handlePasteSlot = () => {
+    if (!clipboard) return
+    const srcLayout = clipboard.layout || {}
     const clone = {
-      ...src,
-      id: newId,
-      config: { ...src.config },
+      ...clipboard,
+      id: `w_${Date.now()}_paste`,
+      config: { ...clipboard.config },
       layout: { ...srcLayout, x: 0, y: Infinity, minW: srcLayout.minW ?? 1, minH: srcLayout.minH ?? 1 },
     }
     setDashboard({ ...norm, slots: [...slots, clone] })
@@ -656,6 +661,26 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               ))}
             </ResponsiveGridLayout>
           )}
+        </div>
+      )}
+
+      {/* 클립보드 붙여넣기 바 */}
+      {editMode && clipboard && (
+        <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border
+          ${dark ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-200 bg-emerald-50'}`}>
+          <p className={`text-xs ${dark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+            📋 <span className="font-semibold">{clipboard.type.toUpperCase()}</span> 위젯이 복사되었습니다
+          </p>
+          <div className="flex gap-2 ml-3 shrink-0">
+            <button onClick={() => setClipboard(null)}
+              className={`text-xs px-3 py-1.5 rounded-lg border ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+              취소
+            </button>
+            <button onClick={handlePasteSlot}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+              <ClipboardPaste size={12} /> 붙여넣기
+            </button>
+          </div>
         </div>
       )}
 
