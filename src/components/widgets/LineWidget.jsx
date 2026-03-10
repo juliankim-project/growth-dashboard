@@ -18,7 +18,7 @@ function Tip({ active, payload, label, dark }) {
   )
 }
 
-export default function TimeSeriesWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
+export default function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const { metrics = ['cost','revenue'], title = '일별 트렌드' } = config
 
   const chartData = useMemo(() => dailyData(data, metrics, metricsProp, dateColumn), [data, metrics, metricsProp, dateColumn])

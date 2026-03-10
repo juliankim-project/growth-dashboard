@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { DEFAULT_SECTIONS, ICON_LIST, Icon } from '../../components/Layout/Sidebar'
-import { METRICS, SUB_COLOR_OPTIONS } from '../../store/useConfig'
+import { SUB_COLOR_OPTIONS } from '../../store/useConfig'
+
+/* 레거시 METRICS 상수 — useColumnConfig 시스템으로 이전됨.
+   DataSourcePanel 하위호환용 빈 배열 유지 */
+const METRICS = []
 import {
   Pencil, Plus, Trash2, Check, X, ChevronRight, ChevronDown,
   LayoutDashboard, LayoutTemplate, Layers, Database, Eye, EyeOff,

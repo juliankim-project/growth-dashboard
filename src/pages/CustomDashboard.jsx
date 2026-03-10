@@ -3,7 +3,6 @@ import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate } from 'lucide-
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
-  SUB_TYPES,
   useConfig,
 } from '../store/useConfig'
 import { useColumnConfig } from '../store/useColumnConfig'
@@ -13,18 +12,15 @@ import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
 import KPIWidget from '../components/widgets/KPIWidget'
-import TimeSeriesWidget from '../components/widgets/TimeSeriesWidget'
+import LineWidget from '../components/widgets/LineWidget'
 import BarWidget from '../components/widgets/BarWidget'
-import DonutWidget from '../components/widgets/DonutWidget'
+import PieWidget from '../components/widgets/PieWidget'
 import TableWidget from '../components/widgets/TableWidget'
-import SimBudgetWidget from '../components/widgets/SimBudgetWidget'
-import SimGoalWidget from '../components/widgets/SimGoalWidget'
-import SimScenarioWidget from '../components/widgets/SimScenarioWidget'
 import FunnelWidget from '../components/widgets/FunnelWidget'
-import FunnelBreakdownWidget from '../components/widgets/FunnelBreakdownWidget'
-import CohortHeatmapWidget from '../components/widgets/CohortHeatmapWidget'
-import CohortTrendWidget from '../components/widgets/CohortTrendWidget'
-import KanbanWidget from '../components/widgets/KanbanWidget'
+import ComparisonWidget from '../components/widgets/ComparisonWidget'
+import RankingWidget from '../components/widgets/RankingWidget'
+import AlertWidget from '../components/widgets/AlertWidget'
+import TimelineWidget from '../components/widgets/TimelineWidget'
 import {
   DndContext, closestCenter,
   PointerSensor, KeyboardSensor,
@@ -43,7 +39,7 @@ function applyWidgetFilters(data, filters) {
   if (!filters) return data
   let result = data
   Object.entries(filters).forEach(([key, vals]) => {
-    if (key === 'table') return // 테이블 선택은 필터링 대상 아님
+    if (key === 'table') return
     if (Array.isArray(vals) && vals.length > 0) {
       result = result.filter(r => vals.includes(r[key]))
     }
@@ -53,27 +49,19 @@ function applyWidgetFilters(data, filters) {
 
 /* ─────────────────────────────────────────────────────────────────
    FilterSection  —  columnConfig 기반 동적 디멘전 필터
-   가로 컬럼 레이아웃 · 단계별 출현 · 컬럼별 "그룹바이" 토글
 ───────────────────────────────────────────────────────────────── */
 function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByChange, initialOpen = false, columnConfig, tableName }) {
   const [open, setOpen] = useState(initialOpen)
-
-  /* 현재 테이블의 디멘전 컬럼 목록 */
   const tCfg = columnConfig?.[tableName]
   const dimCols = tCfg?.dimensionColumns || []
-
-  /* 디멘전 라벨 헬퍼 */
   const dimLabel = (dim) => getColumnLabel(dim, tCfg?.columns?.[dim])
 
-  /* 크로스 필터: 각 디멘전의 옵션을 다른 디멘전 선택값으로 필터 (모든 디멘전 동시 표시) */
   const dimStates = dimCols.map((dim) => {
     let filtered = data
     dimCols.forEach(otherDim => {
       if (otherDim === dim) return
       const sel = filters[otherDim] || []
-      if (sel.length > 0) {
-        filtered = filtered.filter(r => sel.includes(r[otherDim]))
-      }
+      if (sel.length > 0) filtered = filtered.filter(r => sel.includes(r[otherDim]))
     })
     const opts = [...new Set(filtered.map(r => r[dim]).filter(Boolean))].sort()
     const sel = filters[dim] || []
@@ -81,112 +69,74 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
   })
 
   const COLS = dimStates.filter(d => d.show)
-
-  /* 이벤트 핸들러 — 독립 필터 (캐스케이딩 리셋 없음) */
   const toggle = (dim, val) => {
     const cur = filters[dim] || []
     const next = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]
     onChange({ ...filters, [dim]: next })
   }
-  const clearDim = (dim) => {
-    onChange({ ...filters, [dim]: [] })
-  }
-
+  const clearDim = (dim) => onChange({ ...filters, [dim]: [] })
   const activeCount = dimStates.reduce((sum, d) => sum + d.sel.length, 0)
-
-  /* 그룹바이 라벨 */
   const groupByLabel = COLS.find(c => c.key === groupBy)?.label ?? dimLabel(groupBy)
 
   return (
     <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
-
-      {/* 헤더 토글 */}
-      <button
-        onClick={() => setOpen(o => !o)}
+      <button onClick={() => setOpen(o => !o)}
         className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors rounded-xl
-          ${dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}
-      >
+          ${dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}>
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`text-xs font-bold ${dark ? 'text-slate-300' : 'text-slate-700'}`}>데이터 필터</span>
-          {activeCount > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white font-bold">{activeCount}</span>
-          )}
+          {activeCount > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500 text-white font-bold">{activeCount}</span>}
           {groupBy && onGroupByChange && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full
-              ${dark ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-50 text-violet-600'}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${dark ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-50 text-violet-600'}`}>
               그룹바이: {groupByLabel}
             </span>
           )}
         </div>
-        <span className={`text-[10px] shrink-0 ml-2 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>{open ? '▲' : '▼'}</span>
+        <span className={`text-[10px] shrink-0 ml-2 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>{open ? '▲' : '▼'}</span>
       </button>
 
-      {/* 가로 컬럼 패널 */}
       {open && (
         <div className={`border-t overflow-x-auto ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           <div className="flex min-w-max">
             {COLS.length === 0 && (
-              <p className={`text-[10px] px-4 py-3 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>
-                디멘전 컬럼이 설정되지 않았습니다. 데이터 스튜디오 → 테이블 관리에서 설정하세요.
+              <p className={`text-[10px] px-4 py-3 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
+                디멘전 컬럼이 설정되지 않았습니다.
               </p>
             )}
             {COLS.map((col, ci) => {
               const isGroupByDim = groupBy === col.key
-              const bdrR = ci < COLS.length - 1
-                ? dark ? 'border-r border-[#252836]' : 'border-r border-slate-200'
-                : ''
-
+              const bdrR = ci < COLS.length - 1 ? (dark ? 'border-r border-[#252836]' : 'border-r border-slate-200') : ''
               return (
                 <div key={col.key} className={`w-36 flex flex-col shrink-0 ${bdrR}`}>
-
-                  {/* 컬럼 헤더 */}
                   <div className={`flex items-center justify-between px-2.5 py-1.5 border-b shrink-0
                     ${dark ? 'bg-[#0D0F18] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
                     <span className={`text-[10px] font-bold uppercase tracking-wide truncate
                       ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{col.label}</span>
                     {col.sel.length > 0 && !isGroupByDim && (
-                      <button onClick={() => clearDim(col.key)}
-                        className="text-[9px] text-indigo-400 hover:text-indigo-300 ml-1 shrink-0">해제</button>
+                      <button onClick={() => clearDim(col.key)} className="text-[9px] text-indigo-400 hover:text-indigo-300 ml-1 shrink-0">해제</button>
                     )}
                   </div>
-
-                  {/* 그룹바이 토글 */}
                   {onGroupByChange && (
-                    <button
-                      onClick={() => onGroupByChange(isGroupByDim ? null : col.key)}
+                    <button onClick={() => onGroupByChange(isGroupByDim ? null : col.key)}
                       className={`text-[10px] px-2.5 py-1 text-center border-b w-full transition-colors
                         ${dark ? 'border-[#252836]' : 'border-slate-200'}
-                        ${isGroupByDim
-                          ? 'bg-violet-500/15 text-violet-400 font-semibold'
-                          : dark
-                            ? 'text-slate-600 hover:text-slate-400 hover:bg-[#1A1D27]'
-                            : 'text-slate-600 hover:text-slate-600 hover:bg-slate-50'}`}
-                    >
+                        ${isGroupByDim ? 'bg-violet-500/15 text-violet-400 font-semibold'
+                          : dark ? 'text-slate-600 hover:text-slate-400 hover:bg-[#1A1D27]' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>
                       {isGroupByDim ? '✓ 그룹바이' : '그룹바이'}
                     </button>
                   )}
-
-                  {/* 옵션 목록 */}
                   <div className="overflow-y-auto flex flex-col" style={{ maxHeight: 164 }}>
                     {col.opts.length === 0
-                      ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>없음</p>
+                      ? <p className={`text-[10px] px-2.5 py-2 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>없음</p>
                       : col.opts.map(v => {
                         const isOn = col.sel.includes(v)
                         const dimmed = isGroupByDim
                         return (
-                          <button
-                            key={v}
-                            onClick={() => !dimmed && toggle(col.key, v)}
-                            title={v}
+                          <button key={v} onClick={() => !dimmed && toggle(col.key, v)} title={v}
                             className={`text-[11px] px-2.5 py-[5px] text-left w-full transition-colors leading-snug break-words
-                                ${dimmed
-                                ? dark ? 'text-slate-700 cursor-default' : 'text-slate-700 cursor-default'
-                                : isOn
-                                  ? dark ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
-                                    : 'bg-indigo-50 text-indigo-600 font-semibold'
-                                  : dark ? 'text-slate-400 hover:bg-[#1A1D27] hover:text-slate-200'
-                                    : 'text-slate-600 hover:bg-slate-50'}`}
-                          >
+                              ${dimmed ? (dark ? 'text-slate-700 cursor-default' : 'text-slate-300 cursor-default')
+                                : isOn ? (dark ? 'bg-indigo-500/15 text-indigo-400 font-semibold' : 'bg-indigo-50 text-indigo-600 font-semibold')
+                                  : dark ? 'text-slate-400 hover:bg-[#1A1D27] hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50'}`}>
                             {!dimmed && isOn ? '✓ ' : ''}{v}
                           </button>
                         )
@@ -203,34 +153,31 @@ function FilterSection({ filters = {}, groupBy, data, dark, onChange, onGroupByC
   )
 }
 
+/* ══════════════════════════════════════════
+   위젯 매핑 & 렌더링
+══════════════════════════════════════════ */
 const WIDGET_MAP = {
-  kpi: KPIWidget, timeseries: TimeSeriesWidget,
-  bar: BarWidget, donut: DonutWidget, table: TableWidget,
-  sim_budget: SimBudgetWidget, sim_goal: SimGoalWidget, sim_scenario: SimScenarioWidget,
-  funnel_chart: FunnelWidget, funnel_breakdown: FunnelBreakdownWidget,
-  cohort_heatmap: CohortHeatmapWidget, cohort_trend: CohortTrendWidget,
-  kanban_board: KanbanWidget,
+  kpi: KPIWidget, line: LineWidget, bar: BarWidget,
+  pie: PieWidget, table: TableWidget, funnel: FunnelWidget,
+  comparison: ComparisonWidget, ranking: RankingWidget,
+  alert: AlertWidget, timeline: TimelineWidget,
 }
-/* 상태형 위젯 (onConfigUpdate 필요) */
-const STATEFUL_WIDGETS = new Set(['sim_budget', 'sim_goal', 'sim_scenario', 'kanban_board'])
 
-const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn) => {
+const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn, dateRange) => {
   const C = WIDGET_MAP[type]
   if (!C) return null
   return (
     <ErrorBoundary dark={dark} label={type}>
-      <C data={data} config={cfg} dark={dark} metrics={metrics} dateColumn={dateColumn}
-        {...(STATEFUL_WIDGETS.has(type) && onConfigUpdate ? { onConfigUpdate } : {})} />
+      <C data={data} config={cfg} dark={dark} metrics={metrics} dateColumn={dateColumn} dateRange={dateRange} />
     </ErrorBoundary>
   )
 }
 
 /* ══════════════════════════════════════════
-   공유 Picker 컴포넌트 — 지표/그룹바이 통일 UI
+   공유 Picker 컴포넌트
 ══════════════════════════════════════════ */
 const GROUP_LABELS = { metric: '지표', computed: '🧮 계산 컬럼', rate: '단가' }
 
-/** 메트릭을 그룹별로 분류 */
 function groupMetrics(metrics) {
   const groups = {}
   metrics.forEach(m => {
@@ -241,7 +188,6 @@ function groupMetrics(metrics) {
   return groups
 }
 
-/** 지표 선택 Picker (단일/복수 모드 통합) */
 function MetricPicker({ metrics, selected, onSelect, multi = false, dark }) {
   const groups = useMemo(() => groupMetrics(metrics), [metrics])
   const selectedSet = useMemo(() => new Set(
@@ -286,7 +232,6 @@ function MetricPicker({ metrics, selected, onSelect, multi = false, dark }) {
   )
 }
 
-/** 그룹 기준 선택 Picker (버튼 그리드 스타일 — 지표 Picker와 동일 UX) */
 function GroupByPicker({ options, selected, onSelect, dark }) {
   return (
     <div className="grid grid-cols-3 gap-1.5">
@@ -307,61 +252,49 @@ function GroupByPicker({ options, selected, onSelect, dark }) {
 }
 
 /* ══════════════════════════════════════════
-   위젯 에디터 모달 — 3스텝 퍼널
-   Step 1: 타입  Step 2: 설정  Step 3: 데이터 필터
+   위젯 에디터 모달 — 단일 패널 (추가/수정 겸용)
 ══════════════════════════════════════════ */
-function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metrics: metricsProp, groupByOptions, columnConfig, availableTables }) {
-  const [step, setStep] = useState(1)
-  const [selTable, setSelTable] = useState(widget.config?._table || 'marketing_data')
-  const [type, setType] = useState(widget.type)
-  /* 초기 config → sanitize (기존 invalid 메트릭 정리) */
+function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, columnConfig, availableTables }) {
+  const isNew = !slotId
+  const [selTable, setSelTable] = useState(widget.table || widget.config?._table || 'marketing_data')
+  const [type, setType] = useState(widget.type || 'kpi')
   const [config, setConfig] = useState(() =>
-    sanitizeWidgetConfig(widget.type, { ...widget.config }, widget.config?._table || 'marketing_data', columnConfig)
+    sanitizeWidgetConfig(widget.type, { ...widget.config }, widget.table || widget.config?._table || 'marketing_data', columnConfig)
   )
-  const [filters, setFilters] = useState(widget.config.filters || {})
+  const [filters, setFilters] = useState(widget.config?.filters || {})
 
-  /* 테이블 기준 동적 메트릭/그룹바이 (widgetMetricConfig 반영) */
-  const dynMetrics = useMemo(
-    () => buildWidgetMetrics(selTable, columnConfig),
-    [selTable, columnConfig]
-  )
-  const dynGroupBy = useMemo(
-    () => buildWidgetGroupBy(selTable, columnConfig),
-    [selTable, columnConfig]
-  )
+  const dynMetrics = useMemo(() => buildWidgetMetrics(selTable, columnConfig), [selTable, columnConfig])
+  const dynGroupBy = useMemo(() => buildWidgetGroupBy(selTable, columnConfig), [selTable, columnConfig])
+  const wtMeta = WIDGET_TYPES.find(w => w.id === type)
 
-  /* 테이블 변경 시 → config의 메트릭/그룹바이를 새 테이블 기준으로 리셋 */
   const handleTableChange = (newTable) => {
     setSelTable(newTable)
-    setConfig(prev => {
-      const sanitized = sanitizeWidgetConfig(type, prev, newTable, columnConfig)
-      return { ...sanitized, _table: newTable }
-    })
-    setFilters({}) // 필터도 리셋 (디멘전이 다르므로)
+    setConfig(prev => sanitizeWidgetConfig(type, prev, newTable, columnConfig))
+    setFilters({})
   }
 
   const upd = (k, v) => setConfig(c => ({ ...c, [k]: v }))
+
   const changeType = t => {
     setType(t)
     const base = { ...DEFAULT_WIDGET_CONFIG[t] }
     const first = dynMetrics[0]?.id
     const firstGb = dynGroupBy[0]?.id
-    /* 레거시 기본값을 현재 테이블 메트릭으로 교체 */
     if (first) {
       if ('metric' in base) base.metric = first
       if (Array.isArray(base.metrics)) base.metrics = [first]
     }
     if (firstGb && 'groupBy' in base) base.groupBy = firstGb
-    setConfig(prev => ({ ...base, _table: prev._table, filters: prev.filters }))
+    setConfig(base)
   }
-  const handleSave = () => onSave(slotId, { type, config: { ...config, filters, _table: selTable } })
 
-  /* 현재 위젯의 카테고리 자동 감지 → 같은 카테고리 위젯만 타입 변경 허용 */
-  const detectedCategory = Object.entries(SUB_TYPES).find(
-    ([, st]) => st.widgetTypes?.includes(type)
-  )?.[0] || 'report'
-  const allowedTypes = SUB_TYPES[detectedCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
-  const needsDataForType = { report: true, funnel: true, cohort: true, simulation: false, kanban: false }[detectedCategory]
+  const handleSave = () => {
+    if (isNew) {
+      onSave(null, { id: `w_${Date.now()}`, widthPct: type === 'kpi' ? 25 : 50, type, table: selTable, config: { ...config, filters } })
+    } else {
+      onSave(slotId, { type, table: selTable, config: { ...config, filters } })
+    }
+  }
 
   const S = {
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
@@ -371,8 +304,6 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
   }
 
-  const STEPS = ['위젯 타입', '설정', '데이터 필터']
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-xl flex flex-col max-h-[90vh]
@@ -381,328 +312,218 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
         {/* 헤더 */}
         <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0
           ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-          <div>
-            <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>위젯 편집</p>
-            <div className="flex items-center gap-1 mt-2">
-              {STEPS.map((s, i) => (
-                <div key={s} className="flex items-center gap-1">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
-                    ${step === i + 1 ? 'bg-indigo-500 text-white'
-                      : step > i + 1 ? 'bg-emerald-500 text-white'
-                        : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
-                    {step > i + 1 ? '✓' : i + 1}
-                  </div>
-                  <span className={`text-[10px] font-medium hidden sm:inline
-                    ${step === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-600'}`}>
-                    {s}
-                  </span>
-                  {i < 2 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>›</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* 데이터소스 칩 — 데이터 필요 위젯만 표시 */}
+          <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+            {isNew ? '카드 추가' : '위젯 편집'}
+          </p>
           <div className="flex items-center gap-2">
-            {needsDataForType && (
-              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                📊 {getTableDisplayName(selTable, columnConfig)}
-              </span>
-            )}
-            <button onClick={onClose}
-              className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+              📊 {getTableDisplayName(selTable, columnConfig)}
+            </span>
+            <button onClick={onClose} className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
               <X size={16} />
             </button>
           </div>
         </div>
 
         {/* 바디 */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 min-h-0">
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 min-h-0">
 
-          {/* Step 1: 위젯 타입 선택 (미리보기 포함) */}
-          {step === 1 && (
-            <div className="flex flex-col gap-2">
-              {allowedTypes.filter(wt => WTYPE_META[wt]).map(wt => {
-                const meta = WTYPE_META[wt]
-                const on = type === wt
-                const Preview = MINI_PREVIEW[wt]
-                return (
-                  <button key={wt} onClick={() => changeType(wt)}
-                    className={`flex items-center gap-4 p-3.5 rounded-xl border text-left transition-all
-                      ${on ? 'border-indigo-500 bg-indigo-500/10'
-                        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
-                    <div className={`w-16 h-12 rounded-lg flex items-center justify-center shrink-0 p-2
-                      ${dark ? 'bg-[#0F1117]' : 'bg-slate-100'}`}>
-                      {Preview ? <Preview dark={dark} /> : <span className="text-xl">{meta.icon}</span>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{meta.icon} {meta.label}</p>
-                      <p className={`text-[10px] mt-0.5 leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-700'}`}>{meta.desc}</p>
-                      <div className="flex gap-1.5 mt-1.5">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                          {meta.metricTag}
-                        </span>
-                        {meta.needsGroup && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                            그룹바이 필요
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] transition-colors shrink-0
-                      ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>
-                      {on && '✓'}
-                    </div>
-                  </button>
-                )
-              })}
+          {/* 위젯 유형 */}
+          <div>
+            <p className={`${S.lab} mb-1.5`}>위젯 유형</p>
+            <select className={S.sel} value={type} onChange={e => changeType(e.target.value)}>
+              {WIDGET_TYPES.map(wt => (
+                <option key={wt.id} value={wt.id}>{wt.icon} {wt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 데이터 소스 */}
+          {availableTables && availableTables.length > 1 && (
+            <div>
+              <p className={`${S.lab} mb-1.5`}>데이터 소스</p>
+              <select className={S.sel} value={selTable} onChange={e => handleTableChange(e.target.value)}>
+                {availableTables.map(t => (
+                  <option key={t.id} value={t.id}>{t.displayName || t.id}</option>
+                ))}
+              </select>
             </div>
           )}
 
-          {/* Step 2: 위젯별 설정 */}
-          {step === 2 && (
+          {/* 제목 (KPI 제외) */}
+          {type !== 'kpi' && (
+            <div>
+              <p className={`${S.lab} mb-1.5`}>제목</p>
+              <input className={S.inp} value={config.title || ''} onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
+            </div>
+          )}
+
+          {/* === 타입별 설정 === */}
+
+          {/* KPI */}
+          {type === 'kpi' && (
             <>
-              {/* 데이터 소스 변경 (데이터 필요 위젯만) */}
-              {needsDataForType && availableTables && availableTables.length > 1 && (
-                <div>
-                  <p className={`${S.lab} mb-1.5`}>데이터 소스</p>
-                  <select className={S.sel} value={selTable}
-                    onChange={e => handleTableChange(e.target.value)}>
-                    {availableTables.map(t => (
-                      <option key={t.id} value={t.id}>{t.displayName || t.id}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {type !== 'kpi' && (
-                <div>
-                  <p className={`${S.lab} mb-1.5`}>제목</p>
-                  <input className={S.inp} value={config.title || ''}
-                    onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
-                </div>
-              )}
-
-              {type === 'kpi' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>지표</p>
-                    <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
-                    <input className={S.inp} value={config.label || ''}
-                      onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용" />
-                  </div>
-                </>
-              )}
-
-              {type === 'timeseries' && (
-                <div>
-                  <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                  <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-                </div>
-              )}
-
-              {(type === 'bar' || type === 'donut') && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>지표</p>
-                    <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {type === 'table' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 시뮬레이션: 예산 배분 ── */}
-              {type === 'sim_budget' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
-                    <input type="number" className={S.inp} value={config.totalBudget || 1000000}
-                      onChange={e => upd('totalBudget', Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
-                    <MetricPicker metrics={dynMetrics} selected={config.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 시뮬레이션: 목표 역산 ── */}
-              {type === 'sim_goal' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
-                    <MetricPicker metrics={dynMetrics} selected={config.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>목표값</p>
-                    <input type="number" className={S.inp} value={config.targetValue || 10000000}
-                      onChange={e => upd('targetValue', Number(e.target.value))} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 시뮬레이션: 시나리오 비교 ── */}
-              {type === 'sim_scenario' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
-                    <input type="number" className={S.inp} value={config.totalBudget || 1000000}
-                      onChange={e => upd('totalBudget', Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>비교 메트릭</p>
-                    <MetricPicker metrics={dynMetrics} selected={config.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 퍼널: 전환 퍼널 / 브레이크다운 ── */}
-              {(type === 'funnel_chart' || type === 'funnel_breakdown') && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>퍼널 단계</p>
-                    {(config.stages || []).map((stage, si) => (
-                      <div key={stage.id} className="flex gap-1.5 mb-1.5">
-                        <input className={`${S.inp} flex-1`} value={stage.label}
-                          onChange={e => {
-                            const next = [...config.stages]; next[si] = {...stage, label: e.target.value}; upd('stages', next)
-                          }} placeholder={`단계 ${si+1}`} />
-                        <select className={`${S.sel} w-32`} value={stage.metric}
-                          onChange={e => {
-                            const next = [...config.stages]; next[si] = {...stage, metric: e.target.value}; upd('stages', next)
-                          }}>
-                          {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                        </select>
-                        {(config.stages || []).length > 2 && (
-                          <button onClick={() => upd('stages', config.stages.filter((_,j) => j !== si))}
-                            className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
-                        )}
-                      </div>
-                    ))}
-                    <button onClick={() => upd('stages', [...(config.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || 'impr'}])}
-                      className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
-                        ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
-                      + 단계 추가
-                    </button>
-                  </div>
-                  {type === 'funnel_breakdown' && (
-                    <div>
-                      <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                      <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* ── 코호트: 히트맵 / 트렌드 ── */}
-              {(type === 'cohort_heatmap' || type === 'cohort_trend') && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>기간 단위</p>
-                    <select className={S.sel} value={config.granularity || 'week'}
-                      onChange={e => upd('granularity', e.target.value)}>
-                      <option value="week">주간</option>
-                      <option value="month">월간</option>
-                    </select>
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>기간 수</p>
-                    <input type="number" className={S.inp} value={config.periods || 8} min={2} max={24}
-                      onChange={e => upd('periods', Number(e.target.value))} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 칸반 보드 ── */}
-              {type === 'kanban_board' && (
-                <div>
-                  <p className={`${S.lab} mb-2`}>칼럼 설정</p>
-                  {(config.columns || []).map((col, ci) => (
-                    <div key={col.id} className="flex gap-1.5 mb-1.5">
-                      <input className={`${S.inp} flex-1`} value={col.title}
-                        onChange={e => {
-                          const next = [...config.columns]; next[ci] = {...col, title: e.target.value}; upd('columns', next)
-                        }} placeholder={`칼럼 ${ci+1}`} />
-                      {(config.columns || []).length > 1 && (
-                        <button onClick={() => upd('columns', config.columns.filter((_,j) => j !== ci))}
-                          className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
-                      )}
-                    </div>
-                  ))}
-                  <button onClick={() => upd('columns', [...(config.columns||[]), {id:`c${Date.now()}`, title:'', cards:[]}])}
-                    className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
-                      ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
-                    + 칼럼 추가
-                  </button>
-                </div>
-              )}
+              <div>
+                <p className={`${S.lab} mb-2`}>지표</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
+              </div>
+              <div>
+                <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
+                <input className={S.inp} value={config.label || ''} onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용" />
+              </div>
             </>
           )}
 
-          {/* Step 3: 데이터 필터 */}
-          {step === 3 && (
-            ['kpi','timeseries','bar','donut','table','funnel_chart','funnel_breakdown'].includes(type) ? (
-              <FilterSection
-                filters={filters}
-                groupBy={config.groupBy}
-                data={data}
-                dark={dark}
-                onChange={setFilters}
-                initialOpen={true}
-                columnConfig={columnConfig}
-                tableName={selTable}
-                onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
-                  ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
-                  : undefined}
-              />
-            ) : (
-              <div className={`text-center py-10 ${dark ? 'text-slate-500' : 'text-slate-600'}`}>
-                <p className="text-xs">이 위젯 타입은 데이터 필터가 필요하지 않습니다</p>
-                <p className={`text-[10px] mt-1 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>바로 저장할 수 있습니다</p>
-              </div>
-            )
+          {/* Line — multi metric */}
+          {type === 'line' && (
+            <div>
+              <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
+              <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+            </div>
           )}
+
+          {/* Bar / Pie — single metric + groupBy */}
+          {(type === 'bar' || type === 'pie') && (
+            <>
+              <div>
+                <p className={`${S.lab} mb-2`}>지표</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
+              </div>
+              <div>
+                <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
+                <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
+              </div>
+            </>
+          )}
+
+          {/* Table — multi metric + groupBy */}
+          {type === 'table' && (
+            <>
+              <div>
+                <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+              </div>
+              <div>
+                <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
+                <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
+              </div>
+            </>
+          )}
+
+          {/* Funnel */}
+          {type === 'funnel' && (
+            <div>
+              <p className={`${S.lab} mb-2`}>퍼널 단계</p>
+              {(config.stages || []).map((stage, si) => (
+                <div key={stage.id} className="flex gap-1.5 mb-1.5">
+                  <input className={`${S.inp} flex-1`} value={stage.label}
+                    onChange={e => { const next = [...config.stages]; next[si] = {...stage, label: e.target.value}; upd('stages', next) }}
+                    placeholder={`단계 ${si+1}`} />
+                  <select className={`${S.sel} w-32`} value={stage.metric}
+                    onChange={e => { const next = [...config.stages]; next[si] = {...stage, metric: e.target.value}; upd('stages', next) }}>
+                    {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                  {(config.stages || []).length > 2 && (
+                    <button onClick={() => upd('stages', config.stages.filter((_,j) => j !== si))} className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => upd('stages', [...(config.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || ''}])}
+                className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-500'}`}>
+                + 단계 추가
+              </button>
+            </div>
+          )}
+
+          {/* Comparison — multi metric + compareMode */}
+          {type === 'comparison' && (
+            <>
+              <div>
+                <p className={`${S.lab} mb-2`}>비교 지표 (복수 선택)</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+              </div>
+              <div>
+                <p className={`${S.lab} mb-1.5`}>비교 모드</p>
+                <select className={S.sel} value={config.compareMode || 'period'} onChange={e => upd('compareMode', e.target.value)}>
+                  <option value="period">기간 비교 (선택 기간 vs 직전 동일 기간)</option>
+                  <option value="segment">세그먼트 비교</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Ranking — single metric + groupBy + topN */}
+          {type === 'ranking' && (
+            <>
+              <div>
+                <p className={`${S.lab} mb-2`}>지표</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
+              </div>
+              <div>
+                <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
+                <GroupByPicker options={dynGroupBy} selected={config.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <p className={`${S.lab} mb-1.5`}>Top N</p>
+                  <input type="number" className={S.inp} value={config.topN || 10} min={3} max={50}
+                    onChange={e => upd('topN', Number(e.target.value))} />
+                </div>
+                <div className="flex-1">
+                  <p className={`${S.lab} mb-1.5`}>정렬</p>
+                  <select className={S.sel} value={config.sortDir || 'desc'} onChange={e => upd('sortDir', e.target.value)}>
+                    <option value="desc">내림차순 (높은 순)</option>
+                    <option value="asc">오름차순 (낮은 순)</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Alert — multi metric (thresholds는 향후 상세 설정) */}
+          {type === 'alert' && (
+            <div>
+              <p className={`${S.lab} mb-2`}>모니터링 지표 (복수 선택)</p>
+              <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+            </div>
+          )}
+
+          {/* Timeline — multi metric */}
+          {type === 'timeline' && (
+            <div>
+              <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
+              <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+            </div>
+          )}
+
+          {/* 데이터 필터 — groupBy가 필요한 타입에 한해 표시 */}
+          <FilterSection
+            filters={filters}
+            groupBy={config.groupBy}
+            data={data}
+            dark={dark}
+            onChange={setFilters}
+            columnConfig={columnConfig}
+            tableName={selTable}
+            onGroupByChange={wtMeta?.needsGroup
+              ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || ''))
+              : undefined}
+          />
         </div>
 
         {/* 푸터 */}
         <div className={`flex items-center justify-between px-5 py-4 border-t shrink-0
           ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-          <button
-            onClick={() => step > 1 ? setStep(s => s - 1) : onClose()}
+          <button onClick={onClose}
             className={`text-xs px-4 py-2 rounded-xl border transition-colors
-              ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600'
-                : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-            {step > 1 ? '← 이전' : '취소'}
+              ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            취소
           </button>
-          {step < 3 ? (
-            <button onClick={() => setStep(s => s + 1)}
-              className="text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-              다음 →
-            </button>
-          ) : (
-            <button onClick={handleSave}
-              className="flex items-center gap-1.5 text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-              <Check size={12} /> 저장
-            </button>
-          )}
+          <button onClick={handleSave}
+            className="flex items-center gap-1.5 text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
+            {isNew ? <><Plus size={12} /> 카드 추가</> : <><Check size={12} /> 저장</>}
+          </button>
         </div>
       </div>
     </div>
@@ -710,20 +531,18 @@ function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, metric
 }
 
 /* ══════════════════════════════════════════
-   드래그 가능한 카드 (dnd-kit) — 픽셀 기반 자유 리사이즈 + 자석 스냅
+   드래그 가능한 카드 (dnd-kit)
 ══════════════════════════════════════════ */
-const MGAP = 12          // gap-3 (12px)
-const MIN_W_PCT = 10     // 최소 너비 10%
-const MIN_H_PX = 80      // 최소 높이 80px
-const SNAP_RANGE = 15    // ±15px 스냅 허용 범위
+const MGAP = 12
+const MIN_W_PCT = 10
+const MIN_H_PX = 80
+const SNAP_RANGE = 15
 
-/* widthPct → CSS width 변환: flex-wrap 갭 보정 */
 function pctToWidth(pct) {
   const gapAdj = MGAP * (1 - pct / 100)
   return `calc(${pct}% - ${gapAdj}px)`
 }
 
-/* 스냅 헬퍼: 이웃 값 중 ±SNAP_RANGE 내에 있으면 해당 값 반환 */
 function findSnap(value, neighbors, range = SNAP_RANGE) {
   for (const n of neighbors) {
     if (Math.abs(value - n) <= range) return n
@@ -732,86 +551,59 @@ function findSnap(value, neighbors, range = SNAP_RANGE) {
 }
 
 function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeightChange, onConfigUpdate, dataMap, defaultTable, filterByDate, columnConfig, dark, gridRef }) {
-  const {
-    attributes, listeners, setNodeRef,
-    transform, transition, isDragging,
-  } = useSortable({ id: slot.id, disabled: !editMode })
-
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slot.id, disabled: !editMode })
   const outerRef = useRef(null)
   const setRefs = useCallback((el) => { outerRef.current = el; setNodeRef(el) }, [setNodeRef])
-
   const [resizing, setResizing] = useState(false)
-  const [sizeTooltip, setSizeTooltip] = useState(null)  // { w, h } 리사이즈 중 표시
-  const [snapping, setSnapping] = useState(false)        // 스냅 시 핸들 색상 변경
+  const [sizeTooltip, setSizeTooltip] = useState(null)
+  const [snapping, setSnapping] = useState(false)
 
-  /* 이웃 카드 오른쪽 가장자리 x좌표 수집 (너비 스냅용) */
   const getNeighborRightEdges = useCallback(() => {
     const grid = gridRef?.current
     if (!grid) return []
-    return [...grid.querySelectorAll('[data-slot-id]')]
-      .filter(c => c.dataset.slotId !== slot.id)
-      .map(c => c.getBoundingClientRect().right)
+    return [...grid.querySelectorAll('[data-slot-id]')].filter(c => c.dataset.slotId !== slot.id).map(c => c.getBoundingClientRect().right)
   }, [gridRef, slot.id])
 
-  /* 이웃 카드 아래쪽 가장자리 y좌표 수집 (높이 스냅용) */
   const getNeighborBottomEdges = useCallback(() => {
     const grid = gridRef?.current
     if (!grid) return []
-    return [...grid.querySelectorAll('[data-slot-id]')]
-      .filter(c => c.dataset.slotId !== slot.id)
-      .map(c => c.getBoundingClientRect().bottom)
+    return [...grid.querySelectorAll('[data-slot-id]')].filter(c => c.dataset.slotId !== slot.id).map(c => c.getBoundingClientRect().bottom)
   }, [gridRef, slot.id])
 
-  /* ── 통합 리사이즈 핸들러 (right / bottom / corner) ── */
   const startResize = (e, direction) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const grid = gridRef?.current
-    const el = outerRef.current
+    e.preventDefault(); e.stopPropagation()
+    const grid = gridRef?.current; const el = outerRef.current
     if (!grid || !el) return
-
     const gridW = grid.getBoundingClientRect().width
-    const startX = e.clientX
-    const startY = e.clientY
+    const startX = e.clientX; const startY = e.clientY
     const elRect = el.getBoundingClientRect()
-    const startW = elRect.width
-    const startH = elRect.height
-    const startLeft = elRect.left
-    const startTop = elRect.top
+    const startW = elRect.width; const startH = elRect.height
+    const startLeft = elRect.left; const startTop = elRect.top
     setResizing(true)
 
     const onMove = (ev) => {
-      let newW = startW
-      let newH = startH
-      let snapped = false
-
+      let newW = startW; let newH = startH; let snapped = false
       if (direction === 'right' || direction === 'corner') {
         newW = Math.max(gridW * MIN_W_PCT / 100, startW + (ev.clientX - startX))
-        // 오른쪽 가장자리 위치 기반 스냅 (시각적 정렬)
         const myRight = startLeft + newW
         const snapRight = findSnap(myRight, getNeighborRightEdges())
         if (snapRight !== null) { newW = snapRight - startLeft; snapped = true }
         const pct = Math.min(100, Math.max(MIN_W_PCT, (newW + MGAP) / (gridW + MGAP) * 100))
         onWidthChange(slot.id, Math.round(pct * 100) / 100)
       }
-
       if (direction === 'bottom' || direction === 'corner') {
         newH = Math.max(MIN_H_PX, startH + (ev.clientY - startY))
-        // 아래쪽 가장자리 위치 기반 스냅 (시각적 정렬)
         const myBottom = startTop + newH
         const snapBottom = findSnap(myBottom, getNeighborBottomEdges())
         if (snapBottom !== null) { newH = snapBottom - startTop; snapped = true }
         onHeightChange(slot.id, Math.round(newH))
       }
-
       setSnapping(snapped)
       setSizeTooltip({ w: Math.round(newW), h: Math.round(newH) })
     }
 
     const onUp = () => {
-      setResizing(false)
-      setSizeTooltip(null)
-      setSnapping(false)
+      setResizing(false); setSizeTooltip(null); setSnapping(false)
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
     }
@@ -819,20 +611,16 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
     document.addEventListener('pointerup', onUp)
   }
 
-  /* ── 위젯별 데이터 해석: _table 기반 ── */
-  const widgetTable = slot.config?._table || defaultTable
+  /* 위젯별 데이터: slot.table 기반 (config._table 폴백) */
+  const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
   const widgetData = useMemo(() => {
     const filtered = filterByDate ? filterByDate(widgetRawData, widgetDateCol) : widgetRawData
     return applyComputedColumns(filtered, widgetTable, columnConfig)
   }, [widgetRawData, filterByDate, widgetTable, columnConfig, widgetDateCol])
-  const widgetMetrics = useMemo(
-    () => buildTableMetrics(widgetTable, columnConfig),
-    [widgetTable, columnConfig]
-  )
+  const widgetMetrics = useMemo(() => buildTableMetrics(widgetTable, columnConfig), [widgetTable, columnConfig])
 
-  /* 메트릭 유효성 검증: 테이블에 없는 메트릭 자동 제거 */
   const sanitizedConfig = useMemo(
     () => sanitizeWidgetConfig(slot.type, slot.config, widgetTable, columnConfig),
     [slot.type, slot.config, widgetTable, columnConfig]
@@ -840,7 +628,6 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
 
   const widthPct = slot.widthPct ?? 33.33
   const heightPx = slot.heightPx
-
   const cardStyle = {
     width: pctToWidth(widthPct),
     ...(heightPx ? { height: `${heightPx}px` } : {}),
@@ -849,79 +636,34 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
     opacity: isDragging ? 0 : 1,
   }
 
-  const handleColor = snapping
-    ? 'bg-purple-500 shadow-lg shadow-purple-500/40'
-    : resizing
-      ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40'
-      : dark
-        ? 'bg-[#252836] hover:bg-indigo-500'
-        : 'bg-slate-200 hover:bg-indigo-500'
+  const handleColor = snapping ? 'bg-purple-500 shadow-lg shadow-purple-500/40'
+    : resizing ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40'
+    : dark ? 'bg-[#252836] hover:bg-indigo-500' : 'bg-slate-200 hover:bg-indigo-500'
 
   return (
-    <div ref={setRefs} style={cardStyle} data-slot-id={slot.id}
-      className="relative shrink-0">
+    <div ref={setRefs} style={cardStyle} data-slot-id={slot.id} className="relative shrink-0">
       {editMode && (
         <>
-          {/* 드래그 이동 핸들 (상단 중앙) */}
-          <div
-            {...attributes}
-            {...listeners}
-            className={`absolute top-1.5 left-1/2 -translate-x-1/2 z-20
-              flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
-              ${dark
-                ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]'
-                : 'bg-white/90 text-slate-600 hover:text-slate-600 border border-slate-200 shadow-sm'}`}
-          >
+          <div {...attributes} {...listeners}
+            className={`absolute top-1.5 left-1/2 -translate-x-1/2 z-20 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
+              ${dark ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]' : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}>
             <GripVertical size={11} />
           </div>
-
-          {/* 삭제 버튼 */}
-          <button
-            onClick={() => onDelete(slot.id)}
-            className="absolute -top-2 -right-2 z-20 w-5 h-5 rounded-full
-              bg-red-500 hover:bg-red-600 text-white shadow-lg
-              flex items-center justify-center text-xs leading-none font-bold
-              transition-transform hover:scale-110">
-            ×
-          </button>
-
-          {/* 오른쪽 리사이즈 핸들 (가로) */}
-          <div
-            onPointerDown={e => startResize(e, 'right')}
-            title="드래그해서 너비 조절"
-            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-[5px] z-20
-              w-2.5 h-10 rounded-full cursor-col-resize select-none transition-colors ${handleColor}`}
-          />
-
-          {/* 아래쪽 리사이즈 핸들 (세로) — 더블클릭으로 자동 높이 초기화 */}
-          <div
-            onPointerDown={e => startResize(e, 'bottom')}
-            onDoubleClick={(e) => { e.stopPropagation(); onHeightChange(slot.id, null) }}
+          <button onClick={() => onDelete(slot.id)}
+            className="absolute -top-2 -right-2 z-20 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg flex items-center justify-center text-xs leading-none font-bold transition-transform hover:scale-110">×</button>
+          <div onPointerDown={e => startResize(e, 'right')} title="드래그해서 너비 조절"
+            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-[5px] z-20 w-2.5 h-10 rounded-full cursor-col-resize select-none transition-colors ${handleColor}`} />
+          <div onPointerDown={e => startResize(e, 'bottom')} onDoubleClick={(e) => { e.stopPropagation(); onHeightChange(slot.id, null) }}
             title="드래그해서 높이 조절 · 더블클릭으로 자동"
-            className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[5px] z-20
-              h-2.5 w-10 rounded-full cursor-row-resize select-none transition-colors ${handleColor}`}
-          />
-
-          {/* 코너 리사이즈 핸들 (우하단) */}
-          <div
-            onPointerDown={e => startResize(e, 'corner')}
-            title="드래그해서 크기 조절"
-            className={`absolute bottom-0 right-0 translate-x-[4px] translate-y-[4px] z-20
-              w-4 h-4 rounded-full cursor-nwse-resize select-none transition-colors ${handleColor}`}
-          />
-
-          {/* 편집 버튼 */}
-          <button
-            onClick={() => onEdit(slot.id)}
-            className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1
-              px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
+            className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[5px] z-20 h-2.5 w-10 rounded-full cursor-row-resize select-none transition-colors ${handleColor}`} />
+          <div onPointerDown={e => startResize(e, 'corner')} title="드래그해서 크기 조절"
+            className={`absolute bottom-0 right-0 translate-x-[4px] translate-y-[4px] z-20 w-4 h-4 rounded-full cursor-nwse-resize select-none transition-colors ${handleColor}`} />
+          <button onClick={() => onEdit(slot.id)}
+            className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
             <Settings2 size={9} /> 편집
           </button>
-
-          {/* 리사이즈 사이즈 툴팁 */}
           {sizeTooltip && (
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30
-              px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold pointer-events-none
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold pointer-events-none
               ${snapping ? 'bg-purple-600 text-white' : 'bg-black/70 text-white'}`}>
               {sizeTooltip.w} × {sizeTooltip.h}
             </div>
@@ -937,61 +679,28 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
 }
 
 /* ══════════════════════════════════════════
-   템플릿 셀렉터
-══════════════════════════════════════════ */
-function TemplateSelector({ current, onSelect, dark, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className={`rounded-2xl border w-full max-w-lg p-6
-        ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
-        <div className="flex items-center justify-between mb-5">
-          <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 선택</p>
-          <button onClick={onClose}
-            className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-600 hover:bg-slate-100'}`}>
-            <X size={16} />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {Object.values(TEMPLATES).map(tpl => (
-            <button key={tpl.id} onClick={() => { onSelect(tpl.id); onClose() }}
-              className={`p-4 rounded-xl border text-left transition-all
-                ${current === tpl.id
-                  ? 'border-indigo-500 bg-indigo-500/10'
-                  : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
-                {current === tpl.id && <span className="text-xs text-indigo-500">현재</span>}
-              </div>
-              <p className={`text-xs mb-3 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{tpl.desc}</p>
-              <p className={`text-[10px] font-mono ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{tpl.preview}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ══════════════════════════════════════════
    대시보드 템플릿 불러오기 모달
 ══════════════════════════════════════════ */
 const TPL_TYPE_COLORS = {
   kpi:        { bg: 'bg-indigo-500', label: 'KPI' },
-  timeseries: { bg: 'bg-emerald-500', label: '시계열' },
+  line:       { bg: 'bg-emerald-500', label: '라인' },
   bar:        { bg: 'bg-amber-500', label: '바' },
-  donut:      { bg: 'bg-rose-500', label: '도넛' },
+  pie:        { bg: 'bg-rose-500', label: '파이' },
   table:      { bg: 'bg-sky-500', label: '테이블' },
+  funnel:     { bg: 'bg-purple-500', label: '퍼널' },
+  comparison: { bg: 'bg-cyan-500', label: '비교' },
+  ranking:    { bg: 'bg-orange-500', label: '랭킹' },
+  alert:      { bg: 'bg-red-500', label: '알림' },
+  timeline:   { bg: 'bg-teal-500', label: '타임라인' },
 }
 
 function TplMiniPreview({ slotDefs, dark }) {
-  const rows = []
-  let currentRow = [], rowWidth = 0
+  const rows = []; let currentRow = [], rowWidth = 0
   slotDefs.forEach(def => {
     if (rowWidth + def.widthPct > 101) { rows.push(currentRow); currentRow = [def]; rowWidth = def.widthPct }
     else { currentRow.push(def); rowWidth += def.widthPct }
   })
   if (currentRow.length > 0) rows.push(currentRow)
-
   return (
     <div className={`rounded-lg p-2 flex flex-col gap-1 ${dark ? 'bg-[#0D0F18]' : 'bg-slate-50'}`}>
       {rows.map((row, ri) => (
@@ -999,10 +708,8 @@ function TplMiniPreview({ slotDefs, dark }) {
           {row.map((def, ci) => {
             const tc = TPL_TYPE_COLORS[def.type] || TPL_TYPE_COLORS.kpi
             return (
-              <div key={ci}
-                style={{ width: `${def.widthPct}%` }}
-                className={`${tc.bg} rounded-sm flex items-center justify-center
-                  ${def.type === 'kpi' ? 'h-5' : 'h-8'} opacity-80`}>
+              <div key={ci} style={{ width: `${def.widthPct}%` }}
+                className={`${tc.bg} rounded-sm flex items-center justify-center ${def.type === 'kpi' ? 'h-5' : 'h-8'} opacity-80`}>
                 <span className="text-white text-[7px] font-bold">{tc.label}</span>
               </div>
             )
@@ -1015,34 +722,24 @@ function TplMiniPreview({ slotDefs, dark }) {
 
 function TemplatePickerModal({ dark, onSelect, onClose }) {
   const [confirm, setConfirm] = useState(null)
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
-        className={`rounded-2xl border w-full max-w-2xl p-6
-          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
-
+        className={`rounded-2xl border w-full max-w-2xl p-6 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
         <div className="flex items-center justify-between mb-5">
           <div>
             <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 불러오기</p>
-            <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-              선택한 템플릿으로 현재 탭의 위젯을 교체합니다
-            </p>
+            <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>선택한 템플릿으로 현재 탭의 위젯을 교체합니다</p>
           </div>
-          <button onClick={onClose}
-            className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-600 hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-400 hover:bg-slate-100'}`}>
             <X size={16} />
           </button>
         </div>
-
         <div className="grid grid-cols-2 gap-3">
           {DASHBOARD_TEMPLATES.map(tpl => (
-            <button key={tpl.id}
-              onClick={() => setConfirm(tpl)}
+            <button key={tpl.id} onClick={() => setConfirm(tpl)}
               className={`p-4 rounded-xl border text-left transition-all
-                ${confirm?.id === tpl.id
-                  ? 'border-indigo-500 bg-indigo-500/10'
+                ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
                   : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{tpl.icon}</span>
@@ -1055,7 +752,6 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
             </button>
           ))}
         </div>
-
         {confirm && (
           <div className={`mt-4 flex items-center justify-between p-3 rounded-lg border
             ${dark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50'}`}>
@@ -1064,8 +760,7 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
             </p>
             <div className="flex gap-2 ml-3 shrink-0">
               <button onClick={() => setConfirm(null)}
-                className={`text-xs px-3 py-1.5 rounded-lg border
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
+                className={`text-xs px-3 py-1.5 rounded-lg border ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
                 취소
               </button>
               <button onClick={() => { onSelect(confirm); onClose() }}
@@ -1082,165 +777,83 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
 
 /* ══════════════════════════════════════════
    L3 탭 바
-   - 클릭: 탭 전환
-   - 더블클릭: 이름 변경 (인라인 입력)
-   - 호버 ×: 탭 삭제
-   - + 탭 추가 버튼 (추가 후 자동 이동 없음)
 ══════════════════════════════════════════ */
 function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef }) {
   const [addingTab, setAddingTab] = useState(false)
   const [newLabel, setNewLabel] = useState('')
-
-  /* 외부(빈 상태 버튼 등)에서 탭 추가 폼 열기용 */
-  useEffect(() => {
-    if (addRef) addRef.current = () => { setAddingTab(true); setNewLabel('') }
-  })
-  const [renaming, setRenaming] = useState(null) // { id, value }
-
-  /* ── 탭 가로 드래그 순서 변경 ── */
-  const tabDragFrom = useRef(null)
-  const tabDragTo = useRef(null)
+  useEffect(() => { if (addRef) addRef.current = () => { setAddingTab(true); setNewLabel('') } })
+  const [renaming, setRenaming] = useState(null)
+  const tabDragFrom = useRef(null); const tabDragTo = useRef(null)
   const [draggingTabId, setDraggingTabId] = useState(null)
 
-  const onTabDragStart = (e, idx, tabId) => {
-    tabDragFrom.current = idx; setDraggingTabId(tabId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
+  const onTabDragStart = (e, idx, tabId) => { tabDragFrom.current = idx; setDraggingTabId(tabId); e.dataTransfer.effectAllowed = 'move' }
   const onTabDragEnter = (e, idx) => { tabDragTo.current = idx; e.preventDefault() }
   const onTabDragOver = e => e.preventDefault()
   const onTabDragEnd = () => {
     const from = tabDragFrom.current, to = tabDragTo.current
-    if (from !== null && to !== null && from !== to) {
-      onReorder?.(from, to)
-    }
+    if (from !== null && to !== null && from !== to) onReorder?.(from, to)
     tabDragFrom.current = null; tabDragTo.current = null; setDraggingTabId(null)
   }
 
-  const commitAdd = () => {
-    if (!newLabel.trim()) { setAddingTab(false); return }
-    onAdd(newLabel.trim())
-    setAddingTab(false)
-    setNewLabel('')
-  }
-
-  const commitRename = () => {
-    if (!renaming) return
-    onRename(renaming.id, renaming.value.trim() || '탭')
-    setRenaming(null)
-  }
+  const commitAdd = () => { if (!newLabel.trim()) { setAddingTab(false); return }; onAdd(newLabel.trim()); setAddingTab(false); setNewLabel('') }
+  const commitRename = () => { if (!renaming) return; onRename(renaming.id, renaming.value.trim() || '탭'); setRenaming(null) }
 
   return (
-    <div className={`flex items-stretch border-b shrink-0
-      ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
-
-      {/* 탭 목록 (스크롤 가능) */}
+    <div className={`flex items-stretch border-b shrink-0 ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
       <div className="flex items-center gap-0.5 px-5 pt-3 overflow-x-auto flex-1 min-w-0">
-
         {tabs.map((tab, tabIdx) => (
-          <div key={tab.id}
-            draggable
-            onDragStart={e => onTabDragStart(e, tabIdx, tab.id)}
-            onDragEnter={e => onTabDragEnter(e, tabIdx)}
-            onDragOver={onTabDragOver}
-            onDragEnd={onTabDragEnd}
-            className={`relative group shrink-0 transition-opacity ${draggingTabId === tab.id ? 'opacity-30' : ''}`}
-          >
+          <div key={tab.id} draggable onDragStart={e => onTabDragStart(e, tabIdx, tab.id)} onDragEnter={e => onTabDragEnter(e, tabIdx)}
+            onDragOver={onTabDragOver} onDragEnd={onTabDragEnd}
+            className={`relative group shrink-0 transition-opacity ${draggingTabId === tab.id ? 'opacity-30' : ''}`}>
             {renaming?.id === tab.id ? (
-              <input
-                autoFocus
-                value={renaming.value}
+              <input autoFocus value={renaming.value}
                 onChange={e => setRenaming(r => ({ ...r, value: e.target.value }))}
                 onBlur={commitRename}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') commitRename()
-                  if (e.key === 'Escape') setRenaming(null)
-                }}
-                className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24
-                border-b-2 border-indigo-500
-                ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`}
-              />
+                onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null) }}
+                className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24 border-b-2 border-indigo-500 ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`} />
             ) : (
-              <button
-                onClick={() => onSelect(tab.id)}
+              <button onClick={() => onSelect(tab.id)}
                 onDoubleClick={() => setRenaming({ id: tab.id, value: tab.label })}
-                title="더블클릭으로 이름 변경 · 드래그로 순서 변경"
-                className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium
-                transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
-                ${activeId === tab.id
-                    ? dark
-                      ? 'border-indigo-500 text-white bg-[#1A1D27]'
-                      : 'border-indigo-500 text-indigo-600 bg-white'
-                    : dark
-                      ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#1A1D27]/50'
-                      : 'border-transparent text-slate-700 hover:text-slate-700'
-                  }`}
-              >
+                title="더블클릭으로 이름 변경"
+                className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
+                  ${activeId === tab.id
+                    ? dark ? 'border-indigo-500 text-white bg-[#1A1D27]' : 'border-indigo-500 text-indigo-600 bg-white'
+                    : dark ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#1A1D27]/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                 {tab.label}
               </button>
             )}
-
             {tabs.length > 1 && (
-              <button
-                onClick={() => onRemove(tab.id)}
-                title="탭 삭제"
-                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full
-                bg-red-500/80 hover:bg-red-600 text-white
-                opacity-0 group-hover:opacity-100 transition-opacity
-                flex items-center justify-center text-[8px] leading-none"
-              >×</button>
+              <button onClick={() => onRemove(tab.id)} title="탭 삭제"
+                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-500/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[8px] leading-none">×</button>
             )}
           </div>
         ))}
 
         {addingTab ? (
           <div className="flex items-center gap-1 pb-px ml-1 shrink-0">
-            <input
-              autoFocus
-              value={newLabel}
-              onChange={e => setNewLabel(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitAdd()
-                if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') }
-              }}
+            <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') } }}
               placeholder="탭 이름"
               className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
-              ${dark
-                  ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500'
-                  : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-600'}`}
-            />
-            <button onClick={commitAdd}
-              className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-              확인
-            </button>
+                ${dark ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500' : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-400'}`} />
+            <button onClick={commitAdd} className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">확인</button>
             <button onClick={() => { setAddingTab(false); setNewLabel('') }}
-              className={`text-xs px-2 py-1.5 rounded-lg
-              ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-700'}`}>
-              취소
-            </button>
+              className={`text-xs px-2 py-1.5 rounded-lg ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-500'}`}>취소</button>
           </div>
         ) : (
-          <button
-            onClick={() => setAddingTab(true)}
-            className={`shrink-0 flex items-center gap-1 text-xs px-3 py-2 ml-1
-            rounded-t-lg border border-dashed mb-px transition-colors
-            ${dark
-                ? 'border-[#2E3450] text-slate-400 hover:text-slate-200 hover:border-slate-400'
-                : 'border-slate-300 text-slate-700 hover:text-slate-700 hover:border-slate-400'}`}
-          >
+          <button onClick={() => setAddingTab(true)}
+            className={`shrink-0 flex items-center gap-1 text-xs px-3 py-2 ml-1 rounded-t-lg border border-dashed mb-px transition-colors
+              ${dark ? 'border-[#2E3450] text-slate-400 hover:text-slate-200 hover:border-slate-400' : 'border-slate-300 text-slate-500 hover:text-slate-700 hover:border-slate-400'}`}>
             <Plus size={10} /> 탭 추가
           </button>
         )}
+      </div>
 
-      </div>{/* end 탭 스크롤 영역 */}
-
-      {/* 우측 슬롯 — 대시보드 편집 툴바 */}
       {rightSlot && (
-        <div className={`flex items-center gap-2 px-4 shrink-0 border-l
-          ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+        <div className={`flex items-center gap-2 px-4 shrink-0 border-l ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
           {rightSlot}
         </div>
       )}
-
     </div>
   )
 }
@@ -1248,21 +861,16 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
 /* ══════════════════════════════════════════
    상수 & 유틸
 ══════════════════════════════════════════ */
-/* col-span-N → widthPct 변환 (하위호환) */
 function spanToWidthPct(span) {
   const cols = parseInt((span || '').replace('col-span-', '')) || 2
-  return Math.round((cols / 6) * 10000) / 100  // 33.33, 50, 66.67 등
+  return Math.round((cols / 6) * 10000) / 100
 }
 
-/* ── 구 포맷 → slots 배열로 정규화 + span→widthPct 마이그레이션 ── */
 function migrateSlot(s) {
-  // 이미 widthPct가 있으면 그대로
   if (s.widthPct != null) return s
-  // span → widthPct 변환 (하위호환)
   const widthPct = s.span ? spanToWidthPct(s.span) : 33.33
   const result = { ...s, widthPct }
   delete result.span
-  // rowsOverride → heightPx 변환
   if (s.rowsOverride && !s.heightPx) {
     result.heightPx = s.rowsOverride * (1 + MGAP) - MGAP
     delete result.rowsOverride
@@ -1272,16 +880,7 @@ function migrateSlot(s) {
 
 function normalizeDashboard(d) {
   if (!d) return { slots: [] }
-  /* 구 비-report 대시보드 마이그레이션 → slots 배열로 변환 */
-  if (d.type && d.type !== 'report' && !Array.isArray(d.slots)) {
-    if (d.type === 'funnel') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'funnel_chart', config: { ...(DEFAULT_WIDGET_CONFIG.funnel_chart || {}), stages: d.stages || DEFAULT_WIDGET_CONFIG.funnel_chart?.stages } }] }
-    if (d.type === 'kanban') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'kanban_board', config: { ...(DEFAULT_WIDGET_CONFIG.kanban_board || {}), columns: d.columns || DEFAULT_WIDGET_CONFIG.kanban_board?.columns } }] }
-    if (d.type === 'simulation') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'sim_budget', config: { ...DEFAULT_WIDGET_CONFIG.sim_budget } }] }
-    if (d.type === 'cohort') return { slots: [{ id: 'w_mig_1', widthPct: 100, type: 'cohort_heatmap', config: { ...DEFAULT_WIDGET_CONFIG.cohort_heatmap } }] }
-    return { slots: [] }
-  }
   if (Array.isArray(d.slots)) return { ...d, slots: d.slots.map(migrateSlot) }
-  // 구 템플릿 포맷 마이그레이션
   const tpl = TEMPLATES[d.template]
   if (!tpl) return { dataSource: d.dataSource, slots: [] }
   return {
@@ -1300,773 +899,38 @@ function normalizeDashboard(d) {
 }
 
 /* ══════════════════════════════════════════
-   카드 추가 모달
-══════════════════════════════════════════ */
-/* ── 위젯 타입 메타 (Step 3 미리보기용) ── */
-const WTYPE_META = {
-  kpi:        { icon: '💳', label: 'KPI 카드',      desc: '핵심 지표 하나를 크게 표시하고 전일/전주 대비 변화율을 함께 보여줍니다', metricTag: '메트릭 1개', needsGroup: false },
-  timeseries: { icon: '📈', label: '시계열 차트',   desc: '날짜별 추이를 라인 차트로 시각화, 여러 지표를 동시에 비교할 수 있습니다', metricTag: '메트릭 1~5개', needsGroup: false },
-  bar:        { icon: '📊', label: '바 차트',       desc: '그룹별 지표를 막대로 비교, 채널·캠페인별 성과 비교에 적합합니다', metricTag: '메트릭 1~3개', needsGroup: true },
-  donut:      { icon: '🍩', label: '도넛 차트',     desc: '그룹별 비중을 한눈에 파악, 채널 점유율·매출 비중 분석에 최적', metricTag: '메트릭 1개', needsGroup: true },
-  table:      { icon: '📋', label: '데이터 테이블', desc: '상세 데이터를 표로 확인, 정렬·필터링으로 세부 분석이 가능합니다', metricTag: '메트릭 1~10개', needsGroup: true },
-  /* 시뮬레이션 */
-  sim_budget:   { icon: '💰', label: '예산 배분',     desc: '채널별 예산 슬라이더로 배분하고 예상 성과를 실시간으로 확인합니다', metricTag: '예산 입력', needsGroup: false },
-  sim_goal:     { icon: '🎯', label: '목표 역산',     desc: '목표 매출/전환 수치를 입력하면 필요한 채널별 예산을 역산합니다', metricTag: '목표값 입력', needsGroup: false },
-  sim_scenario: { icon: '⚖️', label: '시나리오 비교', desc: '여러 예산 시나리오를 만들어 바 차트로 비교 분석합니다', metricTag: '시나리오 관리', needsGroup: false },
-  /* 퍼널 */
-  funnel_chart:     { icon: '🔻', label: '전환 퍼널',       desc: '노출→클릭→전환 등 단계별 전환율을 퍼널 차트로 시각화합니다', metricTag: '단계 설정', needsGroup: false },
-  funnel_breakdown: { icon: '📊', label: '퍼널 브레이크다운', desc: '채널별로 각 퍼널 단계의 수치와 전환율을 테이블로 비교합니다', metricTag: '단계+그룹', needsGroup: true },
-  /* 코호트 */
-  cohort_heatmap: { icon: '🟩', label: '리텐션 히트맵', desc: '코호트별 리텐션을 히트맵으로 표시, 색상으로 이탈 패턴을 파악합니다', metricTag: '기간 설정', needsGroup: false },
-  cohort_trend:   { icon: '📉', label: '코호트 트렌드', desc: '평균 리텐션 추이를 면적 차트로 시각화, 개선 효과를 확인합니다', metricTag: '기간 설정', needsGroup: false },
-  /* 칸반 */
-  kanban_board: { icon: '📋', label: '칸반 보드', desc: '드래그 앤 드롭으로 작업을 관리하는 칸반 보드입니다', metricTag: '칼럼 관리', needsGroup: false },
-}
-
-/* ── Step 3 미니 프리뷰 SVG들 ── */
-function MiniKpi({ dark }) {
-  return (
-    <div className="text-center w-full">
-      <div className={`text-sm font-extrabold ${dark ? 'text-white' : 'text-slate-800'}`}>₩ 1.2M</div>
-      <div className="text-[8px] text-emerald-400 mt-0.5">▲ 3.2%</div>
-    </div>
-  )
-}
-function MiniTimeseries() {
-  return (
-    <svg viewBox="0 0 64 40" fill="none" className="w-full h-10">
-      <polyline points="2,32 12,28 22,18 32,22 42,10 52,14 62,6" stroke="#6366F1" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-      <polyline points="2,34 12,30 22,26 32,28 42,20 52,24 62,16" stroke="#818CF8" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity=".4"/>
-    </svg>
-  )
-}
-function MiniBar() {
-  return (
-    <div className="flex items-end gap-[3px] h-10 w-full">
-      {[65,100,45,80,55].map((h, i) => (
-        <div key={i} className="flex-1 rounded-t-sm" style={{ height: `${h}%`, background: i % 2 ? '#818CF8' : '#6366F1' }} />
-      ))}
-    </div>
-  )
-}
-function MiniDonut() {
-  return (
-    <svg viewBox="0 0 44 44" className="w-11 h-11">
-      <circle cx="22" cy="22" r="16" fill="none" stroke="#252836" strokeWidth="6"/>
-      <circle cx="22" cy="22" r="16" fill="none" stroke="#6366F1" strokeWidth="6" strokeDasharray="40 100" strokeDashoffset="0" transform="rotate(-90 22 22)"/>
-      <circle cx="22" cy="22" r="16" fill="none" stroke="#818CF8" strokeWidth="6" strokeDasharray="28 100" strokeDashoffset="-40" transform="rotate(-90 22 22)"/>
-      <circle cx="22" cy="22" r="16" fill="none" stroke="#A5B4FC" strokeWidth="6" strokeDasharray="18 100" strokeDashoffset="-68" transform="rotate(-90 22 22)"/>
-    </svg>
-  )
-}
-function MiniTable({ dark }) {
-  return (
-    <div className="w-full flex flex-col gap-[2px]">
-      {[true, false, false, false].map((hdr, i) => (
-        <div key={i} className="flex gap-[2px]">
-          {[1,2,3].map(j => <div key={j} className={`flex-1 rounded-[1px] ${hdr ? 'h-[7px] bg-indigo-500/50' : 'h-[6px]'} ${!hdr ? (dark ? 'bg-[#252836]' : 'bg-slate-200') : ''}`} />)}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function MiniSimBudget() {
-  return (
-    <div className="w-full flex flex-col gap-[3px]">
-      {[80,55,35].map((w,i) => (
-        <div key={i} className="flex items-center gap-1">
-          <div className="flex-1 h-[5px] rounded-full bg-[#252836]">
-            <div className="h-full rounded-full" style={{width:`${w}%`, background: ['#6366F1','#818CF8','#A5B4FC'][i]}} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-function MiniSimGoal() {
-  return (
-    <svg viewBox="0 0 44 44" className="w-10 h-10">
-      <circle cx="22" cy="22" r="18" fill="none" stroke="#252836" strokeWidth="3"/>
-      <circle cx="22" cy="22" r="12" fill="none" stroke="#6366F1" strokeWidth="2.5"/>
-      <circle cx="22" cy="22" r="6" fill="#818CF8"/>
-    </svg>
-  )
-}
-function MiniSimScenario() {
-  return (
-    <div className="flex items-end gap-[2px] h-10 w-full">
-      {[[60,80],[45,70],[75,50]].map(([a,b], i) => (
-        <div key={i} className="flex-1 flex gap-[1px] items-end h-full">
-          <div className="flex-1 rounded-t-sm" style={{height:`${a}%`, background:'#6366F1'}} />
-          <div className="flex-1 rounded-t-sm" style={{height:`${b}%`, background:'#A5B4FC'}} />
-        </div>
-      ))}
-    </div>
-  )
-}
-function MiniFunnel({ dark }) {
-  return (
-    <svg viewBox="0 0 60 40" className="w-full h-10">
-      <polygon points="2,2 58,2 48,14 12,14" fill="#6366F1" opacity=".9"/>
-      <polygon points="12,16 48,16 42,28 18,28" fill="#818CF8" opacity=".8"/>
-      <polygon points="18,30 42,30 38,38 22,38" fill="#A5B4FC" opacity=".7"/>
-    </svg>
-  )
-}
-function MiniFunnelBreakdown({ dark }) {
-  return (
-    <div className="w-full flex flex-col gap-[2px]">
-      {[true, false, false].map((hdr, i) => (
-        <div key={i} className="flex gap-[2px]">
-          {[1,2,3,4].map(j => <div key={j} className={`flex-1 rounded-[1px] ${hdr ? 'h-[7px] bg-emerald-500/50' : 'h-[6px]'} ${!hdr ? (dark ? 'bg-[#252836]' : 'bg-slate-200') : ''}`} />)}
-        </div>
-      ))}
-    </div>
-  )
-}
-function MiniCohortHeatmap() {
-  const colors = ['#22C55E','#16A34A','#EAB308','#F97316','#EF4444']
-  return (
-    <div className="grid grid-cols-4 gap-[2px] w-full">
-      {Array.from({length:12}).map((_,i) => (
-        <div key={i} className="h-[7px] rounded-[1px]" style={{background: colors[Math.min(4, Math.floor(i/2.5))], opacity: 0.5 + (i%3)*0.2}} />
-      ))}
-    </div>
-  )
-}
-function MiniCohortTrend() {
-  return (
-    <svg viewBox="0 0 64 40" fill="none" className="w-full h-10">
-      <path d="M2,36 L12,28 L22,24 L32,20 L42,16 L52,14 L62,12 L62,38 L2,38 Z" fill="#6366F1" opacity=".25"/>
-      <polyline points="2,36 12,28 22,24 32,20 42,16 52,14 62,12" stroke="#6366F1" strokeWidth="2" fill="none" strokeLinecap="round"/>
-    </svg>
-  )
-}
-function MiniKanban({ dark }) {
-  return (
-    <div className="flex gap-[3px] w-full h-10">
-      {[3,2,1].map((n,i) => (
-        <div key={i} className={`flex-1 rounded-sm flex flex-col gap-[2px] p-[2px] ${dark ? 'bg-[#252836]' : 'bg-slate-200'}`}>
-          {Array.from({length:n}).map((_,j) => (
-            <div key={j} className="w-full h-[6px] rounded-[1px] bg-indigo-500/40" />
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const MINI_PREVIEW = {
-  kpi: MiniKpi, timeseries: MiniTimeseries, bar: MiniBar, donut: MiniDonut, table: MiniTable,
-  sim_budget: MiniSimBudget, sim_goal: MiniSimGoal, sim_scenario: MiniSimScenario,
-  funnel_chart: MiniFunnel, funnel_breakdown: MiniFunnelBreakdown,
-  cohort_heatmap: MiniCohortHeatmap, cohort_trend: MiniCohortTrend,
-  kanban_board: MiniKanban,
-}
-
-/* ── 카테고리 메타 ── */
-const CATEGORY_META = {
-  report:     { icon: '📈', label: '리포트',      desc: 'KPI, 차트, 테이블 등 데이터 시각화 카드' },
-  simulation: { icon: '🧪', label: '시뮬레이션',  desc: '예산 배분, ROAS 목표 시뮬레이터 카드' },
-  funnel:     { icon: '🔻', label: '퍼널',        desc: '노출→클릭→전환 단계별 전환율 분석' },
-  cohort:     { icon: '🟩', label: '코호트',      desc: '사용자 리텐션·이탈 패턴 분석' },
-  kanban:     { icon: '📋', label: '칸반',        desc: '작업 관리 칸반 보드' },
-}
-
-function AddWidgetModal({ dark, dataMap = {}, defaultTable = 'marketing_data', filterByDate, onAdd, onClose, columnConfig, availableTables: availableTablesProp }) {
-  const [step, setStep] = useState(1)   // 1:카테고리 2:데이터소스(조건부) 3:위젯타입 4:설정
-  const [selCategory, setSelCategory] = useState('report')
-  const [selTable, setSelTable] = useState('marketing_data')
-  const [type, setType] = useState('kpi')
-  const [wConfig, setWConfig] = useState({ ...DEFAULT_WIDGET_CONFIG.kpi })
-  const [filters, setFilters] = useState({})
-
-  /* 데이터소스가 필요 없는 카테고리 */
-  const NEEDS_DATA = { report: true, funnel: true, cohort: true, simulation: false, kanban: false }
-
-  const upd = (k, v) => setWConfig(c => ({ ...c, [k]: v }))
-
-  /* 선택한 테이블 기준 메트릭/그룹바이 동적 생성 (widgetMetricConfig 반영) */
-  const dynMetrics = useMemo(
-    () => buildWidgetMetrics(selTable, columnConfig),
-    [selTable, columnConfig]
-  )
-  const dynGroupBy = useMemo(
-    () => buildWidgetGroupBy(selTable, columnConfig),
-    [selTable, columnConfig]
-  )
-
-  /* 테이블 변경 시 → config 메트릭 리셋 */
-  const handleTableChange = (newTable) => {
-    setSelTable(newTable)
-    // 새 테이블의 첫 메트릭으로 config 리셋
-    const newMetrics = buildTableMetrics(newTable, columnConfig)
-    const firstId = newMetrics[0]?.id
-    setWConfig(prev => {
-      const next = { ...prev, _table: newTable }
-      if ('metric' in next && firstId) next.metric = firstId
-      if (Array.isArray(next.metrics) && firstId) next.metrics = [firstId]
-      return next
-    })
-    setFilters({})
-  }
-
-  /* 사용 가능한 테이블 목록: 부모에서 전달 */
-  const availableTables = availableTablesProp || []
-
-  /* AddWidgetModal 내부 데이터: 선택된 테이블 기반 */
-  const addDateCol = columnConfig?.[selTable]?.dateColumn
-  const widgetData = useMemo(() => {
-    const raw = dataMap[selTable] || dataMap[defaultTable] || []
-    const filtered = filterByDate ? filterByDate(raw, addDateCol) : raw
-    return applyComputedColumns(filtered, selTable, columnConfig)
-  }, [dataMap, selTable, defaultTable, filterByDate, columnConfig, addDateCol])
-
-  /* 카테고리별 허용 위젯 */
-  const allowedTypes = SUB_TYPES[selCategory]?.widgetTypes || SUB_TYPES.report.widgetTypes
-
-  const handleAdd = () => {
-    const cfg = { ...wConfig, filters }
-    if (NEEDS_DATA[selCategory]) cfg._table = selTable
-    onAdd({ id: `w_${Date.now()}`, widthPct: 33.33, type, config: cfg })
-    onClose()
-  }
-
-  const S = {
-    sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
-      ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
-    inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
-      ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
-    lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
-  }
-
-  /* 카테고리에 따라 동적 스텝 구성 */
-  const needsData = NEEDS_DATA[selCategory]
-  const STEPS = needsData
-    ? ['카드 유형', '데이터 소스', '위젯 선택', '설정']
-    : ['카드 유형', '위젯 선택', '설정']
-  const totalSteps = STEPS.length
-
-  /* 논리 스텝 → 실제 내부 스텝 매핑 */
-  const toInternal = (logical) => {
-    if (!needsData && logical >= 2) return logical + 1 // 2→3, 3→4
-    return logical
-  }
-  const toLogical = (internal) => {
-    if (!needsData && internal >= 3) return internal - 1 // 3→2, 4→3
-    return internal
-  }
-  const logicalStep = toLogical(step)
-
-  const goNext = () => {
-    if (step === 1 && !needsData) setStep(3) // 카테고리→위젯 (데이터소스 스킵)
-    else setStep(s => s + 1)
-  }
-  const goPrev = () => {
-    if (step === 3 && !needsData) setStep(1) // 위젯→카테고리 (데이터소스 스킵)
-    else setStep(s => s - 1)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-xl flex flex-col max-h-[90vh]
-        ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
-
-        {/* 헤더 */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0
-          ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-          <div>
-            <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>카드 추가</p>
-            <div className="flex items-center gap-1 mt-2">
-              {STEPS.map((s, i) => (
-                <div key={s} className="flex items-center gap-1">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-colors
-                    ${logicalStep === i + 1 ? 'bg-indigo-500 text-white'
-                      : logicalStep > i + 1 ? 'bg-emerald-500 text-white'
-                        : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-600'}`}>
-                    {logicalStep > i + 1 ? '✓' : i + 1}
-                  </div>
-                  <span className={`text-[10px] font-medium hidden sm:inline
-                    ${logicalStep === i + 1 ? (dark ? 'text-slate-200' : 'text-slate-700') : dark ? 'text-slate-600' : 'text-slate-600'}`}>
-                    {s}
-                  </span>
-                  {i < totalSteps - 1 && <span className={`text-[10px] mx-0.5 ${dark ? 'text-slate-600' : 'text-slate-600'}`}>›</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-          <button onClick={onClose}
-            className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* 선택 요약 칩 */}
-        {step > 1 && (
-          <div className="flex items-center gap-1.5 px-5 pt-3 flex-wrap">
-            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-              {CATEGORY_META[selCategory]?.icon} {CATEGORY_META[selCategory]?.label}
-            </span>
-            {needsData && step > 2 && (
-              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                {availableTables.find(t => t.id === selTable)?.icon} {availableTables.find(t => t.id === selTable)?.displayName || selTable}
-              </span>
-            )}
-            {step > 3 && (
-              <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                {WTYPE_META[type]?.icon} {WTYPE_META[type]?.label}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* 바디 */}
-        <div className="flex-1 overflow-y-auto p-5 min-h-0">
-
-          {/* ─── Step 1: 카드 유형 선택 ─── */}
-          {step === 1 && (
-            <div className="flex flex-col gap-2">
-              <p className={`${S.lab} mb-1`}>카드 유형</p>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(CATEGORY_META).map(([id, meta]) => {
-                  const on = selCategory === id
-                  return (
-                    <button key={id} onClick={() => {
-                      setSelCategory(id)
-                      // 카테고리 변경 시 해당 카테고리 첫 위젯으로 초기화
-                      const firstType = (SUB_TYPES[id]?.widgetTypes || ['kpi'])[0]
-                      setType(firstType)
-                      const base = { ...DEFAULT_WIDGET_CONFIG[firstType] }
-                      const first = dynMetrics[0]?.id
-                      const firstGb = dynGroupBy[0]?.id
-                      if (first) { if ('metric' in base) base.metric = first; if (Array.isArray(base.metrics)) base.metrics = [first] }
-                      if (firstGb && 'groupBy' in base) base.groupBy = firstGb
-                      setWConfig(base)
-                    }}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center cursor-pointer transition-all
-                        ${on ? 'border-indigo-500 bg-indigo-500/10'
-                          : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
-                      <span className="text-2xl">{meta.icon}</span>
-                      <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-700'}`}>{meta.label}</span>
-                      <span className={`text-[10px] leading-tight ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                        {(SUB_TYPES[id]?.widgetTypes || []).length}개 위젯
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ─── Step 2: 데이터 소스 선택 (리포트/퍼널/코호트만) ─── */}
-          {step === 2 && needsData && (
-            <div className="flex flex-col gap-2">
-              <p className={`${S.lab} mb-1`}>데이터 소스 선택</p>
-              {availableTables.map(t => {
-                const on = selTable === t.id
-                return (
-                  <button key={t.id} onClick={() => handleTableChange(t.id)}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all
-                      ${on ? 'border-indigo-500 bg-indigo-500/10'
-                        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
-                    <span className={`w-9 h-9 rounded-lg flex items-center justify-center text-base ${dark ? 'bg-[#0F1117]' : 'bg-slate-100'}`}>
-                      {t.icon}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-bold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{t.displayName}</p>
-                      <p className={`text-[10px] font-mono ${dark ? 'text-slate-500' : 'text-slate-700'}`}>{t.id}</p>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] transition-colors
-                      ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>
-                      {on && '✓'}
-                    </div>
-                  </button>
-                )
-              })}
-              <p className={`text-[10px] mt-2 p-2.5 rounded-lg border-l-2 border-indigo-500 leading-relaxed
-                ${dark ? 'text-slate-500 bg-indigo-500/5' : 'text-slate-700 bg-indigo-50'}`}>
-                선택한 테이블의 컬럼 설정(별칭, 계산 컬럼)이 위젯 메트릭에 반영됩니다.
-              </p>
-            </div>
-          )}
-
-          {/* ─── Step 3: 위젯 타입 선택 + 미리보기 ─── */}
-          {step === 3 && (
-            <div className="flex flex-col gap-2">
-              <p className={`${S.lab} mb-1`}>위젯 선택</p>
-              {allowedTypes.filter(id => WTYPE_META[id]).map(id => {
-                const meta = WTYPE_META[id]
-                const on = type === id
-                const Preview = MINI_PREVIEW[id]
-                return (
-                  <button key={id} onClick={() => {
-                    setType(id)
-                    const base = { ...DEFAULT_WIDGET_CONFIG[id] }
-                    const first = dynMetrics[0]?.id; const firstGb = dynGroupBy[0]?.id
-                    if (first) { if ('metric' in base) base.metric = first; if (Array.isArray(base.metrics)) base.metrics = [first] }
-                    if (firstGb && 'groupBy' in base) base.groupBy = firstGb
-                    setWConfig(base)
-                  }}
-                    className={`flex items-stretch gap-3 p-3 rounded-xl border text-left transition-all
-                      ${on ? 'border-indigo-500 bg-indigo-500/10'
-                        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
-                    {/* 미니 프리뷰 */}
-                    <div className={`w-[72px] shrink-0 rounded-lg flex items-center justify-center p-2
-                      ${dark ? 'bg-[#0F1117]' : 'bg-slate-50'}`}>
-                      {Preview ? <Preview dark={dark} /> : <span className="text-xl">{meta.icon}</span>}
-                    </div>
-                    {/* 정보 */}
-                    <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
-                      <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{meta.label}</p>
-                      <p className={`text-[10px] leading-snug ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{meta.desc}</p>
-                      <div className="flex gap-1 mt-0.5">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                          {meta.metricTag}
-                        </span>
-                        {meta.needsGroup && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                            그룹 기준 1개
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {/* 체크 */}
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] self-center shrink-0 transition-colors
-                      ${on ? 'border-indigo-500 bg-indigo-500 text-white' : dark ? 'border-[#252836]' : 'border-slate-200'}`}>
-                      {on && '✓'}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* ─── Step 4: 메트릭 설정 ─── */}
-          {step === 4 && (
-            <div className="flex flex-col gap-4">
-              {/* 메트릭 힌트 */}
-              <div className={`text-[10px] p-2 rounded-lg flex items-center gap-2
-                ${dark ? 'bg-indigo-500/5 text-slate-400' : 'bg-indigo-50 text-slate-700'}`}>
-                <span className="text-indigo-400">ℹ</span>
-                {WTYPE_META[type]?.metricTag}{WTYPE_META[type]?.needsGroup ? ' + 그룹 기준 1개가 필요합니다' : '가 필요합니다'}
-              </div>
-
-              {/* KPI — 단일 메트릭 */}
-              {type === 'kpi' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>지표</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>커스텀 라벨 (선택)</p>
-                    <input className={S.inp} value={wConfig.label || ''}
-                      onChange={e => upd('label', e.target.value)} placeholder="기본: 지표명 사용" />
-                  </div>
-                </>
-              )}
-
-              {/* 시계열 — 복수 메트릭 */}
-              {type === 'timeseries' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''}
-                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* 바/도넛 — 단일 메트릭 + 그룹 */}
-              {(type === 'bar' || type === 'donut') && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''}
-                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>지표</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.metric} onSelect={mid => upd('metric', mid)} dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <GroupByPicker options={dynGroupBy} selected={wConfig.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* 테이블 — 복수 메트릭 + 그룹 */}
-              {type === 'table' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''}
-                      onChange={e => upd('title', e.target.value)} placeholder="위젯 제목" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>표시 지표 (복수 선택)</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                    <GroupByPicker options={dynGroupBy} selected={wConfig.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 시뮬레이션: 예산 배분 ── */}
-              {type === 'sim_budget' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="예산 배분 시뮬레이션" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
-                    <input type="number" className={S.inp} value={wConfig.totalBudget || 1000000}
-                      onChange={e => upd('totalBudget', Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 시뮬레이션: 목표 역산 ── */}
-              {type === 'sim_goal' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="목표 역산" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>목표 메트릭</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>목표값</p>
-                    <input type="number" className={S.inp} value={wConfig.targetValue || 10000000}
-                      onChange={e => upd('targetValue', Number(e.target.value))} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 시뮬레이션: 시나리오 비교 ── */}
-              {type === 'sim_scenario' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="시나리오 비교" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>총 예산</p>
-                    <input type="number" className={S.inp} value={wConfig.totalBudget || 1000000}
-                      onChange={e => upd('totalBudget', Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>비교 메트릭</p>
-                    <MetricPicker metrics={dynMetrics} selected={wConfig.targetMetric} onSelect={mid => upd('targetMetric', mid)} dark={dark} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 퍼널: 전환 퍼널 / 브레이크다운 ── */}
-              {(type === 'funnel_chart' || type === 'funnel_breakdown') && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)} placeholder="전환 퍼널" />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>퍼널 단계</p>
-                    {(wConfig.stages || []).map((stage, si) => (
-                      <div key={stage.id} className="flex gap-1.5 mb-1.5">
-                        <input className={`${S.inp} flex-1`} value={stage.label}
-                          onChange={e => {
-                            const next = [...wConfig.stages]; next[si] = {...stage, label: e.target.value}; upd('stages', next)
-                          }} placeholder={`단계 ${si+1} 이름`} />
-                        <select className={`${S.sel} w-32`} value={stage.metric}
-                          onChange={e => {
-                            const next = [...wConfig.stages]; next[si] = {...stage, metric: e.target.value}; upd('stages', next)
-                          }}>
-                          {dynMetrics.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                        </select>
-                        {wConfig.stages.length > 2 && (
-                          <button onClick={() => upd('stages', wConfig.stages.filter((_,j) => j !== si))}
-                            className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
-                        )}
-                      </div>
-                    ))}
-                    <button onClick={() => upd('stages', [...(wConfig.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || 'impr'}])}
-                      className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
-                        ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
-                      + 단계 추가
-                    </button>
-                  </div>
-                  {type === 'funnel_breakdown' && (
-                    <div>
-                      <p className={`${S.lab} mb-1.5`}>그룹 기준</p>
-                      <GroupByPicker options={dynGroupBy} selected={wConfig.groupBy || dynGroupBy[0]?.id} onSelect={v => upd('groupBy', v)} dark={dark} />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* ── 코호트: 히트맵 / 트렌드 ── */}
-              {(type === 'cohort_heatmap' || type === 'cohort_trend') && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>제목</p>
-                    <input className={S.inp} value={wConfig.title || ''} onChange={e => upd('title', e.target.value)}
-                      placeholder={type === 'cohort_heatmap' ? '리텐션 히트맵' : '코호트 트렌드'} />
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>기간 단위</p>
-                    <select className={S.sel} value={wConfig.granularity || 'week'}
-                      onChange={e => upd('granularity', e.target.value)}>
-                      <option value="week">주간</option>
-                      <option value="month">월간</option>
-                    </select>
-                  </div>
-                  <div>
-                    <p className={`${S.lab} mb-1.5`}>기간 수</p>
-                    <input type="number" className={S.inp} value={wConfig.periods || 8} min={2} max={24}
-                      onChange={e => upd('periods', Number(e.target.value))} />
-                  </div>
-                </>
-              )}
-
-              {/* ── 칸반 보드 ── */}
-              {type === 'kanban_board' && (
-                <>
-                  <div>
-                    <p className={`${S.lab} mb-2`}>칼럼 설정</p>
-                    {(wConfig.columns || []).map((col, ci) => (
-                      <div key={col.id} className="flex gap-1.5 mb-1.5">
-                        <input className={`${S.inp} flex-1`} value={col.title}
-                          onChange={e => {
-                            const next = [...wConfig.columns]; next[ci] = {...col, title: e.target.value}; upd('columns', next)
-                          }} placeholder={`칼럼 ${ci+1}`} />
-                        {wConfig.columns.length > 1 && (
-                          <button onClick={() => upd('columns', wConfig.columns.filter((_,j) => j !== ci))}
-                            className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
-                        )}
-                      </div>
-                    ))}
-                    <button onClick={() => upd('columns', [...(wConfig.columns||[]), {id:`c${Date.now()}`, title:'', cards:[]}])}
-                      className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
-                        ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-700'}`}>
-                      + 칼럼 추가
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* 데이터 필터 — 리포트 카드 타입 공통 */}
-              {['kpi','timeseries','bar','donut','table','funnel_chart','funnel_breakdown'].includes(type) && (
-                <FilterSection
-                  filters={filters}
-                  groupBy={wConfig.groupBy}
-                  data={widgetData}
-                  dark={dark}
-                  onChange={setFilters}
-                  columnConfig={columnConfig}
-                  tableName={selTable}
-                  onGroupByChange={['bar', 'donut', 'table', 'funnel_breakdown'].includes(type)
-                    ? (dim) => upd('groupBy', dim ?? (dynGroupBy[0]?.id || 'channel'))
-                    : undefined}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 푸터 */}
-        <div className={`flex items-center justify-between px-5 py-4 border-t shrink-0
-          ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-          <button
-            onClick={() => step > 1 ? goPrev() : onClose()}
-            className={`text-xs px-4 py-2 rounded-xl border transition-colors
-              ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600'
-                : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-            {step > 1 ? '← 이전' : '취소'}
-          </button>
-          {step < 4 ? (
-            <button onClick={goNext}
-              className="text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-              다음 →
-            </button>
-          ) : (
-            <button onClick={handleAdd}
-              className="flex items-center gap-1.5 text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
-              <Plus size={12} /> 카드 추가
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ══════════════════════════════════════════
    위젯 그리드 (탭별 분리 렌더 + dnd-kit)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, showAdd, onOpenAdd, onCloseAdd, columnConfig, availableTables }) {
-  const [editSlot, setEditSlot] = useState(null)   // 편집 모달 대상 slotId
-  const [activeId, setActiveId] = useState(null)   // 드래그 중인 slotId
-  const gridRef = useRef(null)                         // 그리드 컨테이너 ref (리사이즈용)
+function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables }) {
+  const [editSlot, setEditSlot] = useState(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [activeId, setActiveId] = useState(null)
+  const gridRef = useRef(null)
 
-  // 탭 전환 시 에디터 초기화
-  useEffect(() => {
-    setEditSlot(null)
-  }, [tabId])
+  useEffect(() => { setEditSlot(null); setShowAdd(false) }, [tabId])
+  useEffect(() => { if (!editMode) { setEditSlot(null); setShowAdd(false) } }, [editMode])
 
-  // editMode 해제 시 에디터 닫기
-  useEffect(() => {
-    if (!editMode) setEditSlot(null)
-  }, [editMode])
-
-  // 정규화된 슬롯 배열
   const norm = useMemo(() => normalizeDashboard(dashboard), [dashboard])
   const slots = norm.slots || []
 
-  // dnd-kit sensors — 5px 이상 움직여야 드래그 시작 (클릭과 구분)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  /* ── 슬롯 조작 ── */
-  const handleAddSlot = (widget) => {
+  const handleAddSlot = (_, widget) => {
     setDashboard({ ...norm, slots: [...slots, widget] })
+    setShowAdd(false)
   }
-
-  const handleDeleteSlot = (id) => {
-    setDashboard({ ...norm, slots: slots.filter(s => s.id !== id) })
-  }
-
-  const handleWidthChange = (id, widthPct) => {
-    setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, widthPct } : s) })
-  }
-
-  const handleHeightChange = (id, heightPx) => {
-    setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, heightPx: heightPx ?? undefined } : s) })
-  }
+  const handleDeleteSlot = (id) => setDashboard({ ...norm, slots: slots.filter(s => s.id !== id) })
+  const handleWidthChange = (id, widthPct) => setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, widthPct } : s) })
+  const handleHeightChange = (id, heightPx) => setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, heightPx: heightPx ?? undefined } : s) })
 
   const handleWidgetSave = (slotId, widget) => {
     setDashboard({ ...norm, slots: slots.map(s => s.id === slotId ? { ...s, ...widget } : s) })
     setEditSlot(null)
   }
 
-  /* 상태형 위젯의 config 실시간 업데이트 (칸반 카드 이동, 시뮬레이션 슬라이더 등) */
   const handleConfigUpdate = useCallback((slotId, newConfig) => {
     setDashboard(prev => {
       const n = normalizeDashboard(prev)
@@ -2074,9 +938,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
     })
   }, [])
 
-  /* ── 드래그 앤 드롭 ── */
   const handleDragStart = ({ active }) => setActiveId(active.id)
-
   const handleDragEnd = ({ active, over }) => {
     setActiveId(null)
     if (!over || active.id === over.id) return
@@ -2086,64 +948,41 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   }
 
   const activeSlot = activeId ? slots.find(s => s.id === activeId) : null
-
-  // 편집 모달 대상 슬롯
   const editingSlot = editSlot ? slots.find(s => s.id === editSlot) : null
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 위젯 그리드 */}
       {slots.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 gap-5 rounded-2xl border-2 border-dashed
-          ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-200 text-slate-600'}`}>
+          ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-200 text-slate-400'}`}>
           <span className="text-5xl">📊</span>
           <div className="text-center">
-            <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-              아직 카드가 없습니다
-            </p>
+            <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>아직 카드가 없습니다</p>
             <p className="text-xs mt-1.5">카드를 추가해 원하는 지표를 시각화해보세요</p>
           </div>
-          <button onClick={onOpenAdd}
+          <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 text-xs px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
             <Plus size={13} /> 첫 번째 카드 추가
           </button>
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <SortableContext items={slots.map(s => s.id)} strategy={rectSortingStrategy}>
             <div ref={gridRef} className="flex flex-wrap gap-3 items-start">
               {slots.map(slot => (
-                <SortableCard
-                  key={slot.id}
-                  slot={slot}
-                  editMode={editMode}
-                  onEdit={setEditSlot}
-                  onDelete={handleDeleteSlot}
-                  onWidthChange={handleWidthChange}
-                  onHeightChange={handleHeightChange}
+                <SortableCard key={slot.id} slot={slot} editMode={editMode}
+                  onEdit={setEditSlot} onDelete={handleDeleteSlot}
+                  onWidthChange={handleWidthChange} onHeightChange={handleHeightChange}
                   onConfigUpdate={handleConfigUpdate}
-                  dataMap={dataMap}
-                  defaultTable={defaultTable}
-                  filterByDate={filterByDate}
-                  columnConfig={columnConfig}
-                  dark={dark}
-                  gridRef={gridRef}
-                />
+                  dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
+                  columnConfig={columnConfig} dark={dark} gridRef={gridRef} />
               ))}
-              {/* 편집모드: 인라인 추가 버튼 */}
               {editMode && (
-                <div onClick={onOpenAdd}
+                <div onClick={() => setShowAdd(true)}
                   style={{ width: pctToWidth(16.67), minHeight: 100 }}
-                  className={`rounded-xl border-2 border-dashed cursor-pointer shrink-0
-                    flex flex-col items-center justify-center gap-1.5 transition-colors select-none
-                    ${dark
-                      ? 'border-[#252836] text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
-                      : 'border-slate-200 text-slate-700 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
+                  className={`rounded-xl border-2 border-dashed cursor-pointer shrink-0 flex flex-col items-center justify-center gap-1.5 transition-colors select-none
+                    ${dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
+                      : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
                   <Plus size={16} />
                   <span className="text-[10px] font-semibold">카드 추가</span>
                 </div>
@@ -2151,10 +990,9 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
             </div>
           </SortableContext>
 
-          {/* 드래그 중 고스트 카드 */}
           <DragOverlay>
             {activeSlot && (() => {
-              const t = activeSlot.config?._table || defaultTable
+              const t = activeSlot.table || activeSlot.config?._table || defaultTable
               const raw = dataMap[t] || dataMap[defaultTable] || []
               const d = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
               const processed = applyComputedColumns(d, t, columnConfig)
@@ -2162,10 +1000,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               const sCfg = sanitizeWidgetConfig(activeSlot.type, activeSlot.config, t, columnConfig)
               return (
                 <div className="rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl"
-                  style={{
-                    width: pctToWidth(activeSlot.widthPct ?? 33.33),
-                    ...(activeSlot.type !== 'kpi' && { minHeight: 210 }),
-                  }}>
+                  style={{ width: pctToWidth(activeSlot.widthPct ?? 33.33), ...(activeSlot.type !== 'kpi' && { minHeight: 210 }) }}>
                   {renderWidget(activeSlot.type, applyWidgetFilters(processed, sCfg.filters), sCfg, dark, m, null, columnConfig?.[t]?.dateColumn)}
                 </div>
               )
@@ -2175,21 +1010,31 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       )}
 
       {/* 카드 추가 모달 */}
-      {showAdd && (
-        <AddWidgetModal dark={dark} dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
-          onAdd={handleAddSlot} onClose={onCloseAdd} columnConfig={columnConfig} availableTables={availableTables} />
-      )}
+      {showAdd && (() => {
+        const addData = applyComputedColumns(dataMap[defaultTable] || [], defaultTable, columnConfig)
+        return (
+          <WidgetEditor
+            widget={{ type: 'kpi', table: defaultTable, config: { ...DEFAULT_WIDGET_CONFIG.kpi } }}
+            data={addData}
+            dark={dark}
+            onSave={handleAddSlot}
+            onClose={() => setShowAdd(false)}
+            columnConfig={columnConfig}
+            availableTables={availableTables}
+          />
+        )
+      })()}
 
-      {/* 위젯 편집 모달 (카드 밖 전체화면) */}
+      {/* 위젯 편집 모달 */}
       {editingSlot && (() => {
-        const t = editingSlot.config?._table || defaultTable
+        const t = editingSlot.table || editingSlot.config?._table || defaultTable
         const raw = dataMap[t] || dataMap[defaultTable] || []
         const d = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
         const processed = applyComputedColumns(d, t, columnConfig)
         return (
           <WidgetEditor
             slotId={editingSlot.id}
-            widget={{ type: editingSlot.type, config: editingSlot.config }}
+            widget={{ type: editingSlot.type, table: editingSlot.table, config: editingSlot.config }}
             data={processed}
             dark={dark}
             onSave={handleWidgetSave}
@@ -2205,56 +1050,40 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
 
 /* ══════════════════════════════════════════
    메인 컴포넌트
-
-   tabsConfig: {
-     tabs:         [{id, label}],
-     addTab:       (label) => id,
-     removeTab:    (tabId) => void,
-     renameTab:    (tabId, label) => void,
-     getDashboard: (tabId) => dashboard | null,
-     saveDashboard:(dashboard, tabId) => void,
-   }
 ══════════════════════════════════════════ */
 export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
   const { config } = useConfig()
   const { columnConfig } = useColumnConfig()
   const tabs = tabsConfig?.tabs || []
 
-  /* 활성 탭 */
   const [activeTabId, setActiveTabId] = useState(() => tabs[0]?.id ?? null)
   const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0] ?? null
 
-  /* 활성 탭의 대시보드 (로컬 편집 상태) */
   const [dashboard, setDashboard] = useState(() => {
     if (!activeTab) return makeDashboard()
     return tabsConfig?.getDashboard(activeTab.id) ?? makeDashboard()
   })
   const [saved, setSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
-  const [showAdd, setShowAdd] = useState(false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const tabBarAddRef = useRef(null)
 
-  /* 탭 전환 → 대시보드 로드 + 편집 상태 초기화 */
   useEffect(() => {
     if (!activeTab) return
     const d = tabsConfig?.getDashboard(activeTab.id) ?? makeDashboard()
     setDashboard(d)
     setSaved(false)
     setEditMode(false)
-    setShowAdd(false)
   }, [activeTab?.id])
 
-  /* ── 데이터 소스: 위젯 기반 자동 수집 ── */
   const defaultTable = subDataSource?.table || 'marketing_data'
 
-  /* 위젯들이 사용하는 모든 테이블 수집 → 멀티 페치 */
   const neededTables = useMemo(() => {
     const norm = normalizeDashboard(dashboard)
     const tables = new Set()
-    tables.add(defaultTable) // 기본 테이블은 항상 포함
+    tables.add(defaultTable)
     ;(norm.slots || []).forEach(s => {
-      const t = s.config?._table
+      const t = s.table || s.config?._table
       if (t) tables.add(t)
     })
     return [...tables]
@@ -2263,10 +1092,8 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables)
   const errorMsg = Object.entries(errors).map(([t, e]) => `${t}: ${e}`).join(', ')
 
-  /* 사용 가능한 테이블 목록 */
   const availableTables = useMemo(() => {
-    const seen = new Set()
-    const tables = []
+    const seen = new Set(); const tables = []
     DB_TABLES.forEach(t => {
       seen.add(t)
       const tCfg = columnConfig?.[t]
@@ -2276,8 +1103,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     })
     if (columnConfig) {
       Object.keys(columnConfig).forEach(t => {
-        if (seen.has(t)) return
-        seen.add(t)
+        if (seen.has(t)) return; seen.add(t)
         const tCfg = columnConfig[t]
         const colCount = tCfg?.columns ? Object.keys(tCfg.columns).length : 0
         const displayName = getTableDisplayName(t, columnConfig)
@@ -2287,12 +1113,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     return tables
   }, [columnConfig])
 
-  /* 탭 추가 — 자동 이동 없음 */
-  const handleAddTab = (label, templateId = null) => {
-    tabsConfig?.addTab(label, templateId)
-  }
-
-  /* 탭 삭제 */
+  const handleAddTab = (label) => tabsConfig?.addTab(label)
   const handleRemoveTab = (tabId) => {
     tabsConfig?.removeTab(tabId)
     if (activeTabId === tabId) {
@@ -2301,11 +1122,9 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     }
   }
 
-  /* 저장 — 구 포맷이라면 정규화 후 저장 */
   const handleSave = () => {
     if (activeTab) tabsConfig?.saveDashboard(normalizeDashboard(dashboard), activeTab.id)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
   if (loading) return <Spinner dark={dark} />
@@ -2313,28 +1132,18 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
-      {/* ── L3 탭 바 ── */}
       <L3TabBar
-        tabs={tabs}
-        activeId={activeTab?.id}
-        onSelect={setActiveTabId}
-        onAdd={handleAddTab}
-        onRemove={handleRemoveTab}
+        tabs={tabs} activeId={activeTab?.id} onSelect={setActiveTabId}
+        onAdd={handleAddTab} onRemove={handleRemoveTab}
         onRename={(tabId, label) => tabsConfig?.renameTab(tabId, label)}
         onReorder={(from, to) => tabsConfig?.reorderTabs?.(from, to)}
-        dark={dark}
-        addRef={tabBarAddRef}
+        dark={dark} addRef={tabBarAddRef}
         rightSlot={activeTab ? (
           editMode ? (
             <>
-              <button onClick={() => setShowAdd(true)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
-                  bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
-                <Plus size={12} /> 카드 추가
-              </button>
-              <button onClick={() => { setEditMode(false); setShowAdd(false) }}
+              <button onClick={() => { setEditMode(false) }}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 취소
               </button>
               <button onClick={() => { handleSave(); setEditMode(false) }}
@@ -2347,12 +1156,12 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             <>
               <button onClick={() => setShowTemplatePicker(true)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <LayoutTemplate size={12} /> 템플릿 불러오기
               </button>
               <button onClick={() => setEditMode(true)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Settings2 size={12} /> 대시보드 편집
               </button>
             </>
@@ -2360,22 +1169,17 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
         ) : null}
       />
 
-      {/* ── 템플릿 불러오기 모달 ── */}
       {showTemplatePicker && (
-        <TemplatePickerModal
-          dark={dark}
-          onClose={() => setShowTemplatePicker(false)}
+        <TemplatePickerModal dark={dark} onClose={() => setShowTemplatePicker(false)}
           onSelect={(tpl) => {
             const newDash = generateDashboard(tpl, defaultTable, columnConfig)
             setDashboard(newDash)
             if (activeTab) tabsConfig?.saveDashboard(newDash, activeTab.id)
-            setSaved(true)
-            setTimeout(() => setSaved(false), 2000)
+            setSaved(true); setTimeout(() => setSaved(false), 2000)
           }}
         />
       )}
 
-      {/* ── 컨텐츠 ── */}
       {activeTab ? (
         <div className="p-5 overflow-y-auto flex-1">
           {errorMsg && (
@@ -2385,43 +1189,24 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
             </div>
           )}
           <DashboardGrid
-            key={activeTab.id}
-            tabId={activeTab.id}
-            dashboard={dashboard}
-            setDashboard={setDashboard}
-            dataMap={rawDataMap}
-            defaultTable={defaultTable}
-            filterByDate={filterByDate}
-            dark={dark}
-            editMode={editMode}
-            showAdd={showAdd}
-            onOpenAdd={() => setShowAdd(true)}
-            onCloseAdd={() => setShowAdd(false)}
-            columnConfig={columnConfig}
-            availableTables={availableTables}
+            key={activeTab.id} tabId={activeTab.id}
+            dashboard={dashboard} setDashboard={setDashboard}
+            dataMap={rawDataMap} defaultTable={defaultTable}
+            filterByDate={filterByDate} dark={dark} editMode={editMode}
+            columnConfig={columnConfig} availableTables={availableTables}
           />
         </div>
       ) : (
-        /* 빈 상태 — 클릭하면 탭 추가 폼 오픈 */
-        <button
-          onClick={() => tabBarAddRef.current?.()}
-          className={`flex flex-col items-center justify-center flex-1 gap-5 w-full
-            transition-colors group
-            ${dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-700 hover:text-slate-700'}`}
-        >
+        <button onClick={() => tabBarAddRef.current?.()}
+          className={`flex flex-col items-center justify-center flex-1 gap-5 w-full transition-colors group
+            ${dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
           <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-colors
-            ${dark
-              ? 'bg-[#1A1D27] group-hover:bg-indigo-600/20'
-              : 'bg-slate-50 group-hover:bg-indigo-50'}`}>
+            ${dark ? 'bg-[#1A1D27] group-hover:bg-indigo-600/20' : 'bg-slate-50 group-hover:bg-indigo-50'}`}>
             <Plus size={32} className="text-indigo-400 group-hover:text-indigo-500" />
           </div>
           <div className="text-center">
-            <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-              탭이 없습니다
-            </p>
-            <p className="text-xs mt-1.5 text-indigo-400 group-hover:text-indigo-300 font-medium">
-              + 여기를 클릭해서 첫 번째 탭을 만들어보세요
-            </p>
+            <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>탭이 없습니다</p>
+            <p className="text-xs mt-1.5 text-indigo-400 group-hover:text-indigo-300 font-medium">+ 여기를 클릭해서 첫 번째 탭을 만들어보세요</p>
           </div>
         </button>
       )}
