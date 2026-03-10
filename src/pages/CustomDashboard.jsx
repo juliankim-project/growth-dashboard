@@ -127,6 +127,14 @@ function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTa
               {cfg.axisMode === 'dual' && cfg.rightMetrics?.length > 0 && (
                 <p><span className="text-slate-400">rightY:</span> {cfg.rightMetrics.map(ml).join(', ')}</p>
               )}
+              {cfg.filters && Object.entries(cfg.filters).filter(([k, v]) => k !== 'table' && Array.isArray(v) && v.length > 0).length > 0 && (
+                <>
+                  <p className="text-indigo-300 font-bold mt-1">filters:</p>
+                  {Object.entries(cfg.filters).filter(([k, v]) => k !== 'table' && Array.isArray(v) && v.length > 0).map(([k, v]) => (
+                    <p key={k}><span className="text-slate-400">{k}:</span> {v.join(', ')}</p>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         )
