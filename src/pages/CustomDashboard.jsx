@@ -176,8 +176,9 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
-        className={`rounded-2xl border w-full max-w-2xl p-6 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
-        <div className="flex items-center justify-between mb-5">
+        className={`rounded-2xl border w-full max-w-5xl max-h-[85vh] flex flex-col p-6
+          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+        <div className="flex items-center justify-between mb-5 shrink-0">
           <div>
             <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 불러오기</p>
             <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>선택한 템플릿으로 현재 탭의 위젯을 교체합니다</p>
@@ -186,10 +187,10 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
             <X size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3 overflow-y-auto flex-1 min-h-0">
           {DASHBOARD_TEMPLATES.map(tpl => (
             <button key={tpl.id} onClick={() => setConfirm(tpl)}
-              className={`p-4 rounded-xl border text-left transition-all
+              className={`p-4 rounded-xl border text-left transition-all self-start
                 ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
                   : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
               <div className="flex items-center gap-2 mb-2">
