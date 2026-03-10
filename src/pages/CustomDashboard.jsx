@@ -238,7 +238,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
               <input autoFocus value={renaming.value}
                 onChange={e => setRenaming(r => ({ ...r, value: e.target.value }))}
                 onBlur={commitRename}
-                onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null) }}
+                onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null) }}
                 className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24 border-b-2 border-indigo-500 ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`} />
             ) : (
               <button onClick={() => onSelect(tab.id)}
@@ -261,7 +261,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
         {addingTab ? (
           <div className="flex items-center gap-1 pb-px ml-1 shrink-0">
             <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') } }}
+              onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') } }}
               placeholder="탭 이름"
               className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
                 ${dark ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500' : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-400'}`} />
