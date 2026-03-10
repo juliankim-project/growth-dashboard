@@ -243,3 +243,27 @@ export function generateDashboard(template, tableName, columnConfig) {
 
   return { slots }
 }
+
+/* ═══════════════════════════════════════════
+   dashboardToTemplate — 현재 대시보드 → 커스텀 템플릿 변환
+   layout 제거, config → preset 매핑
+   ═══════════════════════════════════════════ */
+export function dashboardToTemplate(dashboard, name, icon = '📌') {
+  const slots = dashboard?.slots || []
+  const tables = [...new Set(slots.map(s => s.table).filter(Boolean))]
+
+  const slotDefs = slots.map(s => ({
+    type: s.type,
+    widthPct: s.widthPct,
+    ...(s.heightPx ? { heightPx: s.heightPx } : {}),
+    preset: { ...s.config },
+  }))
+
+  return {
+    id: `ct_${Date.now()}`,
+    name,
+    icon,
+    defaultTable: tables[0] || null,
+    slotDefs,
+  }
+}

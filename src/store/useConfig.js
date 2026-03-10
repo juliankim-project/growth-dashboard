@@ -26,6 +26,8 @@ export const DEFAULT_CONFIG = {
   sectionIcons: {},        // { 'sectionId': 'IconName' }
   subIcons: {},        // { 'sectionId.subId': 'IconName' }
   l3subIcons: {},        // { 'sectionId.subId.l3subId': 'IconName' }
+  /* ── 커스텀 템플릿 ── */
+  customTemplates: [],     // [{id, name, icon, defaultTable, slotDefs}]
   /* ── 테이블 컬럼 설정 (레거시 — useColumnConfig로 이전됨) ── */
   columnConfig: {},        // 하위호환용 유지, 실제 데이터는 column_configs 테이블 사용
 }
@@ -595,6 +597,21 @@ export function useConfig() {
 
   /* ── 컬럼 설정 → useColumnConfig 훅으로 이전 ── */
 
+  /* ── 커스텀 템플릿 CRUD ── */
+  const getCustomTemplates = () => config.customTemplates || []
+  const saveCustomTemplate = (template) => {
+    persist(prev => ({
+      ...prev,
+      customTemplates: [...(prev.customTemplates || []), template],
+    }))
+  }
+  const deleteCustomTemplate = (templateId) => {
+    persist(prev => ({
+      ...prev,
+      customTemplates: (prev.customTemplates || []).filter(t => t.id !== templateId),
+    }))
+  }
+
   return {
     config,
     getSectionLabel, getSubLabel, getCustomSubs, getDashboard, saveDashboard,
@@ -608,5 +625,6 @@ export function useConfig() {
     getSubDataSource, setSubDataSource,
     getL3Subs, addL3Sub, removeL3Sub, renameL3Sub, reorderL3Subs,
     getL3Tabs, addL3Tab, removeL3Tab, renameL3Tab, reorderL3Tabs,
+    getCustomTemplates, saveCustomTemplate, deleteCustomTemplate,
   }
 }

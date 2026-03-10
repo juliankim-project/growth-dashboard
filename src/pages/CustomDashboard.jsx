@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2 } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2 } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -7,7 +7,7 @@ import {
 } from '../store/useConfig'
 import { useColumnConfig } from '../store/useColumnConfig'
 import { TABLES as DB_TABLES, applyComputedColumns, buildTableMetrics, buildTableGroupBy, buildWidgetMetrics, buildWidgetGroupBy, getTableDisplayName, getColumnLabel, sanitizeWidgetConfig } from '../store/columnUtils'
-import { DASHBOARD_TEMPLATES, generateDashboard } from '../store/dashboardTemplates'
+import { DASHBOARD_TEMPLATES, generateDashboard, dashboardToTemplate } from '../store/dashboardTemplates'
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
@@ -171,14 +171,17 @@ function TplMiniPreview({ slotDefs, dark }) {
   )
 }
 
-function TemplatePickerModal({ dark, onSelect, onClose }) {
+function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], onDeleteCustom }) {
   const [confirm, setConfirm] = useState(null)
+  const [tab, setTab] = useState('default') // 'default' | 'custom'
+  const templates = tab === 'default' ? DASHBOARD_TEMPLATES : customTemplates
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         className={`rounded-2xl border w-full max-w-5xl max-h-[85vh] flex flex-col p-6
           ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
-        <div className="flex items-center justify-between mb-5 shrink-0">
+        <div className="flex items-center justify-between mb-4 shrink-0">
           <div>
             <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 불러오기</p>
             <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>선택한 템플릿으로 현재 탭의 위젯을 교체합니다</p>
@@ -187,21 +190,50 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
             <X size={16} />
           </button>
         </div>
+
+        {/* 기본 / 커스텀 탭 */}
+        <div className={`flex gap-1 mb-4 shrink-0 p-1 rounded-lg ${dark ? 'bg-[#0D0F18]' : 'bg-slate-100'}`}>
+          {[{ id: 'default', label: '기본 템플릿', count: DASHBOARD_TEMPLATES.length },
+            { id: 'custom', label: '커스텀 템플릿', count: customTemplates.length }].map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setConfirm(null) }}
+              className={`flex-1 text-xs py-2 rounded-md font-semibold transition-colors
+                ${tab === t.id
+                  ? dark ? 'bg-[#1A1D27] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                  : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+              {t.label} <span className={`ml-1 ${tab === t.id ? 'text-indigo-400' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-3 gap-3 overflow-y-auto flex-1 min-h-0">
-          {DASHBOARD_TEMPLATES.map(tpl => (
-            <button key={tpl.id} onClick={() => setConfirm(tpl)}
-              className={`p-4 rounded-xl border text-left transition-all self-start
-                ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
-                  : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+          {templates.length === 0 ? (
+            <div className={`col-span-3 flex flex-col items-center justify-center py-16 gap-3 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className="text-4xl">📁</span>
+              <p className="text-sm">저장된 커스텀 템플릿이 없습니다</p>
+              <p className="text-xs">대시보드를 꾸민 후 "템플릿 저장" 버튼으로 저장해보세요</p>
+            </div>
+          ) : templates.map(tpl => (
+            <div key={tpl.id} className={`relative group p-4 rounded-xl border text-left transition-all self-start cursor-pointer
+              ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
+                : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}
+              onClick={() => setConfirm(tpl)}>
+              {/* 커스텀 템플릿 삭제 버튼 */}
+              {tab === 'custom' && onDeleteCustom && (
+                <button onClick={e => { e.stopPropagation(); onDeleteCustom(tpl.id); if (confirm?.id === tpl.id) setConfirm(null) }}
+                  className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  title="템플릿 삭제">
+                  <Trash2 size={10} />
+                </button>
+              )}
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{tpl.icon}</span>
                 <div>
                   <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
-                  <p className={`text-[10px] mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>
+                  {tpl.desc && <p className={`text-[10px] mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>}
                 </div>
               </div>
               <TplMiniPreview slotDefs={tpl.slotDefs} dark={dark} />
-            </button>
+            </div>
           ))}
         </div>
         {confirm && (
@@ -222,6 +254,104 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════
+   템플릿 저장 모달
+══════════════════════════════════════════ */
+const ICON_PRESETS = ['📊','📋','📈','🏨','🔍','🚨','⏱️','📌','🎯','💡','🛒','📦']
+
+function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
+  const [name, setName] = useState('')
+  const [icon, setIcon] = useState('📌')
+  const nameRef = useRef(null)
+
+  useEffect(() => { nameRef.current?.focus() }, [])
+
+  const norm = normalizeDashboard(dashboard)
+  const slotCount = norm.slots?.length || 0
+
+  const handleSave = () => {
+    const trimmed = name.trim()
+    if (!trimmed || slotCount === 0) return
+    const tpl = dashboardToTemplate(norm, trimmed, icon)
+    onSave(tpl)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        className={`rounded-2xl border w-full max-w-lg p-6
+          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>커스텀 템플릿 저장</p>
+            <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>현재 대시보드 위젯 구성을 템플릿으로 저장합니다</p>
+          </div>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-400 hover:bg-slate-100'}`}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* 이름 입력 */}
+        <div className="mb-4">
+          <label className={`text-xs font-semibold block mb-1.5 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>템플릿 이름</label>
+          <input ref={nameRef} value={name} onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); handleSave() } if (e.key === 'Escape') onClose() }}
+            placeholder="예: OTA 야놀자 OVERVIEW"
+            className={`w-full text-sm px-3 py-2.5 rounded-lg border outline-none transition-colors
+              ${dark ? 'bg-[#0D0F18] border-[#252836] text-white placeholder:text-slate-600 focus:border-indigo-500'
+                : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-400'}`} />
+        </div>
+
+        {/* 아이콘 선택 */}
+        <div className="mb-4">
+          <label className={`text-xs font-semibold block mb-1.5 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>아이콘</label>
+          <div className="flex flex-wrap gap-1.5">
+            {ICON_PRESETS.map(ic => (
+              <button key={ic} onClick={() => setIcon(ic)}
+                className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border transition-all
+                  ${icon === ic
+                    ? 'border-indigo-500 bg-indigo-500/15 scale-110'
+                    : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                {ic}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 미리보기 */}
+        {slotCount > 0 && (
+          <div className="mb-5">
+            <label className={`text-xs font-semibold block mb-1.5 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+              레이아웃 미리보기 <span className={dark ? 'text-slate-500' : 'text-slate-400'}>({slotCount}개 위젯)</span>
+            </label>
+            <TplMiniPreview slotDefs={norm.slots.map(s => ({
+              type: s.type,
+              widthPct: s.widthPct || 33.33,
+              heightPx: s.heightPx,
+            }))} dark={dark} />
+          </div>
+        )}
+
+        {/* 액션 */}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose}
+            className={`text-xs px-4 py-2 rounded-lg border ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+            취소
+          </button>
+          <button onClick={handleSave}
+            disabled={!name.trim() || slotCount === 0}
+            className={`flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg font-semibold transition-colors
+              ${!name.trim() || slotCount === 0
+                ? 'bg-slate-500/50 text-slate-400 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+            <Save size={12} /> 저장
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -573,6 +703,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
   const [saved, setSaved] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [showSource, setShowSource] = useState(false)
   const tabBarAddRef = useRef(null)
   const gridAddRef = useRef(null)
@@ -675,6 +806,11 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Plus size={12} /> 카드 추가
               </button>
+              <button onClick={() => setShowSaveTemplate(true)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                <Save size={12} /> 템플릿 저장
+              </button>
               <button onClick={() => setShowTemplatePicker(true)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -692,11 +828,23 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
 
       {showTemplatePicker && (
         <TemplatePickerModal dark={dark} onClose={() => setShowTemplatePicker(false)}
+          customTemplates={tabsConfig?.getCustomTemplates() || []}
+          onDeleteCustom={(id) => tabsConfig?.deleteCustomTemplate(id)}
           onSelect={(tpl) => {
             const newDash = generateDashboard(tpl, defaultTable, columnConfig)
             setDashboard(newDash)
             if (activeTab) tabsConfig?.saveDashboard(newDash, activeTab.id)
             setSaved(true); setTimeout(() => setSaved(false), 2000)
+          }}
+        />
+      )}
+
+      {showSaveTemplate && (
+        <SaveTemplateModal dark={dark} dashboard={dashboard}
+          onClose={() => setShowSaveTemplate(false)}
+          onSave={(tpl) => {
+            tabsConfig?.saveCustomTemplate(tpl)
+            setShowSaveTemplate(false)
           }}
         />
       )}
