@@ -311,36 +311,12 @@ export function sanitizeWidgetConfig(widgetType, config, tableName, columnConfig
 }
 
 /* ═══════════════════════════════════════════
-   getNeededColumns — 테이블에서 실제 필요한 컬럼만 추출
-   → Supabase select 문자열 생성 (네트워크 최적화)
+   getNeededColumns — 테이블에서 실제 필요한 컬럼 SELECT 문자열
+   주의: column_definitions와 실제 DB 스키마가 불일치할 수 있으므로
+         안전하게 '*' 반환 (추후 스키마 동기화 후 최적화 가능)
    ═══════════════════════════════════════════ */
-export function getNeededColumns(tableName, columnConfig) {
-  const tCfg = columnConfig?.[tableName]
-  if (!tCfg) return '*'
-
-  const cols = new Set()
-
-  // visible 컬럼 (metric + dimension)
-  Object.entries(tCfg.columns || {}).forEach(([col, cfg]) => {
-    if (cfg.visible !== false) cols.add(col)
-  })
-
-  // computed 컬럼 의존성 (terms에서 참조하는 원본 컬럼)
-  ;(tCfg.computed || []).forEach(cc => {
-    ;(cc.terms || []).forEach(t => {
-      if (t.col && t.col !== '__const__') cols.add(t.col)
-      if (t.col1) cols.add(t.col1)
-      if (t.col2) cols.add(t.col2)
-    })
-  })
-
-  // dateColumn
-  if (tCfg.dateColumn) cols.add(tCfg.dateColumn)
-
-  // dimensionColumns
-  ;(tCfg.dimensionColumns || []).forEach(d => cols.add(d))
-
-  return cols.size > 0 ? [...cols].join(',') : '*'
+export function getNeededColumns() {
+  return '*'
 }
 
 export function applyComputedColumns(rows, tableName, columnConfig) {
