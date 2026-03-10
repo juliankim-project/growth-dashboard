@@ -22,18 +22,9 @@ import ComparisonWidget from '../components/widgets/ComparisonWidget'
 import RankingWidget from '../components/widgets/RankingWidget'
 import AlertWidget from '../components/widgets/AlertWidget'
 import TimelineWidget from '../components/widgets/TimelineWidget'
-import {
-  DndContext, closestCenter,
-  PointerSensor, KeyboardSensor,
-  useSensor, useSensors,
-  DragOverlay,
-} from '@dnd-kit/core'
-import {
-  SortableContext, useSortable,
-  rectSortingStrategy, arrayMove,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
 
 /* ── 카드별 필터 적용: dimensionColumns 기반 동적 필터링 ── */
 function applyWidgetFilters(data, filters) {
@@ -47,8 +38,6 @@ function applyWidgetFilters(data, filters) {
   })
   return result
 }
-
-/* FilterSection — src/components/editor/FilterSection.jsx 로 이동됨 */
 
 /* ══════════════════════════════════════════
    위젯 매핑 & 렌더링
@@ -70,90 +59,13 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
   )
 }
 
-/* WidgetEditor, MetricPicker, GroupByPicker — src/components/editor/ 로 이동됨 */
-
 /* ══════════════════════════════════════════
-   드래그 가능한 카드 (dnd-kit)
+   그리드 카드 (react-grid-layout용)
 ══════════════════════════════════════════ */
-const MGAP = 12
-const MIN_W_PCT = 10
-const MIN_H_PX = 80
-const SNAP_RANGE = 15
+const RGL_COLS = 12
+const RGL_ROW_H = 80
 
-function pctToWidth(pct) {
-  const gapAdj = MGAP * (1 - pct / 100)
-  return `calc(${pct}% - ${gapAdj}px)`
-}
-
-function findSnap(value, neighbors, range = SNAP_RANGE) {
-  for (const n of neighbors) {
-    if (Math.abs(value - n) <= range) return n
-  }
-  return null
-}
-
-function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeightChange, onConfigUpdate, dataMap, defaultTable, filterByDate, columnConfig, dark, gridRef }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slot.id, disabled: !editMode })
-  const outerRef = useRef(null)
-  const setRefs = useCallback((el) => { outerRef.current = el; setNodeRef(el) }, [setNodeRef])
-  const [resizing, setResizing] = useState(false)
-  const [sizeTooltip, setSizeTooltip] = useState(null)
-  const [snapping, setSnapping] = useState(false)
-
-  const getNeighborRightEdges = useCallback(() => {
-    const grid = gridRef?.current
-    if (!grid) return []
-    return [...grid.querySelectorAll('[data-slot-id]')].filter(c => c.dataset.slotId !== slot.id).map(c => c.getBoundingClientRect().right)
-  }, [gridRef, slot.id])
-
-  const getNeighborBottomEdges = useCallback(() => {
-    const grid = gridRef?.current
-    if (!grid) return []
-    return [...grid.querySelectorAll('[data-slot-id]')].filter(c => c.dataset.slotId !== slot.id).map(c => c.getBoundingClientRect().bottom)
-  }, [gridRef, slot.id])
-
-  const startResize = (e, direction) => {
-    e.preventDefault(); e.stopPropagation()
-    const grid = gridRef?.current; const el = outerRef.current
-    if (!grid || !el) return
-    const gridW = grid.getBoundingClientRect().width
-    const startX = e.clientX; const startY = e.clientY
-    const elRect = el.getBoundingClientRect()
-    const startW = elRect.width; const startH = elRect.height
-    const startLeft = elRect.left; const startTop = elRect.top
-    setResizing(true)
-
-    const onMove = (ev) => {
-      let newW = startW; let newH = startH; let snapped = false
-      if (direction === 'right' || direction === 'corner') {
-        newW = Math.max(gridW * MIN_W_PCT / 100, startW + (ev.clientX - startX))
-        const myRight = startLeft + newW
-        const snapRight = findSnap(myRight, getNeighborRightEdges())
-        if (snapRight !== null) { newW = snapRight - startLeft; snapped = true }
-        const pct = Math.min(100, Math.max(MIN_W_PCT, (newW + MGAP) / (gridW + MGAP) * 100))
-        onWidthChange(slot.id, Math.round(pct * 100) / 100)
-      }
-      if (direction === 'bottom' || direction === 'corner') {
-        newH = Math.max(MIN_H_PX, startH + (ev.clientY - startY))
-        const myBottom = startTop + newH
-        const snapBottom = findSnap(myBottom, getNeighborBottomEdges())
-        if (snapBottom !== null) { newH = snapBottom - startTop; snapped = true }
-        onHeightChange(slot.id, Math.round(newH))
-      }
-      setSnapping(snapped)
-      setSizeTooltip({ w: Math.round(newW), h: Math.round(newH) })
-    }
-
-    const onUp = () => {
-      setResizing(false); setSizeTooltip(null); setSnapping(false)
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onUp)
-    }
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup', onUp)
-  }
-
-  /* 위젯별 데이터: slot.table 기반 (config._table 폴백) */
+function GridCard({ slot, editMode, onEdit, onDelete, dataMap, defaultTable, filterByDate, columnConfig, dark }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
@@ -168,53 +80,28 @@ function SortableCard({ slot, editMode, onEdit, onDelete, onWidthChange, onHeigh
     [slot.type, slot.config, widgetTable, columnConfig]
   )
 
-  const widthPct = slot.widthPct ?? 33.33
-  const heightPx = slot.heightPx
-  const cardStyle = {
-    width: pctToWidth(widthPct),
-    ...(heightPx ? { height: `${heightPx}px` } : {}),
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0 : 1,
-  }
-
-  const handleColor = snapping ? 'bg-purple-500 shadow-lg shadow-purple-500/40'
-    : resizing ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40'
-    : dark ? 'bg-[#252836] hover:bg-indigo-500' : 'bg-slate-200 hover:bg-indigo-500'
-
   return (
-    <div ref={setRefs} style={cardStyle} data-slot-id={slot.id} className="relative shrink-0">
+    <div className="relative h-full">
       {editMode && (
         <>
-          <div {...attributes} {...listeners}
-            className={`absolute top-1.5 left-1/2 -translate-x-1/2 z-20 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
-              ${dark ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]' : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}>
+          {/* 드래그 핸들 */}
+          <div className={`drag-handle absolute top-1.5 left-1/2 -translate-x-1/2 z-20 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
+            ${dark ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]' : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}>
             <GripVertical size={11} />
           </div>
+          {/* 삭제 */}
           <button onClick={() => onDelete(slot.id)}
             className="absolute -top-2 -right-2 z-20 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg flex items-center justify-center text-xs leading-none font-bold transition-transform hover:scale-110">×</button>
-          <div onPointerDown={e => startResize(e, 'right')} title="드래그해서 너비 조절"
-            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-[5px] z-20 w-2.5 h-10 rounded-full cursor-col-resize select-none transition-colors ${handleColor}`} />
-          <div onPointerDown={e => startResize(e, 'bottom')} onDoubleClick={(e) => { e.stopPropagation(); onHeightChange(slot.id, null) }}
-            title="드래그해서 높이 조절 · 더블클릭으로 자동"
-            className={`absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[5px] z-20 h-2.5 w-10 rounded-full cursor-row-resize select-none transition-colors ${handleColor}`} />
-          <div onPointerDown={e => startResize(e, 'corner')} title="드래그해서 크기 조절"
-            className={`absolute bottom-0 right-0 translate-x-[4px] translate-y-[4px] z-20 w-4 h-4 rounded-full cursor-nwse-resize select-none transition-colors ${handleColor}`} />
+          {/* 편집 */}
           <button onClick={() => onEdit(slot.id)}
             className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-1 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
             <Settings2 size={9} /> 편집
           </button>
-          {sizeTooltip && (
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold pointer-events-none
-              ${snapping ? 'bg-purple-600 text-white' : 'bg-black/70 text-white'}`}>
-              {sizeTooltip.w} × {sizeTooltip.h}
-            </div>
-          )}
         </>
       )}
-      <div className={heightPx ? 'h-full overflow-hidden rounded-xl' : ''}>
+      <div className="h-full overflow-hidden rounded-xl">
         {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
-          onConfigUpdate ? (newCfg) => onConfigUpdate(slot.id, newCfg) : undefined, widgetDateCol)}
+          undefined, widgetDateCol)}
       </div>
     </div>
   )
@@ -401,7 +288,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
 }
 
 /* ══════════════════════════════════════════
-   상수 & 유틸
+   상수 & 유틸 (마이그레이션)
 ══════════════════════════════════════════ */
 function spanToWidthPct(span) {
   const cols = parseInt((span || '').replace('col-span-', '')) || 2
@@ -409,15 +296,22 @@ function spanToWidthPct(span) {
 }
 
 function migrateSlot(s) {
-  if (s.widthPct != null) return s
-  const widthPct = s.span ? spanToWidthPct(s.span) : 33.33
-  const result = { ...s, widthPct }
-  delete result.span
-  if (s.rowsOverride && !s.heightPx) {
-    result.heightPx = s.rowsOverride * (1 + MGAP) - MGAP
-    delete result.rowsOverride
+  /* span → widthPct 마이그레이션 (레거시) */
+  if (!s.widthPct && s.span) {
+    s = { ...s, widthPct: spanToWidthPct(s.span) }
+    delete s.span
   }
-  return result
+  if (s.rowsOverride && !s.heightPx) {
+    s = { ...s, heightPx: s.rowsOverride * 93 - 12 }
+    delete s.rowsOverride
+  }
+  /* widthPct/heightPx → layout 마이그레이션 */
+  if (!s.layout) {
+    const w = Math.max(1, Math.round((s.widthPct || 33.33) / 100 * RGL_COLS))
+    const h = s.heightPx ? Math.max(1, Math.round(s.heightPx / RGL_ROW_H)) : (s.type === 'kpi' ? 2 : 3)
+    s = { ...s, layout: { x: 0, y: Infinity, w, h, minW: 1, minH: 1 } }
+  }
+  return s
 }
 
 function normalizeDashboard(d) {
@@ -441,13 +335,12 @@ function normalizeDashboard(d) {
 }
 
 /* ══════════════════════════════════════════
-   위젯 그리드 (탭별 분리 렌더 + dnd-kit)
+   위젯 그리드 (react-grid-layout)
 ══════════════════════════════════════════ */
 function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables }) {
   const [editSlot, setEditSlot] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [activeId, setActiveId] = useState(null)
-  const gridRef = useRef(null)
+  const [containerRef, containerWidth] = useContainerWidth()
 
   useEffect(() => { setEditSlot(null); setShowAdd(false) }, [tabId])
   useEffect(() => { if (!editMode) { setEditSlot(null); setShowAdd(false) } }, [editMode])
@@ -455,41 +348,53 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   const norm = useMemo(() => normalizeDashboard(dashboard), [dashboard])
   const slots = norm.slots || []
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
+  /* react-grid-layout 레이아웃 배열 */
+  const layout = useMemo(() =>
+    slots.map(s => ({
+      i: s.id,
+      x: s.layout?.x ?? 0,
+      y: s.layout?.y ?? Infinity,
+      w: s.layout?.w ?? 4,
+      h: s.layout?.h ?? 3,
+      minW: s.layout?.minW ?? 1,
+      minH: s.layout?.minH ?? 1,
+      static: !editMode,
+    }))
+  , [slots, editMode])
+
+  const handleLayoutChange = useCallback((newLayout) => {
+    if (!editMode) return
+    const layoutMap = new Map(newLayout.map(l => [l.i, l]))
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return {
+        ...n,
+        slots: (n.slots || []).map(s => {
+          const l = layoutMap.get(s.id)
+          if (!l) return s
+          return { ...s, layout: { x: l.x, y: l.y, w: l.w, h: l.h, minW: l.minW ?? 1, minH: l.minH ?? 1 } }
+        })
+      }
+    })
+  }, [editMode])
 
   const handleAddSlot = (_, widget) => {
-    setDashboard({ ...norm, slots: [...slots, widget] })
+    const defaultLayout = {
+      x: 0, y: Infinity,
+      w: widget.type === 'kpi' ? 3 : 6,
+      h: widget.type === 'kpi' ? 2 : 3,
+      minW: 1, minH: 1,
+    }
+    setDashboard({ ...norm, slots: [...slots, { ...widget, layout: defaultLayout }] })
     setShowAdd(false)
   }
   const handleDeleteSlot = (id) => setDashboard({ ...norm, slots: slots.filter(s => s.id !== id) })
-  const handleWidthChange = (id, widthPct) => setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, widthPct } : s) })
-  const handleHeightChange = (id, heightPx) => setDashboard({ ...norm, slots: slots.map(s => s.id === id ? { ...s, heightPx: heightPx ?? undefined } : s) })
 
   const handleWidgetSave = (slotId, widget) => {
     setDashboard({ ...norm, slots: slots.map(s => s.id === slotId ? { ...s, ...widget } : s) })
     setEditSlot(null)
   }
 
-  const handleConfigUpdate = useCallback((slotId, newConfig) => {
-    setDashboard(prev => {
-      const n = normalizeDashboard(prev)
-      return { ...n, slots: (n.slots || []).map(s => s.id === slotId ? { ...s, config: newConfig } : s) }
-    })
-  }, [])
-
-  const handleDragStart = ({ active }) => setActiveId(active.id)
-  const handleDragEnd = ({ active, over }) => {
-    setActiveId(null)
-    if (!over || active.id === over.id) return
-    const oldIdx = slots.findIndex(s => s.id === active.id)
-    const newIdx = slots.findIndex(s => s.id === over.id)
-    setDashboard({ ...norm, slots: arrayMove(slots, oldIdx, newIdx) })
-  }
-
-  const activeSlot = activeId ? slots.find(s => s.id === activeId) : null
   const editingSlot = editSlot ? slots.find(s => s.id === editSlot) : null
 
   return (
@@ -508,47 +413,44 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
           </button>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <SortableContext items={slots.map(s => s.id)} strategy={rectSortingStrategy}>
-            <div ref={gridRef} className="flex flex-wrap gap-3 items-start">
+        <div ref={containerRef}>
+          {containerWidth > 0 && (
+            <ResponsiveGridLayout
+              className="layout"
+              width={containerWidth}
+              layouts={{ lg: layout }}
+              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
+              cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
+              rowHeight={RGL_ROW_H}
+              isDraggable={editMode}
+              isResizable={editMode}
+              compactType="vertical"
+              onLayoutChange={handleLayoutChange}
+              draggableHandle=".drag-handle"
+              margin={[12, 12]}
+            >
               {slots.map(slot => (
-                <SortableCard key={slot.id} slot={slot} editMode={editMode}
-                  onEdit={setEditSlot} onDelete={handleDeleteSlot}
-                  onWidthChange={handleWidthChange} onHeightChange={handleHeightChange}
-                  onConfigUpdate={handleConfigUpdate}
-                  dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
-                  columnConfig={columnConfig} dark={dark} gridRef={gridRef} />
+                <div key={slot.id}>
+                  <GridCard slot={slot} editMode={editMode}
+                    onEdit={setEditSlot} onDelete={handleDeleteSlot}
+                    dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
+                    columnConfig={columnConfig} dark={dark} />
+                </div>
               ))}
-              {editMode && (
-                <div onClick={() => setShowAdd(true)}
-                  style={{ width: pctToWidth(16.67), minHeight: 100 }}
-                  className={`rounded-xl border-2 border-dashed cursor-pointer shrink-0 flex flex-col items-center justify-center gap-1.5 transition-colors select-none
-                    ${dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
-                      : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
-                  <Plus size={16} />
-                  <span className="text-[10px] font-semibold">카드 추가</span>
-                </div>
-              )}
-            </div>
-          </SortableContext>
+            </ResponsiveGridLayout>
+          )}
+        </div>
+      )}
 
-          <DragOverlay>
-            {activeSlot && (() => {
-              const t = activeSlot.table || activeSlot.config?._table || defaultTable
-              const raw = dataMap[t] || dataMap[defaultTable] || []
-              const d = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
-              const processed = applyComputedColumns(d, t, columnConfig)
-              const m = buildTableMetrics(t, columnConfig)
-              const sCfg = sanitizeWidgetConfig(activeSlot.type, activeSlot.config, t, columnConfig)
-              return (
-                <div className="rounded-xl border-2 border-indigo-500 opacity-90 shadow-2xl"
-                  style={{ width: pctToWidth(activeSlot.widthPct ?? 33.33), ...(activeSlot.type !== 'kpi' && { minHeight: 210 }) }}>
-                  {renderWidget(activeSlot.type, applyWidgetFilters(processed, sCfg.filters), sCfg, dark, m, null, columnConfig?.[t]?.dateColumn)}
-                </div>
-              )
-            })()}
-          </DragOverlay>
-        </DndContext>
+      {/* 카드 추가 버튼 (그리드 하단) */}
+      {editMode && slots.length > 0 && (
+        <button onClick={() => setShowAdd(true)}
+          className={`w-full h-20 rounded-xl border-2 border-dashed cursor-pointer flex items-center justify-center gap-2 transition-colors select-none
+            ${dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
+              : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
+          <Plus size={16} />
+          <span className="text-xs font-semibold">카드 추가</span>
+        </button>
       )}
 
       {/* 카드 추가 모달 */}
@@ -593,7 +495,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
 /* ══════════════════════════════════════════
    메인 컴포넌트
 ══════════════════════════════════════════ */
-export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDataSource }) {
+export default function CustomDashboard({ dark, filterByDate, dateRange, tabsConfig, subDataSource }) {
   const { config } = useConfig()
   const { columnConfig } = useColumnConfig()
   const tabs = tabsConfig?.tabs || []
@@ -631,7 +533,7 @@ export default function CustomDashboard({ dark, filterByDate, tabsConfig, subDat
     return [...tables]
   }, [dashboard, defaultTable])
 
-  const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables)
+  const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables, dateRange, columnConfig)
   const errorMsg = Object.entries(errors).map(([t, e]) => `${t}: ${e}`).join(', ')
 
   const availableTables = useMemo(() => {

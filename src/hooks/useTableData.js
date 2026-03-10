@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchAll, supabase } from '../lib/supabase'
+import { fetchAll, fetchByDateRange, supabase } from '../lib/supabase'
 
 /**
  * 범용 Supabase 테이블 데이터 훅
@@ -43,10 +43,11 @@ export function useTableData(tableName = 'marketing_data') {
 
 /**
  * 여러 테이블 동시 조회 훅
- * tableNames 배열이 바뀌면 자동으로 재조회
- * 반환: { dataMap: { tableName: rows[] }, loading, errors: { tableName: msg } }
+ * - dateRange가 있으면 서버사이드 날짜 필터링 적용
+ * - ComparisonWidget을 위해 이전 기간도 포함하도록 확장
+ * - columnConfig에서 dateColumn 자동 조회
  */
-export function useMultiTableData(tableNames = []) {
+export function useMultiTableData(tableNames = [], dateRange = null, columnConfig = null) {
   const [dataMap,  setDataMap]  = useState({})
   const [loading,  setLoading]  = useState(true)
   const [errors,   setErrors]   = useState({})
@@ -54,7 +55,11 @@ export function useMultiTableData(tableNames = []) {
 
   // 안정적 키: 정렬된 유니크 테이블 목록
   const uniqueTables = [...new Set(tableNames.filter(Boolean))].sort()
-  const key = uniqueTables.join(',')
+
+  // dateRange를 캐시키에 포함 → 날짜 변경 시 재조회
+  const dateKey = dateRange?.start && dateRange?.end
+    ? `${dateRange.start}_${dateRange.end}` : 'all'
+  const key = uniqueTables.join(',') + '|' + dateKey
 
   useEffect(() => {
     if (!supabase) {
@@ -69,19 +74,34 @@ export function useMultiTableData(tableNames = []) {
       return
     }
 
-    // 이전과 동일한 테이블 세트면 다시 조회하지 않음
+    // 이전과 동일한 테이블 세트 + 날짜면 다시 조회하지 않음
     if (key === prevKeyRef.current) return
     prevKeyRef.current = key
 
     let cancelled = false
     setLoading(true)
 
+    // ComparisonWidget을 위해 이전 기간도 포함하도록 확장 범위 계산
+    let expandedStart = dateRange?.start
+    if (dateRange?.start && dateRange?.end) {
+      const s = new Date(dateRange.start)
+      const e = new Date(dateRange.end)
+      const periodMs = e.getTime() - s.getTime()
+      const prev = new Date(s.getTime() - periodMs - 86400000)
+      expandedStart = prev.toISOString().slice(0, 10)
+    }
+
     Promise.all(
-      uniqueTables.map(t =>
-        fetchAll(t)
+      uniqueTables.map(t => {
+        const dateCol = columnConfig?.[t]?.dateColumn
+        const fetcher = (dateCol && expandedStart && dateRange?.end)
+          ? fetchByDateRange(t, dateCol, expandedStart, dateRange.end)
+          : fetchAll(t)
+
+        return fetcher
           .then(rows => ({ table: t, rows, error: null }))
           .catch(err => ({ table: t, rows: [], error: err.message }))
-      )
+      })
     ).then(results => {
       if (cancelled) return
       const map = {}

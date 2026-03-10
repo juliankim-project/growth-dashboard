@@ -156,13 +156,47 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
             </>
           )}
 
-          {/* Line — multi metric */}
+          {/* Line — multi metric + dual axis */}
           {type === 'line' && (
-            <div>
-              <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
-              <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-              {renderMetricChips(config.metrics)}
-            </div>
+            <>
+              <div>
+                <p className={`${S.lab} mb-2`}>지표 (복수 선택)</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+                {renderMetricChips(config.metrics)}
+              </div>
+              <div>
+                <p className={`${S.lab} mb-1.5`}>Y축 모드</p>
+                <select className={S.sel} value={config.axisMode || 'single'} onChange={e => upd('axisMode', e.target.value)}>
+                  <option value="single">단일 축</option>
+                  <option value="dual">이중 축 (좌/우)</option>
+                </select>
+              </div>
+              {config.axisMode === 'dual' && (config.metrics || []).length > 0 && (
+                <div>
+                  <p className={`${S.lab} mb-1.5`}>축 배정 <span className="font-normal normal-case">(클릭해서 좌↔우 전환)</span></p>
+                  <div className="flex flex-wrap gap-1">
+                    {(config.metrics || []).map(mid => {
+                      const m = dynMetrics.find(x => x.id === mid)
+                      const isRight = (config.rightMetrics || []).includes(mid)
+                      return (
+                        <button key={mid} type="button"
+                          onClick={() => {
+                            const cur = config.rightMetrics || []
+                            const next = isRight ? cur.filter(x => x !== mid) : [...cur, mid]
+                            upd('rightMetrics', next)
+                          }}
+                          className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer
+                            ${isRight
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+                              : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20'}`}>
+                          {isRight ? '우' : '좌'} {m?.label || mid}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Bar / Pie — single metric + groupBy */}

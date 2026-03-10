@@ -53,3 +53,46 @@ export async function fetchAll(tableName) {
 
   return all
 }
+
+/**
+ * 서버사이드 날짜 필터링 fetch
+ * - dateColumn, startDate, endDate가 모두 있으면 WHERE 절 추가
+ * - 없으면 fetchAll 폴백
+ */
+export async function fetchByDateRange(tableName, dateColumn, startDate, endDate) {
+  if (!supabase) {
+    console.warn('[fetchByDateRange] supabase 클라이언트가 초기화되지 않았습니다.')
+    return []
+  }
+  if (!dateColumn || !startDate || !endDate) {
+    return fetchAll(tableName)
+  }
+
+  const PAGE = 1000
+  let from = 0
+  let all = []
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('*')
+      .gte(dateColumn, startDate)
+      .lte(dateColumn, endDate)
+      .range(from, from + PAGE - 1)
+
+    if (error) throw error
+    if (!data || data.length === 0) break
+
+    all = [...all, ...data]
+
+    if (all.length >= MAX_ROWS) {
+      console.warn(`[fetchByDateRange] ${tableName}: ${MAX_ROWS.toLocaleString()}행 제한 도달`)
+      break
+    }
+
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+
+  return all
+}

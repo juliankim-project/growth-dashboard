@@ -125,7 +125,7 @@ export const SUB_COLOR_OPTIONS = [
 ─────────────────────────────────────────── */
 export const DEFAULT_WIDGET_CONFIG = {
   kpi:        { metric: '', label: '' },
-  line:       { metrics: [], title: '일별 트렌드' },
+  line:       { metrics: [], title: '일별 트렌드', axisMode: 'single', rightMetrics: [] },
   bar:        { metric: '', groupBy: '', title: '채널별 성과' },
   table:      { metrics: [], groupBy: '', title: '성과 테이블' },
   funnel:     { stages: [

@@ -170,6 +170,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
         key={key}
         dark={dark}
         filterByDate={filterByDate}
+        dateRange={dateRange}
         tabsConfig={makeTabsConfig(nav.section, nav.sub, nav.l3sub)}
         subDataSource={subDataSource}
       />

@@ -82,6 +82,19 @@ export function fmtMetric(metricId, value, mList) {
   return fmtNum(value)
 }
 
+/** 차트 축/툴팁 전용 — 메트릭 fmt 기반 풀 포맷 (축약 없음) */
+export function fmtAxis(value, metricId, mList) {
+  if (value == null || isNaN(value)) return '—'
+  const m = mList?.find(x => x.id === metricId)
+  if (!m) return Math.round(value).toLocaleString()
+  switch (m.fmt) {
+    case 'currency': return Math.round(value).toLocaleString() + '원'
+    case 'roas':     return Math.round(value * 100).toLocaleString() + '%'
+    case 'pct':      return value.toFixed(1) + '%'
+    default:         return Math.round(value).toLocaleString()
+  }
+}
+
 /* ─── 파생지표 계산 (그룹/일별 공통) ─── */
 function calcDerived(row, metrics, mList) {
   /* 마케팅 파생지표 */

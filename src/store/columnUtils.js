@@ -275,6 +275,16 @@ export function sanitizeWidgetConfig(widgetType, config, tableName, columnConfig
     }
   }
 
+  /* rightMetrics — metrics에 없는 항목 제거 */
+  if (Array.isArray(next.rightMetrics)) {
+    const validMetricsSet = new Set(next.metrics || [])
+    const filteredRight = next.rightMetrics.filter(mid => validMetricsSet.has(mid))
+    if (filteredRight.length !== next.rightMetrics.length) {
+      next.rightMetrics = filteredRight
+      changed = true
+    }
+  }
+
   /* alert thresholds — 존재하지 않는 메트릭 키 제거 */
   if (next.thresholds && typeof next.thresholds === 'object') {
     const newTh = {}
