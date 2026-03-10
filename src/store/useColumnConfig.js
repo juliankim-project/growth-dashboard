@@ -63,16 +63,18 @@ function transformRows(defRows, metaRows) {
             agg: null,
           }
           break
-        case 'computed':
+        case 'computed': {
+          const aggLower = row.agg?.toLowerCase()
           computed.push({
             id: row.column_key,
             name: row.label || row.column_key,
-            aggType: row.agg?.toLowerCase() === 'count' ? 'count' : undefined,
-            aggRaw: row.agg?.toLowerCase() || undefined,
+            aggType: aggLower === 'count' || aggLower === 'count_distinct' ? aggLower : undefined,
+            aggRaw: aggLower || undefined,
             terms: row.terms_json || [],
             fmt: row.fmt || 'number',
           })
           break
+        }
         case 'derived':
           // derived metrics — MARKETING_DERIVED 상수가 처리하므로 여기서는 무시
           break
