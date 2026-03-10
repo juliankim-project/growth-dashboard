@@ -171,39 +171,10 @@ function TplMiniPreview({ slotDefs, dark }) {
   )
 }
 
-function TemplateSectionGrid({ templates, dark, confirm, setConfirm, isCustom, onDeleteCustom }) {
-  if (templates.length === 0) return (
-    <div className={`col-span-3 flex items-center justify-center py-8 gap-2 ${dark ? 'text-slate-600' : 'text-slate-400'}`}>
-      <span className="text-xl">📁</span>
-      <p className="text-xs">저장된 커스텀 템플릿이 없습니다 — "템플릿 저장"으로 추가해보세요</p>
-    </div>
-  )
-  return templates.map(tpl => (
-    <div key={tpl.id} className={`relative group p-4 rounded-xl border text-left transition-all self-start cursor-pointer
-      ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
-        : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}
-      onClick={() => setConfirm(tpl)}>
-      {isCustom && onDeleteCustom && (
-        <button onClick={e => { e.stopPropagation(); onDeleteCustom(tpl.id); if (confirm?.id === tpl.id) setConfirm(null) }}
-          className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          title="템플릿 삭제">
-          <Trash2 size={10} />
-        </button>
-      )}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{tpl.icon}</span>
-        <div>
-          <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
-          {tpl.desc && <p className={`text-[10px] mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>}
-        </div>
-      </div>
-      <TplMiniPreview slotDefs={tpl.slotDefs} dark={dark} />
-    </div>
-  ))
-}
-
 function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], onDeleteCustom }) {
   const [confirm, setConfirm] = useState(null)
+  const [tab, setTab] = useState('default') // 'default' | 'custom'
+  const templates = tab === 'default' ? DASHBOARD_TEMPLATES : customTemplates
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -220,30 +191,49 @@ function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], on
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 min-h-0 space-y-5">
-          {/* 기본 템플릿 */}
-          <div>
-            <p className={`text-[11px] font-bold uppercase tracking-wider mb-2.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-              기본 템플릿 <span className="text-indigo-400 ml-1">({DASHBOARD_TEMPLATES.length})</span>
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              <TemplateSectionGrid templates={DASHBOARD_TEMPLATES} dark={dark} confirm={confirm} setConfirm={setConfirm} />
-            </div>
-          </div>
+        {/* 기본 / 커스텀 탭 */}
+        <div className={`flex gap-1 mb-4 shrink-0 p-1 rounded-lg ${dark ? 'bg-[#0D0F18]' : 'bg-slate-100'}`}>
+          {[{ id: 'default', label: '기본 템플릿', count: DASHBOARD_TEMPLATES.length },
+            { id: 'custom', label: '커스텀 템플릿', count: customTemplates.length }].map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setConfirm(null) }}
+              className={`flex-1 text-xs py-2 rounded-md font-semibold transition-colors
+                ${tab === t.id
+                  ? dark ? 'bg-[#1A1D27] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                  : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+              {t.label} <span className={`ml-1 ${tab === t.id ? 'text-indigo-400' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
+            </button>
+          ))}
+        </div>
 
-          {/* 구분선 */}
-          <div className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-200'}`} />
-
-          {/* 커스텀 템플릿 */}
-          <div>
-            <p className={`text-[11px] font-bold uppercase tracking-wider mb-2.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-              커스텀 템플릿 <span className="text-indigo-400 ml-1">({customTemplates.length})</span>
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              <TemplateSectionGrid templates={customTemplates} dark={dark} confirm={confirm} setConfirm={setConfirm}
-                isCustom onDeleteCustom={onDeleteCustom} />
+        <div className="grid grid-cols-3 gap-3 overflow-y-auto flex-1 min-h-0">
+          {templates.length === 0 ? (
+            <div className={`col-span-3 flex flex-col items-center justify-center py-16 gap-3 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className="text-4xl">📁</span>
+              <p className="text-sm">저장된 커스텀 템플릿이 없습니다</p>
+              <p className="text-xs">대시보드를 꾸민 후 "템플릿 저장" 버튼으로 저장해보세요</p>
             </div>
-          </div>
+          ) : templates.map(tpl => (
+            <div key={tpl.id} className={`relative group p-4 rounded-xl border text-left transition-all self-start cursor-pointer
+              ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
+                : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}
+              onClick={() => setConfirm(tpl)}>
+              {tab === 'custom' && onDeleteCustom && (
+                <button onClick={e => { e.stopPropagation(); onDeleteCustom(tpl.id); if (confirm?.id === tpl.id) setConfirm(null) }}
+                  className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  title="템플릿 삭제">
+                  <Trash2 size={10} />
+                </button>
+              )}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">{tpl.icon}</span>
+                <div>
+                  <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{tpl.name}</span>
+                  {tpl.desc && <p className={`text-[10px] mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{tpl.desc}</p>}
+                </div>
+              </div>
+              <TplMiniPreview slotDefs={tpl.slotDefs} dark={dark} />
+            </div>
+          ))}
         </div>
 
         {confirm && (
