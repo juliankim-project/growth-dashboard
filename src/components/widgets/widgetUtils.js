@@ -314,6 +314,7 @@ export function splitByPeriod(data, dateRange, dateColumn) {
 export function getThresholdStatus(value, threshold) {
   if (!threshold) return 'neutral'
   const { good, warning, inverse } = threshold
+  if (good == null && warning == null) return 'neutral'
   if (inverse) {
     if (value <= good) return 'good'
     if (value <= warning) return 'warning'

@@ -295,8 +295,8 @@ function spanToWidthPct(span) {
   return Math.round((cols / 6) * 10000) / 100
 }
 
-function migrateSlot(s) {
-  /* span → widthPct 마이그레이션 (레거시) */
+/* 단일 슬롯 전처리 (span/rowsOverride → widthPct/heightPx) */
+function preProcessSlot(s) {
   if (!s.widthPct && s.span) {
     s = { ...s, widthPct: spanToWidthPct(s.span) }
     delete s.span
@@ -305,33 +305,49 @@ function migrateSlot(s) {
     s = { ...s, heightPx: s.rowsOverride * 93 - 12 }
     delete s.rowsOverride
   }
-  /* widthPct/heightPx → layout 마이그레이션 */
-  if (!s.layout) {
+  return s
+}
+
+/* layout 없는 슬롯들에 행 기반 x/y 자동 계산 */
+function migrateSlots(slots) {
+  let x = 0, y = 0, rowMaxH = 0
+  return slots.map(s => {
+    s = preProcessSlot(s)
+    if (s.layout) return s
+
     const w = Math.max(1, Math.round((s.widthPct || 33.33) / 100 * RGL_COLS))
     const h = s.heightPx ? Math.max(1, Math.round(s.heightPx / RGL_ROW_H)) : (s.type === 'kpi' ? 2 : 3)
-    s = { ...s, layout: { x: 0, y: Infinity, w, h, minW: 1, minH: 1 } }
-  }
-  return s
+
+    if (x + w > RGL_COLS) {
+      x = 0
+      y += rowMaxH
+      rowMaxH = 0
+    }
+
+    const layout = { x, y, w, h, minW: 1, minH: 1 }
+    x += w
+    rowMaxH = Math.max(rowMaxH, h)
+
+    return { ...s, layout }
+  })
 }
 
 function normalizeDashboard(d) {
   if (!d) return { slots: [] }
-  if (Array.isArray(d.slots)) return { ...d, slots: d.slots.map(migrateSlot) }
+  if (Array.isArray(d.slots)) return { ...d, slots: migrateSlots(d.slots) }
   const tpl = TEMPLATES[d.template]
   if (!tpl) return { dataSource: d.dataSource, slots: [] }
-  return {
-    dataSource: d.dataSource,
-    slots: tpl.slots.map(s => {
-      const w = d.widgets?.[s.id]
-      const type = w?.type || s.defaultType
-      return migrateSlot({
-        id: s.id,
-        span: w?.config?.span || s.span,
-        type,
-        config: { ...(DEFAULT_WIDGET_CONFIG[type] || {}), ...(w?.config || {}) },
-      })
-    }),
-  }
+  const rawSlots = tpl.slots.map(s => {
+    const w = d.widgets?.[s.id]
+    const type = w?.type || s.defaultType
+    return {
+      id: s.id,
+      span: w?.config?.span || s.span,
+      type,
+      config: { ...(DEFAULT_WIDGET_CONFIG[type] || {}), ...(w?.config || {}) },
+    }
+  })
+  return { dataSource: d.dataSource, slots: migrateSlots(rawSlots) }
 }
 
 /* ══════════════════════════════════════════

@@ -302,13 +302,61 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
             </>
           )}
 
-          {/* Alert — multi metric */}
+          {/* Alert — multi metric + threshold */}
           {type === 'alert' && (
-            <div>
-              <p className={`${S.lab} mb-2`}>모니터링 지표 (복수 선택)</p>
-              <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-              {renderMetricChips(config.metrics)}
-            </div>
+            <>
+              <div>
+                <p className={`${S.lab} mb-2`}>모니터링 지표 (복수 선택)</p>
+                <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
+                {renderMetricChips(config.metrics)}
+              </div>
+
+              {(config.metrics || []).length > 0 && (
+                <div>
+                  <p className={`${S.lab} mb-2`}>임계값 설정</p>
+                  {(config.metrics || []).map(mid => {
+                    const m = dynMetrics.find(x => x.id === mid)
+                    const th = config.thresholds?.[mid] || {}
+                    const updTh = (field, val) => {
+                      const next = { ...config.thresholds, [mid]: { ...(config.thresholds?.[mid] || {}), [field]: val } }
+                      upd('thresholds', next)
+                    }
+                    return (
+                      <div key={mid}
+                        className={`rounded-lg border p-3 mb-2 ${dark ? 'border-[#252836] bg-[#0F1117]' : 'border-slate-200 bg-slate-50'}`}>
+                        <p className={`text-[10px] font-semibold mb-2 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {m?.label || mid}
+                        </p>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <p className={`text-[9px] mb-1 ${dark ? 'text-emerald-400' : 'text-emerald-600'}`}>양호 기준</p>
+                            <input type="number" className={S.inp}
+                              value={th.good ?? ''} placeholder="예: 1000000"
+                              onChange={e => updTh('good', e.target.value === '' ? undefined : Number(e.target.value))} />
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-[9px] mb-1 ${dark ? 'text-amber-400' : 'text-amber-600'}`}>주의 기준</p>
+                            <input type="number" className={S.inp}
+                              value={th.warning ?? ''} placeholder="예: 500000"
+                              onChange={e => updTh('warning', e.target.value === '' ? undefined : Number(e.target.value))} />
+                          </div>
+                        </div>
+                        <label className={`flex items-center gap-1.5 mt-2 cursor-pointer select-none
+                          ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <input type="checkbox" className="accent-indigo-500 rounded"
+                            checked={!!th.inverse}
+                            onChange={e => updTh('inverse', e.target.checked)} />
+                          <span className="text-[10px]">낮을수록 양호 (비용, CPC 등)</span>
+                        </label>
+                      </div>
+                    )
+                  })}
+                  <p className={`text-[9px] mt-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    기본: 값 ≥ 양호 → 양호, ≥ 주의 → 주의, 미만 → 위험 · inverse 시 반대
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Timeline — multi metric */}
