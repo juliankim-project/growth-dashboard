@@ -5,7 +5,7 @@ import {
 } from '../../store/useConfig'
 import {
   buildWidgetMetrics, buildWidgetGroupBy,
-  getTableDisplayName, sanitizeWidgetConfig,
+  sanitizeWidgetConfig,
 } from '../../store/columnUtils'
 import WidgetTypeSelector from './WidgetTypeSelector'
 import MetricPicker from './MetricPicker'
@@ -100,14 +100,9 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
           <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
             {isNew ? '카드 추가' : '위젯 편집'}
           </p>
-          <div className="flex items-center gap-2">
-            <span className={`text-[10px] px-2.5 py-1 rounded-md font-semibold ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-              📊 {getTableDisplayName(selTable, columnConfig)}
-            </span>
-            <button onClick={onClose} className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
-              <X size={16} />
-            </button>
-          </div>
+          <button onClick={onClose} className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
+            <X size={16} />
+          </button>
         </div>
 
         {/* 바디 */}
