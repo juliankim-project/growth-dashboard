@@ -358,9 +358,16 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   const [showAdd, setShowAdd] = useState(false)
   const { containerRef, width: containerWidth } = useContainerWidth()
 
-  useEffect(() => { if (addRef) addRef.current = () => setShowAdd(true) })
+  const pendingAdd = useRef(false)
+  useEffect(() => { if (addRef) addRef.current = (opts) => {
+    if (opts?.enterEdit) { pendingAdd.current = true }
+    setShowAdd(true)
+  }})
   useEffect(() => { setEditSlot(null); setShowAdd(false) }, [tabId])
-  useEffect(() => { if (!editMode) { setEditSlot(null); setShowAdd(false) } }, [editMode])
+  useEffect(() => {
+    if (!editMode) { setEditSlot(null); setShowAdd(false) }
+    else if (pendingAdd.current) { pendingAdd.current = false; setShowAdd(true) }
+  }, [editMode])
 
   const norm = useMemo(() => normalizeDashboard(dashboard), [dashboard])
   const slots = norm.slots || []
@@ -616,7 +623,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             </>
           ) : (
             <>
-              <button onClick={() => gridAddRef.current?.()}
+              <button onClick={() => { gridAddRef.current?.({ enterEdit: true }); setEditMode(true) }}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Plus size={12} /> 카드 추가
