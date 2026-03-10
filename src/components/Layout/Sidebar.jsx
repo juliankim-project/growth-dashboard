@@ -147,10 +147,10 @@ export default function Sidebar({
   const [sidebarEdit, setSidebarEdit] = useState(null)
   // null | { type:'section'|'sub'|'l3sub', key:string, value:string }
 
-  const commitSidebarEdit = () => {
+  const commitSidebarEdit = (inputVal) => {
     if (!sidebarEdit) return
-    const { type, key, value } = sidebarEdit
-    const v = value.trim()
+    const { type, key } = sidebarEdit
+    const v = (inputVal ?? '').trim()
     if (!v) { setSidebarEdit(null); return }
     if (type === 'section')  setSectionLabel?.(key, v)
     else if (type === 'sub') {
@@ -299,22 +299,27 @@ export default function Sidebar({
     l3DragFrom.current = null; l3DragTo.current = null; setL3DragId(null)
   }
 
-  /* ── 인라인 편집 input 렌더 헬퍼 ── */
-  const InlineInput = ({ value, onChange, onCommit, onCancel }) => (
-    <input
-      autoFocus
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      onBlur={onCommit}
-      onKeyDown={e => {
-        if (e.key === 'Enter') { e.preventDefault(); onCommit() }
-        if (e.key === 'Escape') { e.preventDefault(); onCancel() }
-      }}
-      onClick={e => e.stopPropagation()}
-      className={`flex-1 min-w-0 px-1.5 py-0.5 rounded text-xs outline-none
-        ${dark ? 'bg-[#252836] text-white border border-indigo-500' : 'bg-white text-slate-800 border border-indigo-400'}`}
-    />
-  )
+  /* ── 인라인 편집 input 렌더 헬퍼 (uncontrolled — 한글 IME 호환) ── */
+  const InlineInput = ({ value, onCommit, onCancel }) => {
+    const inputRef = useRef(null)
+    const doCommit = () => { const v = inputRef.current?.value; onCommit(v) }
+    return (
+      <input
+        ref={inputRef}
+        autoFocus
+        defaultValue={value}
+        onBlur={doCommit}
+        onKeyDown={e => {
+          if (e.nativeEvent.isComposing) return
+          if (e.key === 'Enter') { e.preventDefault(); doCommit() }
+          if (e.key === 'Escape') { e.preventDefault(); onCancel() }
+        }}
+        onClick={e => e.stopPropagation()}
+        className={`flex-1 min-w-0 px-1.5 py-0.5 rounded text-xs outline-none
+          ${dark ? 'bg-[#252836] text-white border border-indigo-500' : 'bg-white text-slate-800 border border-indigo-400'}`}
+      />
+    )
+  }
 
   const t = dark
     ? { text:'text-slate-400', hover:'hover:bg-[#1A1D27] hover:text-white', border:'border-[#1E2130]' }
@@ -405,7 +410,6 @@ export default function Sidebar({
                 {isEditingSection ? (
                   <InlineInput
                     value={sidebarEdit.value}
-                    onChange={v => setSidebarEdit(p => ({ ...p, value: v }))}
                     onCommit={commitSidebarEdit}
                     onCancel={() => setSidebarEdit(null)}
                   />
@@ -474,7 +478,6 @@ export default function Sidebar({
                           {isEditingSub ? (
                             <InlineInput
                               value={sidebarEdit.value}
-                              onChange={v => setSidebarEdit(p => ({ ...p, value: v }))}
                               onCommit={commitSidebarEdit}
                               onCancel={() => setSidebarEdit(null)}
                             />
@@ -545,7 +548,6 @@ export default function Sidebar({
                                     {isEditingL3 ? (
                                       <InlineInput
                                         value={sidebarEdit.value}
-                                        onChange={v => setSidebarEdit(p => ({ ...p, value: v }))}
                                         onCommit={commitSidebarEdit}
                                         onCancel={() => setSidebarEdit(null)}
                                       />

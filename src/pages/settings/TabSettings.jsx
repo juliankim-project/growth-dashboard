@@ -35,10 +35,10 @@ function buildOrderedSections(customSections) {
 ───────────────────────────────────────── */
 function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
   const [editing, setEditing] = useState(false)
-  const [draft,   setDraft]   = useState(value)
+  const inputRef = useRef(null)
 
-  const commit = () => { onSave(draft.trim() || value); setEditing(false) }
-  const cancel = () => { setDraft(value); setEditing(false) }
+  const commit = () => { const v = inputRef.current?.value?.trim() || value; onSave(v); setEditing(false) }
+  const cancel = () => { setEditing(false) }
 
   const textCls = size === 'sm'
     ? `text-[11px] font-medium ${dark ? 'text-slate-300' : 'text-slate-600'}`
@@ -47,10 +47,10 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
   if (editing) return (
     <div className="flex items-center gap-1.5">
       <input
+        ref={inputRef}
         autoFocus
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') cancel() }}
+        defaultValue={value}
+        onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commit(); if (e.key === 'Escape') cancel() }}
         placeholder={placeholder}
         className={`px-2 py-0.5 rounded border text-xs outline-none
           ${size === 'sm' ? 'w-28' : 'w-36'}
@@ -707,12 +707,12 @@ function SubRow({
 ───────────────────────────────────────── */
 function AddSubRow({ onAdd, dark }) {
   const [show,  setShow]  = useState(false)
-  const [label, setLabel] = useState('')
+  const inputRef = useRef(null)
 
   const submit = () => {
-    if (!label.trim()) return
-    onAdd(label.trim())
-    setLabel('')
+    const val = inputRef.current?.value?.trim()
+    if (!val) return
+    onAdd(val)
     setShow(false)
   }
 
@@ -729,10 +729,10 @@ function AddSubRow({ onAdd, dark }) {
   return (
     <div className="flex items-center gap-2 mt-0.5 px-3">
       <input
+        ref={inputRef}
         autoFocus
-        value={label}
-        onChange={e => setLabel(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setShow(false) }}
+        defaultValue=""
+        onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') submit(); if (e.key === 'Escape') setShow(false) }}
         placeholder="탭 이름 입력..."
         className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none w-40
           ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-500' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-600'}`}
@@ -767,7 +767,7 @@ export default function TabSettings({
     return init
   })
   const [addingSection,  setAddingSection]  = useState(false)
-  const [newSecLabel,    setNewSecLabel]    = useState('')
+  const newSecRef = useRef(null)
 
   /* ── 사이드바 순서와 동기화된 섹션 목록 ── */
   const [orderedSections, setOrderedSections] = useState(() => buildOrderedSections(customSections))
@@ -822,9 +822,9 @@ export default function TabSettings({
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }))
 
   const commitAddSection = () => {
-    if (!newSecLabel.trim()) { setAddingSection(false); return }
-    addCustomSection?.(newSecLabel.trim())
-    setNewSecLabel('')
+    const val = newSecRef.current?.value?.trim()
+    if (!val) { setAddingSection(false); return }
+    addCustomSection?.(val)
     setAddingSection(false)
   }
 
@@ -1024,17 +1024,17 @@ export default function TabSettings({
         {addingSection ? (
           <div className="flex items-center gap-2">
             <input
+              ref={newSecRef}
               autoFocus
-              value={newSecLabel}
-              onChange={e => setNewSecLabel(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commitAddSection(); if (e.key === 'Escape') { setAddingSection(false); setNewSecLabel('') } }}
+              defaultValue=""
+              onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commitAddSection(); if (e.key === 'Escape') setAddingSection(false) }}
               placeholder="메인탭 이름 입력..."
               className={`flex-1 px-3 py-2 rounded-lg border text-sm outline-none
                 ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-500' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-600'}`}
             />
             <button onClick={commitAddSection}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">추가</button>
-            <button onClick={() => { setAddingSection(false); setNewSecLabel('') }}
+            <button onClick={() => setAddingSection(false)}
               className={`px-3 py-2 text-sm rounded-lg ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}`}>취소</button>
           </div>
         ) : (
