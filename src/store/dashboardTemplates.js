@@ -252,12 +252,17 @@ export function dashboardToTemplate(dashboard, name, icon = '📌') {
   const slots = dashboard?.slots || []
   const tables = [...new Set(slots.map(s => s.table).filter(Boolean))]
 
-  const slotDefs = slots.map(s => ({
-    type: s.type,
-    widthPct: s.widthPct,
-    ...(s.heightPx ? { heightPx: s.heightPx } : {}),
-    preset: { ...s.config },
-  }))
+  const RGL_COLS = 12, RGL_ROW_H = 80
+  const slotDefs = slots.map(s => {
+    const w = s.layout?.w
+    const h = s.layout?.h
+    return {
+      type: s.type,
+      widthPct: w ? Math.round((w / RGL_COLS) * 100) : (s.widthPct || 33.33),
+      ...(h ? { heightPx: h * RGL_ROW_H } : s.heightPx ? { heightPx: s.heightPx } : {}),
+      preset: { ...s.config },
+    }
+  })
 
   return {
     id: `ct_${Date.now()}`,

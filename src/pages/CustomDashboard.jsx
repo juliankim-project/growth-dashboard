@@ -331,8 +331,12 @@ function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
             </label>
             <TplMiniPreview slotDefs={norm.slots.map(s => ({
               type: s.type,
-              widthPct: s.widthPct || 33.33,
-              heightPx: s.heightPx,
+              widthPct: s.layout?.w
+                ? Math.round((s.layout.w / RGL_COLS) * 100)
+                : (s.widthPct || 33.33),
+              heightPx: s.layout?.h
+                ? s.layout.h * RGL_ROW_H
+                : (s.heightPx || (s.type === 'kpi' ? 160 : 240)),
             }))} dark={dark} />
           </div>
         )}
@@ -689,7 +693,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
    메인 컴포넌트
 ══════════════════════════════════════════ */
 export default function CustomDashboard({ dark, filterByDate, dateRange, tabsConfig, subDataSource }) {
-  const { config } = useConfig()
+  const { config, getCustomTemplates, saveCustomTemplate, deleteCustomTemplate } = useConfig()
   const { columnConfig } = useColumnConfig()
   const tabs = tabsConfig?.tabs || []
 
@@ -828,8 +832,8 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
 
       {showTemplatePicker && (
         <TemplatePickerModal dark={dark} onClose={() => setShowTemplatePicker(false)}
-          customTemplates={tabsConfig?.getCustomTemplates() || []}
-          onDeleteCustom={(id) => tabsConfig?.deleteCustomTemplate(id)}
+          customTemplates={getCustomTemplates()}
+          onDeleteCustom={(id) => deleteCustomTemplate(id)}
           onSelect={(tpl) => {
             const newDash = generateDashboard(tpl, defaultTable, columnConfig)
             setDashboard(newDash)
@@ -843,7 +847,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
         <SaveTemplateModal dark={dark} dashboard={dashboard}
           onClose={() => setShowSaveTemplate(false)}
           onSave={(tpl) => {
-            tabsConfig?.saveCustomTemplate(tpl)
+            saveCustomTemplate(tpl)
             setShowSaveTemplate(false)
           }}
         />
