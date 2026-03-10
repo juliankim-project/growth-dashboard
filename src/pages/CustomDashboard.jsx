@@ -664,16 +664,16 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
         </div>
       )}
 
-      {/* 클립보드 붙여넣기 바 */}
+      {/* 클립보드 토스트 (화면 상단 고정) */}
       {editMode && clipboard && (
-        <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border
-          ${dark ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-200 bg-emerald-50'}`}>
-          <p className={`text-xs ${dark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-            📋 <span className="font-semibold">{clipboard.type.toUpperCase()}</span> 위젯이 복사되었습니다
-          </p>
-          <div className="flex gap-2 ml-3 shrink-0">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-[slideDown_0.2s_ease-out]">
+          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-lg backdrop-blur-sm
+            ${dark ? 'border-emerald-500/40 bg-[#1A1D27]/95 shadow-emerald-500/10' : 'border-emerald-300 bg-white/95 shadow-emerald-100'}`}>
+            <p className={`text-xs ${dark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+              📋 <span className="font-semibold">{clipboard.type.toUpperCase()}</span> 위젯이 복사되었습니다
+            </p>
             <button onClick={() => setClipboard(null)}
-              className={`text-xs px-3 py-1.5 rounded-lg border ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+              className={`text-xs px-2.5 py-1 rounded-lg ${dark ? 'text-slate-400 hover:text-white hover:bg-[#252836]' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
               취소
             </button>
             <button onClick={handlePasteSlot}
