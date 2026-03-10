@@ -429,7 +429,13 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
         slots: (n.slots || []).map(s => {
           const l = layoutMap.get(s.id)
           if (!l) return s
-          return { ...s, layout: { x: l.x, y: l.y, w: l.w, h: l.h, minW: l.minW ?? 1, minH: l.minH ?? 1 } }
+          /* layout + widthPct/heightPx 동기화 — 리사이즈 결과가 저장에 반영됨 */
+          return {
+            ...s,
+            layout: { x: l.x, y: l.y, w: l.w, h: l.h, minW: l.minW ?? 1, minH: l.minH ?? 1 },
+            widthPct: Math.round((l.w / RGL_COLS) * 100 * 100) / 100,
+            heightPx: l.h * RGL_ROW_H,
+          }
         })
       }
     })
