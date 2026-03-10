@@ -209,9 +209,10 @@ function TemplatePickerModal({ dark, onSelect, onClose }) {
 ══════════════════════════════════════════ */
 function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReorder, dark, rightSlot, addRef }) {
   const [addingTab, setAddingTab] = useState(false)
-  const [newLabel, setNewLabel] = useState('')
-  useEffect(() => { if (addRef) addRef.current = () => { setAddingTab(true); setNewLabel('') } })
-  const [renaming, setRenaming] = useState(null)
+  const addInputRef = useRef(null)
+  useEffect(() => { if (addRef) addRef.current = () => setAddingTab(true) })
+  const [renamingId, setRenamingId] = useState(null)
+  const renameInputRef = useRef(null)
   const tabDragFrom = useRef(null); const tabDragTo = useRef(null)
   const [draggingTabId, setDraggingTabId] = useState(null)
 
@@ -224,8 +225,16 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
     tabDragFrom.current = null; tabDragTo.current = null; setDraggingTabId(null)
   }
 
-  const commitAdd = () => { if (!newLabel.trim()) { setAddingTab(false); return }; onAdd(newLabel.trim()); setAddingTab(false); setNewLabel('') }
-  const commitRename = () => { if (!renaming) return; onRename(renaming.id, renaming.value.trim() || '탭'); setRenaming(null) }
+  const commitAdd = () => {
+    const val = addInputRef.current?.value?.trim()
+    if (!val) { setAddingTab(false); return }
+    onAdd(val); setAddingTab(false)
+  }
+  const commitRename = () => {
+    if (!renamingId) return
+    const val = renameInputRef.current?.value?.trim() || '탭'
+    onRename(renamingId, val); setRenamingId(null)
+  }
 
   return (
     <div className={`flex items-stretch border-b shrink-0 ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
@@ -234,15 +243,15 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
           <div key={tab.id} draggable onDragStart={e => onTabDragStart(e, tabIdx, tab.id)} onDragEnter={e => onTabDragEnter(e, tabIdx)}
             onDragOver={onTabDragOver} onDragEnd={onTabDragEnd}
             className={`relative group shrink-0 transition-opacity ${draggingTabId === tab.id ? 'opacity-30' : ''}`}>
-            {renaming?.id === tab.id ? (
-              <input autoFocus value={renaming.value}
-                onChange={e => setRenaming(r => ({ ...r, value: e.target.value }))}
+            {renamingId === tab.id ? (
+              <input autoFocus ref={renameInputRef}
+                defaultValue={tab.label}
                 onBlur={commitRename}
-                onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null) }}
+                onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); commitRename() } if (e.key === 'Escape') setRenamingId(null) }}
                 className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24 border-b-2 border-indigo-500 ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`} />
             ) : (
               <button onClick={() => onSelect(tab.id)}
-                onDoubleClick={() => setRenaming({ id: tab.id, value: tab.label })}
+                onDoubleClick={() => setRenamingId(tab.id)}
                 title="더블클릭으로 이름 변경"
                 className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
                   ${activeId === tab.id
@@ -260,13 +269,14 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
 
         {addingTab ? (
           <div className="flex items-center gap-1 pb-px ml-1 shrink-0">
-            <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
-              onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') { setAddingTab(false); setNewLabel('') } }}
+            <input autoFocus ref={addInputRef}
+              defaultValue=""
+              onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); commitAdd() } if (e.key === 'Escape') setAddingTab(false) }}
               placeholder="탭 이름"
               className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
                 ${dark ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500' : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-400'}`} />
             <button onClick={commitAdd} className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">확인</button>
-            <button onClick={() => { setAddingTab(false); setNewLabel('') }}
+            <button onClick={() => setAddingTab(false)}
               className={`text-xs px-2 py-1.5 rounded-lg ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-500'}`}>취소</button>
           </div>
         ) : (
