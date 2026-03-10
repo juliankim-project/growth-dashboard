@@ -29,6 +29,12 @@ export function calcMetric(data, metricId, mList) {
   if (!m) return 0
   if (!data || data.length === 0) return 0
 
+  /* COUNT(DISTINCT col) */
+  if (m._countDistinct && m._distinctCol) {
+    const set = new Set(data.map(r => r[m._distinctCol]).filter(v => v != null && v !== ''))
+    return set.size
+  }
+
   /* COUNT(*) */
   if (m._countType) return data.length
 
@@ -43,6 +49,10 @@ export function calcMetric(data, metricId, mList) {
   if (m._computed || (m.field && m.field === m.id && !m.derived)) {
     const agg = m.agg || 'sum'
     if (agg === 'count') return data.length
+    if (agg === 'count_distinct' && m._distinctCol) {
+      const set = new Set(data.map(r => r[m._distinctCol]).filter(v => v != null && v !== ''))
+      return set.size
+    }
     if (agg === 'avg') return data.length > 0 ? sumField(data, m.field) / data.length : 0
     return sumField(data, m.field)
   }
@@ -172,6 +182,13 @@ export function groupData(data, groupByField, metrics, mList) {
       const m = mCache[mid]
       if (!m || m.derived || !m.field) return
       if (m._ratioTerms) return  // 비율 지표는 직접 누적하지 않음 (분자/분모로 처리)
+      /* COUNT(DISTINCT col) — Set 기반 유니크 카운트 */
+      if (m._countDistinct && m._distinctCol) {
+        if (!map[k][mid + '__set']) map[k][mid + '__set'] = new Set()
+        const v = r[m._distinctCol]
+        if (v != null && v !== '') map[k][mid + '__set'].add(v)
+        return
+      }
       const agg = m._countType ? 'count' : (m.agg || 'sum')
       if (agg === 'count') {
         map[k][mid] = (map[k][mid] || 0) + 1
@@ -182,6 +199,17 @@ export function groupData(data, groupByField, metrics, mList) {
         map[k][mid] = (map[k][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
+  })
+
+  /* COUNT(DISTINCT) 확정 + Set 정리 */
+  allAccum.forEach(mid => {
+    const m = mCache[mid]
+    if (m?._countDistinct && m._distinctCol) {
+      Object.values(map).forEach(row => {
+        row[mid] = row[mid + '__set']?.size || 0
+        delete row[mid + '__set']
+      })
+    }
   })
 
   /* AVG 확정 + 임시키 정리 */
@@ -249,6 +277,13 @@ export function dailyData(data, metrics, mList, dateColumn) {
       const m = mCache[mid]
       if (!m || m.derived || !m.field) return
       if (m._ratioTerms) return  // 비율 지표는 분자/분모로 처리
+      /* COUNT(DISTINCT col) — Set 기반 유니크 카운트 */
+      if (m._countDistinct && m._distinctCol) {
+        if (!map[d][mid + '__set']) map[d][mid + '__set'] = new Set()
+        const v = r[m._distinctCol]
+        if (v != null && v !== '') map[d][mid + '__set'].add(v)
+        return
+      }
       const agg = m._countType ? 'count' : (m.agg || 'sum')
       if (agg === 'count') {
         map[d][mid] = (map[d][mid] || 0) + 1
@@ -259,6 +294,17 @@ export function dailyData(data, metrics, mList, dateColumn) {
         map[d][mid] = (map[d][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
+  })
+
+  /* COUNT(DISTINCT) 확정 + Set 정리 */
+  allAccum.forEach(mid => {
+    const m = mCache[mid]
+    if (m?._countDistinct && m._distinctCol) {
+      Object.values(map).forEach(row => {
+        row[mid] = row[mid + '__set']?.size || 0
+        delete row[mid + '__set']
+      })
+    }
   })
 
   allAccum.forEach(mid => {

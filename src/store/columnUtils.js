@@ -79,13 +79,23 @@ export function buildTableMetrics(tableName, columnConfig) {
   /* 2) 계산 컬럼 → 메트릭 */
   ;(tCfg.computed || []).forEach(cc => {
     const isCount = cc.aggType === 'count'
+    const isCountDistinct = cc.aggType === 'count_distinct'
+
+    /* count_distinct 감지: terms에 type:"distinct"가 있으면 해당 col 추출
+       예: [{"type":"distinct","col":"no"}] → _distinctCol: "no"
+       집계 시 Set 기반 유니크 카운트 */
+    let _distinctCol = null
+    if (isCountDistinct && cc.terms?.length > 0) {
+      const dt = cc.terms.find(t => t.type === 'distinct')
+      if (dt?.col) _distinctCol = dt.col
+    }
 
     /* 비율 지표 감지: terms에 '/' 연산이 있으면 분자/분모 분리
        예: LOS = [{ col:'nights', sign:'+' }, { col:'cc_order_count', sign:'/' }]
        → _ratioTerms: { num: 'nights', den: 'cc_order_count' }
        집계 시 SUM(분자) / SUM(분모) 로 정확히 계산 */
     let _ratioTerms = null
-    if (!isCount && cc.terms?.length >= 2) {
+    if (!isCount && !isCountDistinct && cc.terms?.length >= 2) {
       const divIdx = cc.terms.findIndex(t => t.sign === '/')
       if (divIdx > 0) {
         const numCols = cc.terms.slice(0, divIdx).map(t => t.col).filter(Boolean)
@@ -103,6 +113,8 @@ export function buildTableMetrics(tableName, columnConfig) {
       fmt: cc.fmt || 'number',
       agg: _ratioTerms ? 'ratio' : (cc.aggRaw || cc.aggType || 'sum'),
       _countType: isCount,
+      _countDistinct: isCountDistinct,
+      _distinctCol,
       _ratioTerms,
       group: 'computed',
       _computed: true,
@@ -308,6 +320,10 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
     computed.forEach(cc => {
       if (cc.aggType === 'count') {
         newRow[cc.id] = 1  // COUNT: 각 행 = 1 → SUM으로 자연스럽게 카운트
+      } else if (cc.aggType === 'count_distinct') {
+        // COUNT(DISTINCT col): 실제 col 값을 저장 → 집계 시 Set으로 유니크 카운트
+        const dt = cc.terms?.find(t => t.type === 'distinct')
+        newRow[cc.id] = dt?.col ? row[dt.col] : 1
       } else {
         newRow[cc.id] = (!cc.terms || cc.terms.length === 0) ? 0 : evalTerms(cc.terms, newRow)
       }

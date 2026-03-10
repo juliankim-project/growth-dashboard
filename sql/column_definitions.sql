@@ -160,8 +160,8 @@ WHERE table_name = 'product_revenue_raw' AND column_key = 'lead_time';
 
 -- 산술 (computed)
 INSERT INTO column_definitions (table_name, column_key, category, label, fmt, agg, formula, terms_json, sort_order) VALUES
-  ('product_revenue_raw', 'cc_order_count', 'computed', '결제건수',   'number',   'count',
-    'COUNT(*)', '[]'::jsonb, 0),
+  ('product_revenue_raw', 'cc_order_count', 'computed', '결제건수',   'number',   'count_distinct',
+    'COUNT(DISTINCT no)', '[{"type":"distinct","col":"no"}]'::jsonb, 0),
   ('product_revenue_raw', 'cc_net_revenue', 'computed', '총 결제금액', 'currency', NULL,
     'payment_amount - (staypass_discount + promo_discount + coupon_discount_amount + point_amount)',
     '[{"col":"payment_amount","sign":"+"},{"col":"staypass_discount","sign":"-"},{"col":"promo_discount","sign":"-"},{"col":"coupon_discount_amount","sign":"-"},{"col":"point_amount","sign":"-"}]'::jsonb, 1),
