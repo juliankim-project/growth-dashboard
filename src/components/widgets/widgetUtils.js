@@ -98,6 +98,8 @@ export function fmtMetric(metricId, value, mList) {
   if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
   if (m.fmt === 'pct')      return value.toFixed(1) + '%'
   if (m.agg === 'avg')      return (value == null || isNaN(value)) ? '—' : value.toFixed(2)
+  /* 비율 계산컬럼 (LOS, 객단가 등) — 소수 표시 */
+  if (m._ratioTerms)        return (value == null || isNaN(value)) ? '—' : value.toFixed(2)
   return fmtNum(value)
 }
 
@@ -110,6 +112,7 @@ export function fmtAxis(value, metricId, mList) {
   if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
   if (m.fmt === 'pct')      return value.toFixed(1) + '%'
   if (m.agg === 'avg')      return value.toFixed(2)
+  if (m._ratioTerms)        return value.toFixed(2)
   return Math.round(value).toLocaleString()
 }
 

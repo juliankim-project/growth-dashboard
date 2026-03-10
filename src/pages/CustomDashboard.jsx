@@ -65,13 +65,16 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 const RGL_COLS = 12
 const RGL_ROW_H = 80
 
-function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTable, filterByDate, columnConfig, dark, showSource }) {
+function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
+  /* comparison 위젯은 current+previous 기간 모두 필요 → filterByDate 적용 안 함 */
+  const isComparison = slot.type === 'comparison'
   const widgetData = useMemo(() => {
+    if (isComparison) return widgetRawData
     return filterByDate ? filterByDate(widgetRawData, widgetDateCol) : widgetRawData
-  }, [widgetRawData, filterByDate, widgetDateCol])
+  }, [widgetRawData, filterByDate, widgetDateCol, isComparison])
   const widgetMetrics = useMemo(() => buildTableMetrics(widgetTable, columnConfig), [widgetTable, columnConfig])
 
   const sanitizedConfig = useMemo(
@@ -106,7 +109,7 @@ function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTa
       )}
       <div className="h-full">
         {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
-          undefined, widgetDateCol)}
+          undefined, widgetDateCol, dateRange)}
       </div>
       {showSource && (() => {
         const cfg = sanitizedConfig
@@ -533,7 +536,7 @@ function normalizeDashboard(d) {
 /* ══════════════════════════════════════════
    위젯 그리드 (react-grid-layout)
 ══════════════════════════════════════════ */
-function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dark, editMode, columnConfig, availableTables, addRef, showSource }) {
+function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, filterByDate, dateRange, dark, editMode, columnConfig, availableTables, addRef, showSource }) {
   const [editSlot, setEditSlot] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [clipboard, setClipboard] = useState(null)  // 복사된 위젯 슬롯
@@ -663,7 +666,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
                   <GridCard slot={slot} editMode={editMode}
                     onEdit={setEditSlot} onDelete={handleDeleteSlot} onCopy={handleCopySlot}
                     dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
-                    columnConfig={columnConfig} dark={dark} showSource={showSource} />
+                    dateRange={dateRange} columnConfig={columnConfig} dark={dark} showSource={showSource} />
                 </div>
               ))}
             </ResponsiveGridLayout>
@@ -925,7 +928,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             key={activeTab.id} tabId={activeTab.id}
             dashboard={dashboard} setDashboard={setDashboard}
             dataMap={computedDataMap} defaultTable={defaultTable}
-            filterByDate={filterByDate} dark={dark} editMode={editMode}
+            filterByDate={filterByDate} dateRange={dateRange} dark={dark} editMode={editMode}
             columnConfig={columnConfig} availableTables={availableTables}
             addRef={gridAddRef} showSource={showSource}
           />
