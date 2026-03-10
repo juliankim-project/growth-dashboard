@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Check, X, Plus } from 'lucide-react'
+import { Check, X, Plus, GripVertical } from 'lucide-react'
 import {
   WIDGET_TYPES, DEFAULT_WIDGET_CONFIG,
 } from '../../store/useConfig'
@@ -7,10 +7,50 @@ import {
   buildWidgetMetrics, buildWidgetGroupBy,
   sanitizeWidgetConfig,
 } from '../../store/columnUtils'
+import {
+  DndContext, closestCenter,
+  PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable,
+  verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import WidgetTypeSelector from './WidgetTypeSelector'
 import MetricPicker from './MetricPicker'
 import GroupByPicker from './GroupByPicker'
 import FilterSection from './FilterSection'
+
+/* ═══════════ 드래그 가능한 지표 아이템 ═══════════ */
+function SortableMetricItem({ id, label, isComputed, dark, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
+  return (
+    <div ref={setNodeRef} style={style}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors
+        ${isDragging ? 'z-50 shadow-lg ring-2 ring-indigo-500/30' : ''}
+        ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+      <button {...attributes} {...listeners}
+        className={`cursor-grab active:cursor-grabbing shrink-0 touch-none
+          ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
+        <GripVertical size={12} />
+      </button>
+      <span className={`flex-1 text-[10px] font-medium truncate
+        ${isComputed
+          ? (dark ? 'text-violet-400' : 'text-violet-600')
+          : (dark ? 'text-slate-300' : 'text-slate-700')}`}>
+        {label}
+      </span>
+      <button onClick={(e) => { e.stopPropagation(); onRemove() }}
+        className={`shrink-0 p-0.5 rounded opacity-0 group-hover/sortitem:opacity-100 transition-opacity
+          ${dark ? 'text-slate-600 hover:text-red-400' : 'text-slate-300 hover:text-red-500'}`}
+        style={{ opacity: 1 }}>
+        <X size={10} />
+      </button>
+    </div>
+  )
+}
 
 /* ══════════════════════════════════════════
    WidgetEditor — 단일 패널 (추가/수정 겸용)
@@ -30,6 +70,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
   const dynMetrics = useMemo(() => buildWidgetMetrics(selTable, columnConfig), [selTable, columnConfig])
   const dynGroupBy = useMemo(() => buildWidgetGroupBy(selTable, columnConfig), [selTable, columnConfig])
   const wtMeta = WIDGET_TYPES.find(w => w.id === type)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 3 } }))
 
   const handleTableChange = (newTable) => {
     setSelTable(newTable)
@@ -250,14 +291,43 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
             </div>
           )}
 
-          {/* Comparison — multi metric + compareMode */}
+          {/* Comparison — multi metric + sortable + compareMode */}
           {type === 'comparison' && (
             <>
               <div>
                 <p className={`${S.lab} mb-2`}>비교 지표 (복수 선택)</p>
                 <MetricPicker metrics={dynMetrics} selected={config.metrics || []} onSelect={v => upd('metrics', v)} multi dark={dark} />
-                {renderMetricChips(config.metrics)}
               </div>
+              {(config.metrics || []).length > 0 && (
+                <div>
+                  <p className={`${S.lab} mb-1.5`}>지표 순서 <span className="font-normal normal-case">(드래그로 변경)</span></p>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter}
+                    onDragEnd={(event) => {
+                      const { active, over } = event
+                      if (!over || active.id === over.id) return
+                      const ids = config.metrics || []
+                      const oldIdx = ids.indexOf(active.id)
+                      const newIdx = ids.indexOf(over.id)
+                      if (oldIdx === -1 || newIdx === -1) return
+                      upd('metrics', arrayMove(ids, oldIdx, newIdx))
+                    }}>
+                    <SortableContext items={config.metrics} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-1">
+                        {(config.metrics || []).map(mid => {
+                          const m = dynMetrics.find(x => x.id === mid)
+                          return (
+                            <SortableMetricItem key={mid} id={mid}
+                              label={m?.label || mid}
+                              isComputed={m?._computed}
+                              dark={dark}
+                              onRemove={() => upd('metrics', (config.metrics || []).filter(x => x !== mid))} />
+                          )
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                </div>
+              )}
               <div>
                 <p className={`${S.lab} mb-1.5`}>비교 모드</p>
                 <select className={S.sel} value={config.compareMode || 'period'} onChange={e => upd('compareMode', e.target.value)}>
