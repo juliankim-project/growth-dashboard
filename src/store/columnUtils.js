@@ -199,7 +199,12 @@ function evalTerms(terms, row) {
   let val = 0
   ;(terms || []).forEach(term => {
     let v
-    if (term.type === 'group') {
+    if (term.type === 'date_diff') {
+      /* 날짜 차이 (일수): col1 - col2 */
+      const d1 = new Date(row[term.col1])
+      const d2 = new Date(row[term.col2])
+      v = isNaN(d1) || isNaN(d2) ? 0 : Math.round((d1 - d2) / 86400000)
+    } else if (term.type === 'group') {
       v = evalTerms(term.children, row)
     } else if (term.col === '__const__') {
       v = parseFloat(term.value) || 0

@@ -151,6 +151,13 @@ INSERT INTO column_definitions (table_name, column_key, category, label, fmt, ag
   ('product_revenue_raw', 'lead_time',              'metric', '리드타임',       'number',   'avg', 8)
 ON CONFLICT (table_name, column_key) DO NOTHING;
 
+-- lead_time을 computed로 전환 (check_in_date - reservation_date 일수 차이)
+UPDATE column_definitions
+SET category = 'computed',
+    formula = 'check_in_date - reservation_date (일수)',
+    terms_json = '[{"type":"date_diff","col1":"check_in_date","col2":"reservation_date","unit":"days","sign":"+"}]'::jsonb
+WHERE table_name = 'product_revenue_raw' AND column_key = 'lead_time';
+
 -- 산술 (computed)
 INSERT INTO column_definitions (table_name, column_key, category, label, fmt, agg, formula, terms_json, sort_order) VALUES
   ('product_revenue_raw', 'cc_order_count', 'computed', '결제건수',   'number',   'count',
