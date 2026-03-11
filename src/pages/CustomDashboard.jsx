@@ -942,16 +942,22 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
                   { label: '칸반 추가', icon: <Columns3 size={12} />,
                     onClick: () => {
                       const norm = normalizeDashboard(dashboard)
+                      const slots = norm.slots || []
+                      const bottomY = slots.reduce((max, s) => {
+                        const ly = (s.layout?.y ?? 0) + (s.layout?.h ?? 2)
+                        return ly > max ? ly : max
+                      }, 0)
+                      const kid = `w_kanban_${Date.now()}`
                       const kanbanSlot = {
-                        id: `w_kanban_${Date.now()}`, type: 'kanban', table: defaultTable,
+                        id: kid, type: 'kanban', table: defaultTable,
                         config: { title: '칸반 보드', columns: [
                           { id: 'c_todo', title: '할 일', cards: [] },
                           { id: 'c_progress', title: '진행 중', cards: [] },
                           { id: 'c_done', title: '완료', cards: [] },
                         ]},
-                        layout: { i: `w_kanban_${Date.now()}`, x: 0, y: Infinity, w: 12, h: 5, minW: 4, minH: 3 },
+                        layout: { i: kid, x: 0, y: bottomY, w: 12, h: 5, minW: 4, minH: 3 },
                       }
-                      setDashboard({ ...norm, slots: [...(norm.slots || []), kanbanSlot] })
+                      setDashboard({ ...norm, slots: [...slots, kanbanSlot] })
                     } },
                 ]}
               />
