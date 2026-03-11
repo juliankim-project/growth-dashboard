@@ -129,26 +129,34 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
 }
 
 /* ── 컬럼 리사이즈 핸들 ── */
-function ColResizeHandle({ dark, onDragStart, onDrag }) {
+function ColResizeHandle({ dark, baseWidth, onResizeEnd }) {
   const startX = useRef(0)
+  const baseW = useRef(256)
+  const colEl = useRef(null)
 
   const onPointerDown = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
     startX.current = e.clientX
-    if (onDragStart) onDragStart()
+    baseW.current = baseWidth || 256
+    colEl.current = e.currentTarget.parentElement
 
     const onMove = (ev) => {
       const delta = ev.clientX - startX.current
-      onDrag(delta)
+      const newW = Math.max(160, Math.min(600, baseW.current + delta))
+      if (colEl.current) colEl.current.style.width = newW + 'px'
     }
-    const onUp = () => {
+    const onUp = (ev) => {
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
+      const delta = ev.clientX - startX.current
+      const finalW = Math.max(160, Math.min(600, baseW.current + delta))
+      onResizeEnd(finalW)
+      colEl.current = null
     }
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup', onUp)
-  }, [onDragStart, onDrag])
+  }, [baseWidth, onResizeEnd])
 
   return (
     <div
@@ -200,23 +208,15 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
     setDashboard({ ...dashboard, columns: columns.filter(c => c.id !== colId) })
   }
 
-  /* ── 컬럼 리사이즈 ── */
-  const colWidthRef = useRef({})   // 드래그 중 시작 width 기록
-  const startColResize = useCallback((colId) => {
-    const col = columns.find(c => c.id === colId)
-    colWidthRef.current[colId] = col?.width || 256
-  }, [columns])
-
-  const handleColResize = useCallback((colId, delta) => {
-    const baseW = colWidthRef.current[colId] || 256
-    const newW = Math.max(160, Math.min(600, baseW + delta))
-    setDashboard(prev => ({
-      ...prev,
-      columns: (prev.columns || []).map(c =>
-        c.id === colId ? { ...c, width: newW } : c
+  /* ── 컬럼 리사이즈 (드래그 종료 시 한 번만 커밋) ── */
+  const commitColWidth = useCallback((colId, width) => {
+    setDashboard({
+      ...dashboard,
+      columns: columns.map(c =>
+        c.id === colId ? { ...c, width } : c
       ),
-    }))
-  }, [setDashboard])
+    })
+  }, [setDashboard, dashboard, columns])
 
   /* ── 카드 CRUD ── */
   const addCard = (columnId, cardData) => {
@@ -407,8 +407,8 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
 
             {/* 컬럼 리사이즈 핸들 */}
             <ColResizeHandle dark={dark}
-              onDragStart={() => startColResize(col.id)}
-              onDrag={(delta) => handleColResize(col.id, delta)}
+              baseWidth={col.width || 256}
+              onResizeEnd={(w) => commitColWidth(col.id, w)}
             />
           </div>
         ))}
