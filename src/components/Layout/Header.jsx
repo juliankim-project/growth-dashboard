@@ -80,26 +80,41 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
       {/* ── 드롭다운 ── */}
       {open && (
         <div className={`
-          absolute right-0 top-[calc(100%+8px)] z-[100] w-72 rounded-xl border shadow-2xl overflow-hidden
+          absolute right-0 top-[calc(100%+8px)] z-[100] w-80 rounded-xl border shadow-2xl overflow-hidden
           ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}
         `}>
-          {/* 프리셋 버튼 */}
-          <div className="p-3 flex flex-wrap gap-1.5">
-            {DATE_PRESETS.map(p => (
-              <button
-                key={p.id}
-                onClick={() => { setPreset(p.id); setOpen(false) }}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
-                  ${dateRange.preset === p.id
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : dark
-                      ? 'bg-[#13151C] text-slate-400 hover:bg-indigo-600/20 hover:text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
-                  }`}
-              >
-                {p.label}
-              </button>
-            ))}
+          {/* 프리셋 버튼 — 그룹별 */}
+          <div className="p-3 flex flex-col gap-2">
+            {[
+              { key: 'day',   label: '일' },
+              { key: 'week',  label: '주' },
+              { key: 'month', label: '월' },
+            ].map(g => {
+              const items = DATE_PRESETS.filter(p => p.group === g.key)
+              if (items.length === 0) return null
+              return (
+                <div key={g.key} className="flex items-center gap-1.5">
+                  <span className={`text-[9px] font-bold w-5 shrink-0 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{g.label}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {items.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => { setPreset(p.id); setOpen(false) }}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
+                          ${dateRange.preset === p.id
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : dark
+                              ? 'bg-[#13151C] text-slate-400 hover:bg-indigo-600/20 hover:text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
+                          }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <div className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`} />

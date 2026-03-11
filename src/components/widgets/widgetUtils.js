@@ -347,11 +347,24 @@ export function splitByPeriod(data, dateRange, dateColumn) {
     return null
   }
 
-  const start = new Date(dateRange.start)
-  const end = new Date(dateRange.end)
-  const periodMs = end.getTime() - start.getTime()
-  const prevStart = new Date(start.getTime() - periodMs - 86400000)
-  const prevEnd = new Date(start.getTime() - 86400000)
+  /* 문자열 비교 (YYYY-MM-DD) — Date 객체 비교 시 타임존/시간 이슈 방지 */
+  const startStr = dateRange.start  // 'YYYY-MM-DD'
+  const endStr   = dateRange.end
+
+  /* 이전 기간 계산 (동일 길이) */
+  const s = new Date(dateRange.start + 'T00:00:00')
+  const e = new Date(dateRange.end + 'T00:00:00')
+  const periodMs = e.getTime() - s.getTime()
+  const prevS = new Date(s.getTime() - periodMs - 86400000)
+  const prevE = new Date(s.getTime() - 86400000)
+  const fmt = d => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  const prevStartStr = fmt(prevS)
+  const prevEndStr   = fmt(prevE)
 
   const current = []
   const previous = []
@@ -359,9 +372,8 @@ export function splitByPeriod(data, dateRange, dateColumn) {
   data.forEach(row => {
     const d = getDate(row)
     if (!d) return
-    const dt = new Date(d)
-    if (dt >= start && dt <= end) current.push(row)
-    else if (dt >= prevStart && dt <= prevEnd) previous.push(row)
+    if (d >= startStr && d <= endStr) current.push(row)
+    else if (d >= prevStartStr && d <= prevEndStr) previous.push(row)
   })
 
   return { current, previous }

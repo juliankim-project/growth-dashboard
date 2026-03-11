@@ -6,11 +6,18 @@ const STORAGE_KEY = 'growth_date_range'
    프리셋 정의
 ─────────────────────────────────────────── */
 export const DATE_PRESETS = [
-  { id: '1d',  label: '최근 1일',  days: 1  },
-  { id: '3d',  label: '최근 3일',  days: 3  },
-  { id: '7d',  label: '최근 7일',  days: 7  },
-  { id: '14d', label: '최근 14일', days: 14 },
-  { id: '30d', label: '최근 30일', days: 30 },
+  // 일 단위
+  { id: '1d',  label: '어제',       group: 'day', type: 'days', days: 1  },
+  { id: '7d',  label: '최근 7일',   group: 'day', type: 'days', days: 7  },
+  { id: '14d', label: '최근 14일',  group: 'day', type: 'days', days: 14 },
+  { id: '30d', label: '최근 30일',  group: 'day', type: 'days', days: 30 },
+  // 주 단위
+  { id: 'tw',  label: '이번주',     group: 'week', type: 'week',  offset: 0 },
+  { id: 'lw',  label: '지난주',     group: 'week', type: 'week',  offset: -1 },
+  // 월 단위
+  { id: 'tm',  label: '이번달',     group: 'month', type: 'month', offset: 0 },
+  { id: 'lm',  label: '지난달',     group: 'month', type: 'month', offset: -1 },
+  { id: 'l3m', label: '최근 3개월', group: 'month', type: 'days',  days: 90 },
 ]
 
 /* YYYY-MM-DD 문자열 반환 */
@@ -21,12 +28,52 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`
 }
 
-/* days 기준 시작/종료 계산 */
-export function getPresetRange(days) {
-  const end   = new Date()
-  const start = new Date()
-  start.setDate(start.getDate() - (days - 1))
-  return { start: toDateStr(start), end: toDateStr(end) }
+/* 프리셋 → 시작/종료 날짜 계산 */
+export function getPresetRange(preset) {
+  /* 하위 호환: 숫자만 넘기면 days로 처리 */
+  if (typeof preset === 'number') {
+    const end = new Date(); const start = new Date()
+    start.setDate(start.getDate() - (preset - 1))
+    return { start: toDateStr(start), end: toDateStr(end) }
+  }
+
+  const p = typeof preset === 'string'
+    ? DATE_PRESETS.find(x => x.id === preset)
+    : preset
+
+  if (!p) return { start: toDateStr(new Date()), end: toDateStr(new Date()) }
+
+  const today = new Date()
+
+  if (p.type === 'days') {
+    const end = new Date(); const start = new Date()
+    start.setDate(start.getDate() - ((p.days || 1) - 1))
+    return { start: toDateStr(start), end: toDateStr(end) }
+  }
+
+  if (p.type === 'week') {
+    const off = p.offset || 0
+    /* 이번주 월요일 기준 */
+    const dayOfWeek = today.getDay() || 7 // 일=7, 월=1 ... 토=6
+    const monday = new Date(today)
+    monday.setDate(today.getDate() - (dayOfWeek - 1) + off * 7)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    const end = off === 0 ? today : sunday // 이번주면 오늘까지, 지난주면 일요일까지
+    return { start: toDateStr(monday), end: toDateStr(end) }
+  }
+
+  if (p.type === 'month') {
+    const off = p.offset || 0
+    const y = today.getFullYear()
+    const m = today.getMonth() + off
+    const first = new Date(y, m, 1)
+    const lastDay = new Date(y, m + 1, 0)
+    const end = off === 0 ? today : lastDay // 이번달이면 오늘까지, 지난달이면 말일까지
+    return { start: toDateStr(first), end: toDateStr(end) }
+  }
+
+  return { start: toDateStr(today), end: toDateStr(today) }
 }
 
 /* 초기값 */
@@ -53,7 +100,7 @@ export function useDateRange() {
   const setPreset = useCallback((presetId) => {
     const p = DATE_PRESETS.find(x => x.id === presetId)
     if (!p) return
-    persist({ preset: presetId, ...getPresetRange(p.days) })
+    persist({ preset: presetId, ...getPresetRange(p) })
   }, [persist])
 
   /** 직접 날짜 지정 */
