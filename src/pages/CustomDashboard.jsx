@@ -81,6 +81,18 @@ function applyWidgetFilters(data, filters) {
 }
 
 /* ══════════════════════════════════════════
+   칸반 위젯 래퍼 — KanbanBoard를 그리드 슬롯 안에서 사용
+══════════════════════════════════════════ */
+function KanbanWidget({ config, dark, onConfigUpdate }) {
+  const kanbanData = useMemo(() => ({ columns: config.columns || [] }), [config.columns])
+  const setKanbanData = useCallback((newData) => {
+    if (onConfigUpdate) onConfigUpdate({ ...config, columns: newData.columns })
+  }, [config, onConfigUpdate])
+
+  return <KanbanBoard dashboard={kanbanData} setDashboard={setKanbanData} dark={dark} />
+}
+
+/* ══════════════════════════════════════════
    위젯 매핑 & 렌더링
 ══════════════════════════════════════════ */
 const WIDGET_MAP = {
@@ -88,6 +100,7 @@ const WIDGET_MAP = {
   pie: PieWidget, table: TableWidget, funnel: FunnelWidget,
   comparison: ComparisonWidget, ranking: RankingWidget,
   alert: AlertWidget, timeline: TimelineWidget,
+  kanban: KanbanWidget,
 }
 
 const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn, dateRange) => {
@@ -95,7 +108,8 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
   if (!C) return null
   return (
     <ErrorBoundary dark={dark} label={type}>
-      <C data={data} config={cfg} dark={dark} metrics={metrics} dateColumn={dateColumn} dateRange={dateRange} />
+      <C data={data} config={cfg} dark={dark} metrics={metrics}
+        dateColumn={dateColumn} dateRange={dateRange} onConfigUpdate={onConfigUpdate} />
     </ErrorBoundary>
   )
 }
@@ -106,7 +120,7 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 const RGL_COLS = 12
 const RGL_ROW_H = 80
 
-function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
+function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
@@ -118,8 +132,13 @@ function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTa
   }, [widgetRawData, filterByDate, widgetDateCol, isComparison])
   const widgetMetrics = useMemo(() => buildTableMetrics(widgetTable, columnConfig), [widgetTable, columnConfig])
 
+  /* 칸반 등 자체 config 업데이트가 필요한 위젯용 콜백 */
+  const handleConfigUpdate = useCallback((newConfig) => {
+    if (onSlotUpdate) onSlotUpdate(slot.id, { config: newConfig })
+  }, [onSlotUpdate, slot.id])
+
   const sanitizedConfig = useMemo(
-    () => sanitizeWidgetConfig(slot.type, slot.config, widgetTable, columnConfig),
+    () => slot.type === 'kanban' ? (slot.config || {}) : sanitizeWidgetConfig(slot.type, slot.config, widgetTable, columnConfig),
     [slot.type, slot.config, widgetTable, columnConfig]
   )
 
@@ -150,7 +169,7 @@ function GridCard({ slot, editMode, onEdit, onDelete, onCopy, dataMap, defaultTa
       )}
       <div className="h-full">
         {renderWidget(slot.type, applyWidgetFilters(widgetData, sanitizedConfig.filters), sanitizedConfig, dark, widgetMetrics,
-          undefined, widgetDateCol, dateRange)}
+          handleConfigUpdate, widgetDateCol, dateRange)}
       </div>
       {showSource && (() => {
         const cfg = sanitizedConfig
@@ -644,6 +663,12 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
     setShowAdd(false)
   }
   const handleDeleteSlot = (id) => setDashboard({ ...norm, slots: slots.filter(s => s.id !== id) })
+  const handleSlotUpdate = useCallback((id, patch) => {
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return { ...n, slots: n.slots.map(s => s.id === id ? { ...s, ...patch } : s) }
+    })
+  }, [setDashboard])
 
   const handleCopySlot = (id) => {
     const src = slots.find(s => s.id === id)
@@ -706,6 +731,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
                 <div key={slot.id}>
                   <GridCard slot={slot} editMode={editMode}
                     onEdit={setEditSlot} onDelete={handleDeleteSlot} onCopy={handleCopySlot}
+                    onSlotUpdate={handleSlotUpdate}
                     dataMap={dataMap} defaultTable={defaultTable} filterByDate={filterByDate}
                     dateRange={dateRange} columnConfig={columnConfig} dark={dark} showSource={showSource} />
                 </div>
@@ -804,7 +830,6 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [showSource, setShowSource] = useState(false)
-  const [showKanban, setShowKanban] = useState(false)
   const tabBarAddRef = useRef(null)
   const gridAddRef = useRef(null)
 
@@ -915,7 +940,19 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
                   { label: '위젯 추가', icon: <Plus size={12} />,
                     onClick: () => { gridAddRef.current?.({ enterEdit: true }); setEditMode(true) } },
                   { label: '칸반 추가', icon: <Columns3 size={12} />,
-                    onClick: () => setShowKanban(true) },
+                    onClick: () => {
+                      const norm = normalizeDashboard(dashboard)
+                      const kanbanSlot = {
+                        id: `w_kanban_${Date.now()}`, type: 'kanban', table: defaultTable,
+                        config: { title: '칸반 보드', columns: [
+                          { id: 'c_todo', title: '할 일', cards: [] },
+                          { id: 'c_progress', title: '진행 중', cards: [] },
+                          { id: 'c_done', title: '완료', cards: [] },
+                        ]},
+                        layout: { i: `w_kanban_${Date.now()}`, x: 0, y: Infinity, w: 12, h: 5, minW: 4, minH: 3 },
+                      }
+                      setDashboard({ ...norm, slots: [...(norm.slots || []), kanbanSlot] })
+                    } },
                 ]}
               />
               <ToolbarDropdown label="템플릿" icon={<LayoutTemplate size={12} />} dark={dark}
@@ -955,27 +992,6 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             setShowSaveTemplate(false)
           }}
         />
-      )}
-
-      {showKanban && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`rounded-2xl border w-full max-w-5xl max-h-[85vh] flex flex-col
-            ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
-            <div className={`flex items-center justify-between px-5 py-3 border-b shrink-0
-              ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
-              <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
-                <Columns3 size={14} className="inline -mt-0.5 mr-1.5" />칸반 보드
-              </p>
-              <button onClick={() => setShowKanban(false)}
-                className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              <KanbanBoard dashboard={dashboard} setDashboard={setDashboard} dark={dark} />
-            </div>
-          </div>
-        </div>
       )}
 
       {activeTab ? (
