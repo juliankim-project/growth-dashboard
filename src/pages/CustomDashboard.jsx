@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2, Copy, ClipboardPaste } from 'lucide-react'
+import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2, Copy, ClipboardPaste, ChevronDown, Columns3 } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
   makeDashboard, DEFAULT_WIDGET_CONFIG,
@@ -22,9 +22,50 @@ import ComparisonWidget from '../components/widgets/ComparisonWidget'
 import RankingWidget from '../components/widgets/RankingWidget'
 import AlertWidget from '../components/widgets/AlertWidget'
 import TimelineWidget from '../components/widgets/TimelineWidget'
+import KanbanBoard from '../components/pages/KanbanBoard'
 import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
+
+/* ── 툴바 드롭다운 ── */
+function ToolbarDropdown({ label, icon, items, dark }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+          ${open
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+        {icon} {label}
+        <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className={`absolute right-0 top-[calc(100%+4px)] z-50 min-w-[140px] py-1 rounded-lg border shadow-lg
+          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
+          {items.map(item => (
+            <button key={item.label}
+              onClick={() => { item.onClick(); setOpen(false) }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left
+                ${dark ? 'text-slate-300 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}`}>
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* ── 카드별 필터 적용: dimensionColumns 기반 동적 필터링 ── */
 function applyWidgetFilters(data, filters) {
@@ -763,6 +804,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [showSource, setShowSource] = useState(false)
+  const [showKanban, setShowKanban] = useState(false)
   const tabBarAddRef = useRef(null)
   const gridAddRef = useRef(null)
 
@@ -868,21 +910,20 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
                     : dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Code2 size={12} /> 소스
               </button>
-              <button onClick={() => { gridAddRef.current?.({ enterEdit: true }); setEditMode(true) }}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                <Plus size={12} /> 카드 추가
-              </button>
-              <button onClick={() => setShowSaveTemplate(true)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                <Save size={12} /> 템플릿 저장
-              </button>
-              <button onClick={() => setShowTemplatePicker(true)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                <LayoutTemplate size={12} /> 템플릿 불러오기
-              </button>
+              <ToolbarDropdown label="카드 추가" icon={<Plus size={12} />} dark={dark}
+                items={[
+                  { label: '위젯 추가', icon: <Plus size={12} />,
+                    onClick: () => { gridAddRef.current?.({ enterEdit: true }); setEditMode(true) } },
+                  { label: '칸반 추가', icon: <Columns3 size={12} />,
+                    onClick: () => setShowKanban(true) },
+                ]}
+              />
+              <ToolbarDropdown label="템플릿" icon={<LayoutTemplate size={12} />} dark={dark}
+                items={[
+                  { label: '저장하기', icon: <Save size={12} />, onClick: () => setShowSaveTemplate(true) },
+                  { label: '불러오기', icon: <LayoutTemplate size={12} />, onClick: () => setShowTemplatePicker(true) },
+                ]}
+              />
               <button onClick={() => setEditMode(true)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -914,6 +955,27 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             setShowSaveTemplate(false)
           }}
         />
+      )}
+
+      {showKanban && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`rounded-2xl border w-full max-w-5xl max-h-[85vh] flex flex-col
+            ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
+            <div className={`flex items-center justify-between px-5 py-3 border-b shrink-0
+              ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+              <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+                <Columns3 size={14} className="inline -mt-0.5 mr-1.5" />칸반 보드
+              </p>
+              <button onClick={() => setShowKanban(false)}
+                className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <KanbanBoard dashboard={dashboard} setDashboard={setDashboard} dark={dark} />
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab ? (
