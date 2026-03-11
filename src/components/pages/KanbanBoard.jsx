@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Plus, X, GripVertical, Pencil, Check, Trash2 } from 'lucide-react'
 import {
   DndContext, closestCorners,
@@ -128,6 +128,42 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
   )
 }
 
+/* ── 컬럼 리사이즈 핸들 ── */
+function ColResizeHandle({ dark, onDragStart, onDrag }) {
+  const startX = useRef(0)
+
+  const onPointerDown = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    startX.current = e.clientX
+    if (onDragStart) onDragStart()
+
+    const onMove = (ev) => {
+      const delta = ev.clientX - startX.current
+      onDrag(delta)
+    }
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  }, [onDragStart, onDrag])
+
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      className={`absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-10
+        group/handle flex items-center justify-center
+        hover:bg-indigo-500/20 active:bg-indigo-500/30 transition-colors`}
+      style={{ touchAction: 'none' }}
+    >
+      <div className={`w-0.5 h-6 rounded-full opacity-0 group-hover/handle:opacity-100 transition-opacity
+        ${dark ? 'bg-slate-500' : 'bg-slate-300'}`} />
+    </div>
+  )
+}
+
 /* ── 메인 칸반 보드 ── */
 export default function KanbanBoard({ dashboard, setDashboard, dark }) {
   const columns = dashboard?.columns || []
@@ -145,7 +181,7 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
   /* ── 컬럼 CRUD ── */
   const addColumn = () => {
     if (!newColTitle.trim()) { setAddingCol(false); return }
-    const newCol = { id: `c_${Date.now()}`, title: newColTitle.trim(), cards: [] }
+    const newCol = { id: `c_${Date.now()}`, title: newColTitle.trim(), cards: [], width: 256 }
     setDashboard({ ...dashboard, columns: [...columns, newCol] })
     setAddingCol(false)
     setNewColTitle('')
@@ -163,6 +199,24 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
   const deleteColumn = (colId) => {
     setDashboard({ ...dashboard, columns: columns.filter(c => c.id !== colId) })
   }
+
+  /* ── 컬럼 리사이즈 ── */
+  const colWidthRef = useRef({})   // 드래그 중 시작 width 기록
+  const startColResize = useCallback((colId) => {
+    const col = columns.find(c => c.id === colId)
+    colWidthRef.current[colId] = col?.width || 256
+  }, [columns])
+
+  const handleColResize = useCallback((colId, delta) => {
+    const baseW = colWidthRef.current[colId] || 256
+    const newW = Math.max(160, Math.min(600, baseW + delta))
+    setDashboard(prev => ({
+      ...prev,
+      columns: (prev.columns || []).map(c =>
+        c.id === colId ? { ...c, width: newW } : c
+      ),
+    }))
+  }, [setDashboard])
 
   /* ── 카드 CRUD ── */
   const addCard = (columnId, cardData) => {
@@ -276,8 +330,9 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
 
         {columns.map(col => (
           <div key={col.id}
-            className={`shrink-0 w-64 rounded-xl border flex flex-col max-h-full
-            ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+            className={`shrink-0 rounded-xl border flex flex-col max-h-full relative
+            ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}
+            style={{ width: col.width || 256 }}>
 
             {/* 컬럼 헤더 */}
             <div className={`flex items-center justify-between px-3 py-2.5 border-b
@@ -349,6 +404,12 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
                 <Plus size={10} /> 카드 추가
               </button>
             </div>
+
+            {/* 컬럼 리사이즈 핸들 */}
+            <ColResizeHandle dark={dark}
+              onDragStart={() => startColResize(col.id)}
+              onDrag={(delta) => handleColResize(col.id, delta)}
+            />
           </div>
         ))}
 
@@ -366,8 +427,9 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
 
       {/* 컬럼 추가 */}
       {addingCol ? (
-        <div className={`shrink-0 w-64 rounded-xl border p-3
-          ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`shrink-0 rounded-xl border p-3
+          ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}
+          style={{ width: 256 }}>
           <input autoFocus value={newColTitle}
             onChange={e => setNewColTitle(e.target.value)}
             onKeyDown={e => {
@@ -392,7 +454,8 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
         </div>
       ) : (
         <button onClick={() => setAddingCol(true)}
-          className={`shrink-0 w-64 h-fit rounded-xl border border-dashed p-4
+          style={{ width: 160 }}
+          className={`shrink-0 h-fit rounded-xl border border-dashed p-4
           flex items-center justify-center gap-2 text-xs transition-colors
           ${dark
             ? 'border-[#2E3450] text-slate-500 hover:text-slate-300 hover:border-slate-500'

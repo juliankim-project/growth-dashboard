@@ -943,21 +943,23 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
                     onClick: () => {
                       const norm = normalizeDashboard(dashboard)
                       const slots = norm.slots || []
-                      const bottomY = slots.reduce((max, s) => {
-                        const ly = (s.layout?.y ?? 0) + (s.layout?.h ?? 2)
-                        return ly > max ? ly : max
-                      }, 0)
+                      const kanbanH = 5
                       const kid = `w_kanban_${Date.now()}`
+                      /* 기존 위젯들을 칸반 높이만큼 아래로 밀기 */
+                      const shiftedSlots = slots.map(s => ({
+                        ...s,
+                        layout: { ...s.layout, y: (s.layout?.y ?? 0) + kanbanH }
+                      }))
                       const kanbanSlot = {
                         id: kid, type: 'kanban', table: defaultTable,
                         config: { title: '칸반 보드', columns: [
-                          { id: 'c_todo', title: '할 일', cards: [] },
-                          { id: 'c_progress', title: '진행 중', cards: [] },
-                          { id: 'c_done', title: '완료', cards: [] },
+                          { id: 'c_todo', title: '할 일', cards: [], width: 256 },
+                          { id: 'c_progress', title: '진행 중', cards: [], width: 256 },
+                          { id: 'c_done', title: '완료', cards: [], width: 256 },
                         ]},
-                        layout: { i: kid, x: 0, y: bottomY, w: 12, h: 5, minW: 4, minH: 3 },
+                        layout: { i: kid, x: 0, y: 0, w: 12, h: 5, minW: 4, minH: 3 },
                       }
-                      setDashboard({ ...norm, slots: [...slots, kanbanSlot] })
+                      setDashboard({ ...norm, slots: [...shiftedSlots, kanbanSlot] })
                     } },
                 ]}
               />
