@@ -4,6 +4,7 @@
  * 모든 메트릭 정보는 `mList` (= buildTableMetrics() 결과)로 전달받음.
  * 레거시 METRICS 직접 참조 없음 — 단일 메트릭 소스(columnConfig → buildTableMetrics).
  */
+import { getPreviousPeriod } from '../../store/useDateRange'
 
 /* 차트 축 전용 - 축약 표기 (소수점 없음) */
 export const fmtW = n => {
@@ -348,23 +349,13 @@ export function splitByPeriod(data, dateRange, dateColumn) {
   }
 
   /* 문자열 비교 (YYYY-MM-DD) — Date 객체 비교 시 타임존/시간 이슈 방지 */
-  const startStr = dateRange.start  // 'YYYY-MM-DD'
+  const startStr = dateRange.start
   const endStr   = dateRange.end
 
-  /* 이전 기간 계산 (동일 길이) */
-  const s = new Date(dateRange.start + 'T00:00:00')
-  const e = new Date(dateRange.end + 'T00:00:00')
-  const periodMs = e.getTime() - s.getTime()
-  const prevS = new Date(s.getTime() - periodMs - 86400000)
-  const prevE = new Date(s.getTime() - 86400000)
-  const fmt = d => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
-  const prevStartStr = fmt(prevS)
-  const prevEndStr   = fmt(prevE)
+  /* 이전 기간: 월/주 프리셋은 달/주 단위, 일/커스텀은 동일 일수 */
+  const prev = getPreviousPeriod(dateRange)
+  const prevStartStr = prev.start
+  const prevEndStr   = prev.end
 
   const current = []
   const previous = []
@@ -373,7 +364,7 @@ export function splitByPeriod(data, dateRange, dateColumn) {
     const d = getDate(row)
     if (!d) return
     if (d >= startStr && d <= endStr) current.push(row)
-    else if (d >= prevStartStr && d <= prevEndStr) previous.push(row)
+    else if (prevStartStr && prevEndStr && d >= prevStartStr && d <= prevEndStr) previous.push(row)
   })
 
   return { current, previous }

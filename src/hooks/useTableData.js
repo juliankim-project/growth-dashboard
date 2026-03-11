@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { fetchAll, fetchByDateRange, supabase } from '../lib/supabase'
 import { getNeededColumns } from '../store/columnUtils'
+import { getPreviousPeriod } from '../store/useDateRange'
 
 /**
  * 범용 Supabase 테이블 데이터 훅
@@ -87,11 +88,8 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
     // ComparisonWidget을 위해 이전 기간도 포함하도록 확장 범위 계산
     let expandedStart = dateRange?.start
     if (dateRange?.start && dateRange?.end) {
-      const s = new Date(dateRange.start)
-      const e = new Date(dateRange.end)
-      const periodMs = e.getTime() - s.getTime()
-      const prev = new Date(s.getTime() - periodMs - 86400000)
-      expandedStart = prev.toISOString().slice(0, 10)
+      const prev = getPreviousPeriod(dateRange)
+      expandedStart = prev.start || dateRange.start
     }
 
     Promise.all(

@@ -76,6 +76,57 @@ export function getPresetRange(preset) {
   return { start: toDateStr(today), end: toDateStr(today) }
 }
 
+/**
+ * 이전 기간 계산 (ComparisonWidget + 데이터 fetch 공통)
+ * - 월 프리셋: 이전 달 전체 (또는 같은 일자까지)
+ * - 주 프리셋: 7일 전으로 시프트
+ * - 일/커스텀: 동일 일수 직전 기간
+ */
+export function getPreviousPeriod(dateRange) {
+  if (!dateRange?.start || !dateRange?.end) return { start: null, end: null }
+
+  const preset = dateRange.preset
+  const presetDef = preset ? DATE_PRESETS.find(x => x.id === preset) : null
+
+  if (presetDef?.type === 'month') {
+    const s = new Date(dateRange.start + 'T00:00:00')
+    const e = new Date(dateRange.end + 'T00:00:00')
+    /* 이전 달 1일 */
+    const prevFirst = new Date(s.getFullYear(), s.getMonth() - 1, 1)
+
+    if (presetDef.offset === 0) {
+      /* 이번달 (1일~오늘): 이전 = 지난달 1일 ~ 같은 일자(또는 말일) */
+      const dayOfMonth = e.getDate()
+      const prevLast = new Date(s.getFullYear(), s.getMonth(), 0) // 이전 달 말일
+      const prevEndDay = Math.min(dayOfMonth, prevLast.getDate())
+      return {
+        start: toDateStr(prevFirst),
+        end: toDateStr(new Date(prevFirst.getFullYear(), prevFirst.getMonth(), prevEndDay))
+      }
+    }
+    /* 지난달 등 (전체 월): 이전 = 그 전 달 전체 */
+    const prevLast = new Date(s.getFullYear(), s.getMonth(), 0)
+    return { start: toDateStr(prevFirst), end: toDateStr(prevLast) }
+  }
+
+  if (presetDef?.type === 'week') {
+    /* 주 단위: 7일 전으로 시프트 */
+    const s = new Date(dateRange.start + 'T00:00:00')
+    const e = new Date(dateRange.end + 'T00:00:00')
+    const prevS = new Date(s); prevS.setDate(s.getDate() - 7)
+    const prevE = new Date(e); prevE.setDate(e.getDate() - 7)
+    return { start: toDateStr(prevS), end: toDateStr(prevE) }
+  }
+
+  /* 일 단위 / 커스텀: 동일 일수 직전 기간 */
+  const s = new Date(dateRange.start + 'T00:00:00')
+  const e = new Date(dateRange.end + 'T00:00:00')
+  const daySpan = Math.round((e.getTime() - s.getTime()) / 86400000) // start~end 사이 일수 (exclusive)
+  const prevE = new Date(s); prevE.setDate(s.getDate() - 1)          // start - 1일
+  const prevS = new Date(prevE); prevS.setDate(prevE.getDate() - daySpan) // prevEnd - span
+  return { start: toDateStr(prevS), end: toDateStr(prevE) }
+}
+
 /* 초기값 */
 function getInitial() {
   try {
