@@ -32,6 +32,7 @@ function transformRows(defRows, metaRows) {
     const columns = {}
     const dimensionColumns = []
     const computed = []
+    const derivedDimensions = []
 
     // Sort by sort_order
     rows.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
@@ -78,6 +79,21 @@ function transformRows(defRows, metaRows) {
         case 'derived':
           // derived metrics — MARKETING_DERIVED 상수가 처리하므로 여기서는 무시
           break
+        case 'derived_dimension': {
+          // 파생 디멘전 (예: 지점-객실타입 조합)
+          columns[row.column_key] = {
+            alias: row.label || '',
+            visible: true,
+            fmt: 'text',
+            agg: null,
+          }
+          dimensionColumns.push(row.column_key)
+          derivedDimensions.push({
+            id: row.column_key,
+            terms: row.terms_json || [],
+          })
+          break
+        }
       }
     }
 
@@ -87,6 +103,7 @@ function transformRows(defRows, metaRows) {
       columns,
       dimensionColumns,
       computed,
+      derivedDimensions,
     }
   }
 

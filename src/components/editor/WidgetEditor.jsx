@@ -58,7 +58,7 @@ function SortableMetricItem({ id, label, isComputed, dark, onRemove }) {
    - 지표/그룹바이: 팝오버 피커
    - 필터: 접이식 디멘전 필터
 ══════════════════════════════════════════ */
-export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, onClose, columnConfig, availableTables }) {
+export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap, onSave, onClose, columnConfig, availableTables }) {
   const isNew = !slotId
   const [selTable, setSelTable] = useState(widget.table || widget.config?._table || 'marketing_data')
   const [type, setType] = useState(widget.type || 'kpi')
@@ -66,6 +66,9 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
     sanitizeWidgetConfig(widget.type, { ...widget.config }, widget.table || widget.config?._table || 'marketing_data', columnConfig)
   )
   const [filters, setFilters] = useState(widget.config?.filters || {})
+
+  /* 테이블 변경 시 해당 테이블 데이터로 전환 (생성 모드에서도 필터 동작) */
+  const effectiveData = useMemo(() => dataMap?.[selTable] || data, [dataMap, selTable, data])
 
   const dynMetrics = useMemo(() => buildWidgetMetrics(selTable, columnConfig), [selTable, columnConfig])
   const dynGroupBy = useMemo(() => buildWidgetGroupBy(selTable, columnConfig), [selTable, columnConfig])
@@ -437,7 +440,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], onSave, 
           <FilterSection
             filters={filters}
             groupBy={config.groupBy}
-            data={data}
+            data={effectiveData}
             dark={dark}
             onChange={setFilters}
             columnConfig={columnConfig}

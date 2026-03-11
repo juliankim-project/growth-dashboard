@@ -773,20 +773,18 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       )}
 
       {/* 카드 추가 모달 */}
-      {showAdd && (() => {
-        const addData = dataMap[defaultTable] || []
-        return (
+      {showAdd && (
           <WidgetEditor
             widget={{ type: 'kpi', table: defaultTable, config: { ...DEFAULT_WIDGET_CONFIG.kpi } }}
-            data={addData}
+            data={dataMap[defaultTable] || []}
+            dataMap={dataMap}
             dark={dark}
             onSave={handleAddSlot}
             onClose={() => setShowAdd(false)}
             columnConfig={columnConfig}
             availableTables={availableTables}
           />
-        )
-      })()}
+      )}
 
       {/* 위젯 편집 모달 */}
       {editingSlot && (() => {
@@ -798,6 +796,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
             slotId={editingSlot.id}
             widget={{ type: editingSlot.type, table: editingSlot.table, config: editingSlot.config }}
             data={processed}
+            dataMap={dataMap}
             dark={dark}
             onSave={handleWidgetSave}
             onClose={() => setEditSlot(null)}
@@ -851,8 +850,11 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
       const t = s.table || s.config?._table
       if (t) tables.add(t)
     })
+    /* 위젯 생성 시 테이블 변경해도 데이터가 있도록 모든 가용 테이블 포함 */
+    DB_TABLES.forEach(t => tables.add(t))
+    if (columnConfig) Object.keys(columnConfig).forEach(t => tables.add(t))
     return [...tables]
-  }, [dashboard, defaultTable])
+  }, [dashboard, defaultTable, columnConfig])
 
   const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables, dateRange, columnConfig)
   const errorMsg = Object.entries(errors).map(([t, e]) => `${t}: ${e}`).join(', ')

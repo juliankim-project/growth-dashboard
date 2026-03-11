@@ -123,7 +123,7 @@ INSERT INTO column_definitions (table_name, column_key, category, label, fmt, so
   ('product_revenue_raw', 'late_check_out',    'hidden', '',       'number', 30),
   ('product_revenue_raw', 'is_long',           'hidden', '',       'number', 31),
   ('product_revenue_raw', 'status',            'hidden', '상태',   'text',   32),
-  ('product_revenue_raw', 'room_type2',        'hidden', '객실유형2',     'text', 33),
+  -- room_type2는 dimension으로 이동
   ('product_revenue_raw', 'product_option_name','hidden','상품옵션',       'text', 34),
   ('product_revenue_raw', 'display_product_name','hidden','표시상품명',    'text', 35)
 ON CONFLICT (table_name, column_key) DO NOTHING;
@@ -135,7 +135,14 @@ INSERT INTO column_definitions (table_name, column_key, category, label, fmt, so
   ('product_revenue_raw', 'channel_name',   'dimension', '채널명',     'text', 2),
   ('product_revenue_raw', 'channel_group',  'dimension', '채널그룹',   'text', 3),
   ('product_revenue_raw', 'area',           'dimension', '지역명',     'text', 4),
-  ('product_revenue_raw', 'room_type_name', 'dimension', '객실타입',   'text', 5)
+  ('product_revenue_raw', 'room_type_name', 'dimension', '객실명',     'text', 5),
+  ('product_revenue_raw', 'room_type2',     'dimension', '객실타입',   'text', 6)
+ON CONFLICT (table_name, column_key) DO NOTHING;
+
+-- 파생 디멘전 (조합 컬럼)
+INSERT INTO column_definitions (table_name, column_key, category, label, fmt, sort_order, terms_json) VALUES
+  ('product_revenue_raw', 'branch_room_type', 'derived_dimension', '지점-객실타입', 'text', 7,
+    '[{"type":"concat","cols":["branch_name","room_type2"],"separator":" - "}]')
 ON CONFLICT (table_name, column_key) DO NOTHING;
 
 -- 지표

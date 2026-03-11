@@ -322,11 +322,13 @@ export function getNeededColumns() {
 export function applyComputedColumns(rows, tableName, columnConfig) {
   const tCfg = columnConfig?.[tableName]
   const computed = tCfg?.computed
-  if (!computed || computed.length === 0) return rows
+  const derivedDims = tCfg?.derivedDimensions
+  if ((!computed || computed.length === 0) && (!derivedDims || derivedDims.length === 0)) return rows
 
   return rows.map(row => {
     const newRow = { ...row }
-    computed.forEach(cc => {
+    /* 계산 컬럼 (숫자) */
+    ;(computed || []).forEach(cc => {
       if (cc.aggType === 'count') {
         newRow[cc.id] = 1  // COUNT: 각 행 = 1 → SUM으로 자연스럽게 카운트
       } else if (cc.aggType === 'count_distinct') {
@@ -335,6 +337,14 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
         newRow[cc.id] = dt?.col ? row[dt.col] : 1
       } else {
         newRow[cc.id] = (!cc.terms || cc.terms.length === 0) ? 0 : evalTerms(cc.terms, newRow)
+      }
+    })
+    /* 파생 디멘전 (문자열 조합) */
+    ;(derivedDims || []).forEach(dd => {
+      const term = dd.terms?.[0]
+      if (term?.type === 'concat' && Array.isArray(term.cols)) {
+        const sep = term.separator ?? ' - '
+        newRow[dd.id] = term.cols.map(c => row[c] ?? '').join(sep)
       }
     })
     return newRow
