@@ -3,7 +3,7 @@ import { Plus, X, GripVertical, Pencil, Check, Trash2 } from 'lucide-react'
 import {
   DndContext, closestCorners,
   PointerSensor, useSensor, useSensors,
-  DragOverlay,
+  DragOverlay, useDroppable,
 } from '@dnd-kit/core'
 import {
   SortableContext, useSortable,
@@ -18,6 +18,15 @@ const CARD_COLORS = [
   { id: 'rose', label: '로즈', bg: 'bg-rose-500', hex: '#EF4444' },
   { id: 'violet', label: '바이올렛', bg: 'bg-violet-500', hex: '#8B5CF6' },
   { id: 'sky', label: '스카이', bg: 'bg-sky-500', hex: '#0EA5E9' },
+]
+
+const LABEL_COLORS = [
+  { id: 'green',  label: '그린',   hex: '#34D399' },
+  { id: 'yellow', label: '옐로',   hex: '#FBBF24' },
+  { id: 'orange', label: '오렌지', hex: '#FB923C' },
+  { id: 'red',    label: '레드',   hex: '#FB7185' },
+  { id: 'purple', label: '퍼플',   hex: '#A78BFA' },
+  { id: 'blue',   label: '블루',   hex: '#38BDF8' },
 ]
 
 /* ── 드래그 가능한 카드 ── */
@@ -43,6 +52,21 @@ function SortableCard({ card, dark, onEdit, onDelete, columnId }) {
     >
       {colorObj && (
         <div className={`w-8 h-1 rounded-full mb-2 ${colorObj.bg}`} />
+      )}
+      {card.labels?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          {card.labels.map(lbl => {
+            const lc = LABEL_COLORS.find(c => c.id === lbl.colorId)
+            return (
+              <span key={lbl.id} className="inline-block rounded-sm"
+                style={{ backgroundColor: lc?.hex || '#94A3B8', height: lbl.text ? 'auto' : 6, width: lbl.text ? 'auto' : 32 }}>
+                {lbl.text && (
+                  <span className="text-[8px] font-bold text-white leading-none px-1.5 py-0.5 inline-block">{lbl.text}</span>
+                )}
+              </span>
+            )
+          })}
+        </div>
       )}
       <p className={`text-xs font-medium leading-relaxed ${dark ? 'text-white' : 'text-slate-800'}`}>
         {card.title}
@@ -71,10 +95,12 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
   const [title, setTitle] = useState(initial?.title || '')
   const [desc, setDesc] = useState(initial?.desc || '')
   const [color, setColor] = useState(initial?.color || 'indigo')
+  const [labels, setLabels] = useState(initial?.labels || [])
+  const [editingLabelId, setEditingLabelId] = useState(null)
 
   const handleSave = () => {
     if (!title.trim()) return
-    onSave({ title: title.trim(), desc: desc.trim(), color })
+    onSave({ title: title.trim(), desc: desc.trim(), color, labels })
     onClose()
   }
 
@@ -117,6 +143,67 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
               style={dark ? { ringOffsetColor: '#1A1D27' } : {}}
             />
           ))}
+        </div>
+
+        {/* 라벨 */}
+        <div className="mb-4">
+          <p className={`text-[10px] font-semibold mb-2 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            라벨
+          </p>
+          {/* 선택된 라벨 목록 */}
+          {labels.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {labels.map(lbl => {
+                const lc = LABEL_COLORS.find(c => c.id === lbl.colorId)
+                return (
+                  <span key={lbl.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] text-white font-medium cursor-pointer"
+                    style={{ backgroundColor: lc?.hex || '#94A3B8' }}
+                    onClick={() => setEditingLabelId(editingLabelId === lbl.id ? null : lbl.id)}>
+                    {lbl.text || lc?.label}
+                    <button onClick={(e) => { e.stopPropagation(); setLabels(ls => ls.filter(l => l.id !== lbl.id)) }}
+                      className="hover:text-white/60 ml-0.5">
+                      <X size={8} />
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          )}
+          {/* 라벨 텍스트 편집 */}
+          {editingLabelId && labels.find(l => l.id === editingLabelId) && (
+            <input
+              autoFocus
+              value={labels.find(l => l.id === editingLabelId)?.text || ''}
+              onChange={e => setLabels(ls => ls.map(l => l.id === editingLabelId ? { ...l, text: e.target.value } : l))}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditingLabelId(null) }}
+              onBlur={() => setEditingLabelId(null)}
+              placeholder="라벨 텍스트 (선택)"
+              className={`w-full text-[10px] px-2 py-1 rounded border outline-none mb-2
+                ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+                      : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
+            />
+          )}
+          {/* 색상 토글 */}
+          <div className="flex items-center gap-1.5">
+            {LABEL_COLORS.map(c => {
+              const active = labels.some(l => l.colorId === c.id)
+              return (
+                <button key={c.id} onClick={() => {
+                  if (active) {
+                    setLabels(ls => ls.filter(l => l.colorId !== c.id))
+                  } else {
+                    const newLbl = { id: `l_${Date.now()}_${c.id}`, text: '', colorId: c.id }
+                    setLabels(ls => [...ls, newLbl])
+                  }
+                }}
+                  className={`w-5 h-5 rounded-full transition-all
+                    ${active ? 'ring-2 ring-offset-1 ring-indigo-400 scale-110' : 'opacity-50 hover:opacity-100'}`}
+                  style={{ backgroundColor: c.hex, ...(dark ? { ringOffsetColor: '#1A1D27' } : {}) }}
+                />
+              )
+            })}
+          </div>
         </div>
 
         <button onClick={handleSave}
@@ -168,6 +255,22 @@ function ColResizeHandle({ dark, baseWidth, onResizeEnd }) {
     >
       <div className={`w-0.5 h-6 rounded-full opacity-0 group-hover/handle:opacity-100 transition-opacity
         ${dark ? 'bg-slate-500' : 'bg-slate-300'}`} />
+    </div>
+  )
+}
+
+/* ── 드롭 가능한 컬럼 영역 ── */
+function DroppableColumn({ columnId, dark, children }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: columnId,
+    data: { type: 'column' },
+  })
+
+  return (
+    <div ref={setNodeRef}
+      className={`flex-1 overflow-y-auto p-2 space-y-2 min-h-[60px] transition-colors rounded-lg
+        ${isOver ? (dark ? 'bg-indigo-500/10' : 'bg-indigo-50') : ''}`}>
+      {children}
     </div>
   )
 }
@@ -280,6 +383,7 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
     const activeCol = columns.find(c => c.id === activeColId)
     const overCol = columns.find(c => c.id === overColId)
     const activeCard = activeCol.cards.find(c => c.id === active.id)
+    if (!activeCard) return  // 중복 이벤트 방지
     const overCardIdx = overCol.cards.findIndex(c => c.id === over.id)
 
     const newColumns = columns.map(col => {
@@ -288,7 +392,7 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
       }
       if (col.id === overColId) {
         const idx = overCardIdx >= 0 ? overCardIdx : col.cards.length
-        const newCards = [...col.cards]
+        const newCards = [...col.cards.filter(c => c.id !== active.id)]  // 중복 삽입 방지
         newCards.splice(idx, 0, activeCard)
         return { ...col, cards: newCards }
       }
@@ -324,13 +428,13 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
     : null
 
   return (
-    <div className="flex gap-4 h-full overflow-x-auto pb-4">
-      <DndContext sensors={sensors} collisionDetection={closestCorners}
-        onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCorners}
+      onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+    <div className="flex gap-4 h-full overflow-x-auto overflow-y-hidden pb-2">
 
         {columns.map(col => (
           <div key={col.id}
-            className={`shrink-0 rounded-xl border flex flex-col max-h-full relative
+            className={`shrink-0 rounded-xl border flex flex-col h-full relative
             ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}
             style={{ width: col.width || 256 }}>
 
@@ -375,10 +479,9 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
               </div>
             </div>
 
-            {/* 카드 목록 */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[60px]">
-              <SortableContext items={col.cards.map(c => c.id)} strategy={verticalListSortingStrategy}
-                id={col.id}>
+            {/* 카드 목록 (드롭 가능) */}
+            <DroppableColumn columnId={col.id} dark={dark}>
+              <SortableContext items={col.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
                 {col.cards.map(card => (
                   <SortableCard key={card.id} card={card} dark={dark} columnId={col.id}
                     onEdit={(c) => setEditingCard({ columnId: col.id, card: c })}
@@ -391,7 +494,7 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
                   카드를 드래그하거나 추가하세요
                 </div>
               )}
-            </div>
+            </DroppableColumn>
 
             {/* 카드 추가 버튼 */}
             <div className={`px-2 pb-2`}>
@@ -412,18 +515,6 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
             />
           </div>
         ))}
-
-        <DragOverlay>
-          {activeCard ? (
-            <div className={`rounded-lg border p-3 w-60 shadow-xl rotate-2
-              ${dark ? 'bg-[#20232E] border-[#2E3450]' : 'bg-white border-slate-200'}`}>
-              <p className={`text-xs font-medium ${dark ? 'text-white' : 'text-slate-800'}`}>
-                {activeCard.title}
-              </p>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
 
       {/* 컬럼 추가 */}
       {addingCol ? (
@@ -479,5 +570,30 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
         />
       )}
     </div>
+
+    {/* 드래그 오버레이 (scroll 컨테이너 밖에서 렌더) */}
+    <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+      {activeCard ? (
+        <div className={`rounded-lg border p-3 shadow-xl rotate-2 pointer-events-none
+          ${dark ? 'bg-[#20232E] border-[#2E3450]' : 'bg-white border-slate-200'}`}
+          style={{ width: 240 }}>
+          {activeCard.labels?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-1.5">
+              {activeCard.labels.map(lbl => {
+                const lc = LABEL_COLORS.find(c => c.id === lbl.colorId)
+                return <span key={lbl.id} className="inline-block rounded-sm"
+                  style={{ backgroundColor: lc?.hex || '#94A3B8', height: 6, width: lbl.text ? 'auto' : 24, ...(lbl.text ? { padding: '1px 6px' } : {}) }}>
+                  {lbl.text && <span className="text-[7px] font-bold text-white leading-none">{lbl.text}</span>}
+                </span>
+              })}
+            </div>
+          )}
+          <p className={`text-xs font-medium ${dark ? 'text-white' : 'text-slate-800'}`}>
+            {activeCard.title}
+          </p>
+        </div>
+      ) : null}
+    </DragOverlay>
+    </DndContext>
   )
 }
