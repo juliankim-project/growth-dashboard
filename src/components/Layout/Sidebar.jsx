@@ -38,6 +38,13 @@ export const DEFAULT_SECTIONS = [
     ]
   },
   {
+    id: 'ailab', label: 'AI 연구소', icon: 'Cpu',
+    subs: [
+      { id:'ask',     label:'질문하기',  icon:'Search'  },
+      { id:'history', label:'질문내역',  icon:'History' },
+    ]
+  },
+  {
     id: 'datastudio', label: 'Data Studio', icon: 'Database',
     subs: [
       { id:'upload',  label:'CSV 업로드',  icon:'Upload'  },

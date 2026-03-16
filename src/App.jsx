@@ -18,6 +18,8 @@ const TabSettings = lazy(() => import('./pages/settings/TabSettings'))
 const SettingsTeam = lazy(() => import('./pages/settings/Team'))
 const CustomDashboard = lazy(() => import('./pages/CustomDashboard'))
 const ComingSoon = lazy(() => import('./pages/ComingSoon'))
+const AskQuestion = lazy(() => import('./pages/ailab/AskQuestion'))
+const QueryHistory = lazy(() => import('./pages/ailab/QueryHistory'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -30,6 +32,8 @@ const FIXED_MAP = {
   'datastudio.history': DataHistory,
   'settings.general': SettingsGeneral,
   'settings.team': SettingsTeam,
+  'ailab.ask': AskQuestion,
+  'ailab.history': QueryHistory,
 }
 
 import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
