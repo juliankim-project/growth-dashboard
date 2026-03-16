@@ -24,6 +24,7 @@ async function ensureClient() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       client_name: "growth-dashboard-edge",
+      redirect_uris: ["https://gjykjvevjuzjyuuopsns.supabase.co/functions/v1/mcp-proxy/callback"],
       grant_types: ["client_credentials"],
       token_endpoint_auth_method: "client_secret_post",
     }),
