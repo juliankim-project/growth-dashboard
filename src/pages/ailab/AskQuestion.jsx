@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, Database, MessageSquare, AlertCircle, KeyRound } from 'lucide-react'
+import { Send, Loader2, Database, MessageSquare, AlertCircle, KeyRound, Clock } from 'lucide-react'
 import { mcpAsk, mcpQuery, mcpCheckAuth, MCPAuthRequiredError } from '../../lib/mcpClient'
 import { supabase } from '../../lib/supabase'
 
@@ -32,6 +32,15 @@ function ResultTable({ rows }) {
   )
 }
 
+function ElapsedTimer() {
+  const [sec, setSec] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setSec(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return <span>{sec}초</span>
+}
+
 export default function AskQuestion({ dark }) {
   const [question, setQuestion] = useState('')
   const [mode, setMode] = useState('ask') // 'ask' | 'query'
@@ -40,6 +49,7 @@ export default function AskQuestion({ dark }) {
   const [error, setError] = useState(null)
   const [authUrl, setAuthUrl] = useState(null)
   const inputRef = useRef(null)
+  const abortRef = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -58,12 +68,28 @@ export default function AskQuestion({ dark }) {
     const q = question.trim()
     if (!q || loading) return
 
+    // 이전 요청 취소
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
     setError(null)
     setResult(null)
 
+    // 120초 타임아웃
+    const timeout = setTimeout(() => {
+      controller.abort()
+      setError('요청 시간이 초과되었습니다 (120초). 자연어 질문은 시간이 오래 걸릴 수 있어요. SQL 쿼리 모드를 사용해 보세요.')
+      setLoading(false)
+    }, 120000)
+
     try {
-      const res = mode === 'ask' ? await mcpAsk(q) : await mcpQuery(q)
+      const res = mode === 'ask'
+        ? await mcpAsk(q, controller.signal)
+        : await mcpQuery(q, controller.signal)
+
+      clearTimeout(timeout)
 
       // MCP JSON-RPC 결과 파싱
       let parsed = null
@@ -78,13 +104,15 @@ export default function AskQuestion({ dark }) {
 
       // 질문 내역 저장
       if (supabase) {
-        await supabase.from('ai_queries').insert({
+        supabase.from('ai_queries').insert({
           question: q,
           mode,
           result: JSON.stringify(parsed ?? res),
         }).then(() => {})
       }
     } catch (err) {
+      clearTimeout(timeout)
+      if (err.name === 'AbortError') return
       if (err instanceof MCPAuthRequiredError) {
         setAuthUrl(err.authUrl)
         setError(null)
@@ -112,51 +140,89 @@ export default function AskQuestion({ dark }) {
       </div>
 
       {/* 모드 토글 */}
-      <div className="flex gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800 w-fit">
-        <button
-          onClick={() => setMode('ask')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-            mode === 'ask'
-              ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-        >
-          <MessageSquare size={14} /> 자연어 질문
-        </button>
-        <button
-          onClick={() => setMode('query')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-            mode === 'query'
-              ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-        >
-          <Database size={14} /> SQL 쿼리
-        </button>
+      <div className="flex items-center gap-3">
+        <div className="flex gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800">
+          <button
+            onClick={() => setMode('ask')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === 'ask'
+                ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <MessageSquare size={14} /> 자연어 질문
+          </button>
+          <button
+            onClick={() => setMode('query')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === 'query'
+                ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Database size={14} /> SQL 쿼리
+          </button>
+        </div>
+        {mode === 'ask' && (
+          <span className={`text-[10px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+            AI 처리로 10~60초 소요될 수 있습니다
+          </span>
+        )}
       </div>
 
       {/* 입력 폼 */}
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
-          ref={inputRef}
-          value={question}
-          onChange={e => setQuestion(e.target.value)}
-          placeholder={mode === 'ask' ? '예: 이번 달 채널별 매출을 알려줘' : 'SELECT * FROM fact_reservation_event LIMIT 10'}
-          className={`flex-1 px-4 py-2.5 rounded-lg border text-sm outline-none transition-all ${
-            dark
-              ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500'
-              : 'bg-white border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-blue-500'
-          }`}
-        />
+        {mode === 'query' ? (
+          <textarea
+            ref={inputRef}
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            placeholder="SELECT c_name, SUM(pk_rv) AS revenue FROM fact_reservation_event WHERE event = '픽업' AND date = CURRENT_DATE GROUP BY c_name ORDER BY revenue DESC"
+            rows={3}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e) }}
+            className={`flex-1 px-4 py-2.5 rounded-lg border text-sm outline-none transition-all font-mono resize-none ${
+              dark
+                ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500'
+                : 'bg-white border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-blue-500'
+            }`}
+          />
+        ) : (
+          <input
+            ref={inputRef}
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            placeholder="예: 이번 달 채널별 매출을 알려줘"
+            className={`flex-1 px-4 py-2.5 rounded-lg border text-sm outline-none transition-all ${
+              dark
+                ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500'
+                : 'bg-white border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-blue-500'
+            }`}
+          />
+        )}
         <button
           type="submit"
           disabled={loading || !question.trim()}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors self-end"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           실행
         </button>
       </form>
+
+      {/* 로딩 상태 */}
+      {loading && (
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm ${
+          dark ? 'bg-blue-900/20 border-blue-800 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'
+        }`}>
+          <Loader2 size={14} className="animate-spin shrink-0" />
+          <span>
+            {mode === 'ask' ? 'AI가 데이터를 분석하고 있습니다' : '쿼리 실행 중'}...
+          </span>
+          <span className="flex items-center gap-1 ml-auto text-xs opacity-70">
+            <Clock size={12} /> <ElapsedTimer />
+          </span>
+        </div>
+      )}
 
       {/* 인증 필요 안내 */}
       {authUrl && (
@@ -173,7 +239,6 @@ export default function AskQuestion({ dark }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => {
-              // 인증 후 돌아오면 상태 재확인
               const check = setInterval(() => {
                 mcpCheckAuth().then(res => {
                   if (res.authenticated) {

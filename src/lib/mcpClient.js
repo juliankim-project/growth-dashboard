@@ -13,7 +13,7 @@ export class MCPAuthRequiredError extends Error {
   }
 }
 
-async function call(tool, args = {}) {
+async function call(tool, args = {}, signal) {
   const res = await fetch(PROXY_URL, {
     method: 'POST',
     headers: {
@@ -22,6 +22,7 @@ async function call(tool, args = {}) {
       'apikey':        ANON_KEY,
     },
     body: JSON.stringify({ tool, args }),
+    signal,
   })
 
   if (res.status === 401) {
@@ -51,16 +52,16 @@ export async function mcpCheckAuth() {
 }
 
 /** 자연어 질문 */
-export function mcpAsk(question) {
+export function mcpAsk(question, signal) {
   return call('ask', {
     question,
     use_case: 'agent_server_reasoning',
-  })
+  }, signal)
 }
 
 /** SQL 쿼리 */
-export function mcpQuery(sql) {
-  return call('query', { sql })
+export function mcpQuery(sql, signal) {
+  return call('query', { sql }, signal)
 }
 
 /** 스키마 부트스트랩 */
