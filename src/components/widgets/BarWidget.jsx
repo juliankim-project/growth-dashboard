@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { groupData, fmtAxis, fmtMetric, CHART_COLORS } from './widgetUtils'
 
@@ -17,7 +17,7 @@ function Tip({ active, payload, label, dark, metric, metricsProp }) {
   )
 }
 
-export default function BarWidget({ data, config, dark, metrics: metricsProp }) {
+function BarWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', groupBy = 'channel', title = '채널별 성과' } = config
 
   const chartData = useMemo(() => {
@@ -48,3 +48,5 @@ export default function BarWidget({ data, config, dark, metrics: metricsProp }) 
     </div>
   )
 }
+
+export default memo(BarWidget)

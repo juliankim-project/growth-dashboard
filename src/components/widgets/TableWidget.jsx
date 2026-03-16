@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react'
 import { ArrowUpDown } from 'lucide-react'
 import { groupData, fmtMetric } from './widgetUtils'
 
-export default function TableWidget({ data, config, dark, metrics: metricsProp }) {
+function TableWidget({ data, config, dark, metrics: metricsProp }) {
   const { metrics = ['cost','installs','conv','revenue'], groupBy = 'channel', title = '성과 테이블' } = config
   const [sort, setSort] = useState({ key: metrics[0] || 'cost', dir: -1 })
 
@@ -71,3 +71,5 @@ export default function TableWidget({ data, config, dark, metrics: metricsProp }
     </div>
   )
 }
+
+export default memo(TableWidget)

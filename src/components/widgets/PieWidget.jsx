@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { groupData, fmtW, CHART_COLORS } from './widgetUtils'
 
-export default function PieWidget({ data, config, dark, metrics: metricsProp }) {
+function PieWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', groupBy = 'Channel', title = '구성 비율' } = config
 
   const chartData = useMemo(() => {
@@ -44,3 +44,5 @@ export default function PieWidget({ data, config, dark, metrics: metricsProp }) 
     </div>
   )
 }
+
+export default memo(PieWidget)

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { dailyData, calcMetric, fmtMetric, CHART_COLORS } from './widgetUtils'
 
@@ -30,7 +30,7 @@ function Sparkline({ points, color, width = 120, height = 28 }) {
   )
 }
 
-export default function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
+function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const { metrics = [], title = '트렌드 요약' } = config
 
   const rows = useMemo(() => {
@@ -109,3 +109,5 @@ export default function TimelineWidget({ data, config, dark, metrics: metricsPro
     </div>
   )
 }
+
+export default memo(TimelineWidget)

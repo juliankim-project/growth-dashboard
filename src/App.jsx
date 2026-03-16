@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import Sidebar from './components/Layout/Sidebar'
 import Header from './components/Layout/Header'
 import { useConfig } from './store/useConfig'
@@ -8,18 +8,16 @@ import Login from './pages/Login'
 import Spinner from './components/UI/Spinner'
 import ErrorBoundary from './components/UI/ErrorBoundary'
 
-/* 항상 고정 UI (DataStudio / Settings) */
-import DataUpload from './pages/DataStudio'
-import UnifiedColumnConfig from './pages/datastudio/UnifiedColumnConfig'
-import DataHistory from './pages/datastudio/History'
-import DataTemplates from './pages/datastudio/Templates'
-import SettingsGeneral from './pages/settings/General'
-import TabSettings from './pages/settings/TabSettings'
-import SettingsTeam from './pages/settings/Team'
-
-/* 커스텀 대시보드 (Overview · Marketing · Product · 커스텀 서브탭 전부) */
-import CustomDashboard from './pages/CustomDashboard'
-import ComingSoon from './pages/ComingSoon'
+/* Lazy-loaded 페이지 — 초기 번들 사이즈 축소 */
+const DataUpload = lazy(() => import('./pages/DataStudio'))
+const UnifiedColumnConfig = lazy(() => import('./pages/datastudio/UnifiedColumnConfig'))
+const DataHistory = lazy(() => import('./pages/datastudio/History'))
+const DataTemplates = lazy(() => import('./pages/datastudio/Templates'))
+const SettingsGeneral = lazy(() => import('./pages/settings/General'))
+const TabSettings = lazy(() => import('./pages/settings/TabSettings'))
+const SettingsTeam = lazy(() => import('./pages/settings/Team'))
+const CustomDashboard = lazy(() => import('./pages/CustomDashboard'))
+const ComingSoon = lazy(() => import('./pages/ComingSoon'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -207,7 +205,13 @@ function Dashboard({ dark, setDark, user, signOut }) {
         />
         <main className="flex-1 min-h-0 overflow-y-auto flex flex-col">
           <ErrorBoundary key={key} dark={dark} label="페이지">
-            {PageContent}
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center py-20">
+                <Spinner dark={dark} />
+              </div>
+            }>
+              {PageContent}
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

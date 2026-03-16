@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { calcMetric, fmtMetric } from './widgetUtils'
 
 /* ── 퍼널 바 SVG ── */
@@ -48,7 +48,7 @@ function FunnelChart({ stages, stageValues, dark }) {
   )
 }
 
-export default function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
+function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
   const { stages = [], title = '전환 퍼널' } = config
 
   const stageValues = useMemo(() => {
@@ -123,3 +123,5 @@ export default function FunnelWidget({ data, config, dark, metrics: metricsProp 
     </div>
   )
 }
+
+export default memo(FunnelWidget)

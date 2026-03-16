@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense, memo } from 'react'
 import { Settings2, Check, X, Plus, GripVertical, LayoutTemplate, Code2, Save, Trash2, Copy, ClipboardPaste, ChevronDown, Columns3 } from 'lucide-react'
 import {
   TEMPLATES, WIDGET_TYPES,
@@ -11,18 +11,21 @@ import { DASHBOARD_TEMPLATES, generateDashboard, dashboardToTemplate } from '../
 import { useMultiTableData } from '../hooks/useTableData'
 import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
-import WidgetEditor from '../components/editor/WidgetEditor'
-import KPIWidget from '../components/widgets/KPIWidget'
-import LineWidget from '../components/widgets/LineWidget'
-import BarWidget from '../components/widgets/BarWidget'
-import PieWidget from '../components/widgets/PieWidget'
-import TableWidget from '../components/widgets/TableWidget'
-import FunnelWidget from '../components/widgets/FunnelWidget'
-import ComparisonWidget from '../components/widgets/ComparisonWidget'
-import RankingWidget from '../components/widgets/RankingWidget'
-import AlertWidget from '../components/widgets/AlertWidget'
-import TimelineWidget from '../components/widgets/TimelineWidget'
-import KanbanBoard from '../components/pages/KanbanBoard'
+
+/* ── Lazy-loaded 위젯 & 에디터 (초기 번들 사이즈 축소) ── */
+const WidgetEditor = lazy(() => import('../components/editor/WidgetEditor'))
+const KPIWidget = lazy(() => import('../components/widgets/KPIWidget'))
+const LineWidget = lazy(() => import('../components/widgets/LineWidget'))
+const BarWidget = lazy(() => import('../components/widgets/BarWidget'))
+const PieWidget = lazy(() => import('../components/widgets/PieWidget'))
+const TableWidget = lazy(() => import('../components/widgets/TableWidget'))
+const FunnelWidget = lazy(() => import('../components/widgets/FunnelWidget'))
+const ComparisonWidget = lazy(() => import('../components/widgets/ComparisonWidget'))
+const RankingWidget = lazy(() => import('../components/widgets/RankingWidget'))
+const AlertWidget = lazy(() => import('../components/widgets/AlertWidget'))
+const TimelineWidget = lazy(() => import('../components/widgets/TimelineWidget'))
+const KanbanBoard = lazy(() => import('../components/pages/KanbanBoard'))
+
 import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -108,8 +111,10 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
   if (!C) return null
   return (
     <ErrorBoundary dark={dark} label={type}>
-      <C data={data} config={cfg} dark={dark} metrics={metrics}
-        dateColumn={dateColumn} dateRange={dateRange} onConfigUpdate={onConfigUpdate} />
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><Spinner dark={dark} /></div>}>
+        <C data={data} config={cfg} dark={dark} metrics={metrics}
+          dateColumn={dateColumn} dateRange={dateRange} onConfigUpdate={onConfigUpdate} />
+      </Suspense>
     </ErrorBoundary>
   )
 }
@@ -120,7 +125,7 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 const RGL_COLS = 12
 const RGL_ROW_H = 80
 
-function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
+const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
   const widgetRawData = dataMap[widgetTable] || dataMap[defaultTable] || []
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
@@ -203,7 +208,7 @@ function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, data
       })()}
     </div>
   )
-}
+})
 
 /* ══════════════════════════════════════════
    대시보드 템플릿 불러오기 모달
@@ -652,17 +657,27 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
     })
   }, [editMode])
 
-  const handleAddSlot = (_, widget) => {
+  const handleAddSlot = useCallback((_, widget) => {
     const defaultLayout = {
       x: 0, y: Infinity,
       w: widget.type === 'kpi' ? 3 : 6,
       h: widget.type === 'kpi' ? 2 : 3,
       minW: 1, minH: 1,
     }
-    setDashboard({ ...norm, slots: [...slots, { ...widget, layout: defaultLayout }] })
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return { ...n, slots: [...(n.slots || []), { ...widget, layout: defaultLayout }] }
+    })
     setShowAdd(false)
-  }
-  const handleDeleteSlot = (id) => setDashboard({ ...norm, slots: slots.filter(s => s.id !== id) })
+  }, [setDashboard])
+
+  const handleDeleteSlot = useCallback((id) => {
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return { ...n, slots: (n.slots || []).filter(s => s.id !== id) }
+    })
+  }, [setDashboard])
+
   const handleSlotUpdate = useCallback((id, patch) => {
     setDashboard(prev => {
       const n = normalizeDashboard(prev)
@@ -670,13 +685,12 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
     })
   }, [setDashboard])
 
-  const handleCopySlot = (id) => {
+  const handleCopySlot = useCallback((id) => {
     const src = slots.find(s => s.id === id)
-    if (!src) return
-    setClipboard(src)
-  }
+    if (src) setClipboard(src)
+  }, [slots])
 
-  const handlePasteSlot = () => {
+  const handlePasteSlot = useCallback(() => {
     if (!clipboard) return
     const srcLayout = clipboard.layout || {}
     const clone = {
@@ -685,13 +699,19 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       config: { ...clipboard.config },
       layout: { ...srcLayout, x: 0, y: 0, minW: srcLayout.minW ?? 1, minH: srcLayout.minH ?? 1 },
     }
-    setDashboard({ ...norm, slots: [clone, ...slots] })
-  }
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return { ...n, slots: [clone, ...(n.slots || [])] }
+    })
+  }, [clipboard, setDashboard])
 
-  const handleWidgetSave = (slotId, widget) => {
-    setDashboard({ ...norm, slots: slots.map(s => s.id === slotId ? { ...s, ...widget } : s) })
+  const handleWidgetSave = useCallback((slotId, widget) => {
+    setDashboard(prev => {
+      const n = normalizeDashboard(prev)
+      return { ...n, slots: n.slots.map(s => s.id === slotId ? { ...s, ...widget } : s) }
+    })
     setEditSlot(null)
-  }
+  }, [setDashboard])
 
   const editingSlot = editSlot ? slots.find(s => s.id === editSlot) : null
 
@@ -774,6 +794,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
 
       {/* 카드 추가 모달 */}
       {showAdd && (
+        <Suspense fallback={<Spinner dark={dark} />}>
           <WidgetEditor
             widget={{ type: 'kpi', table: defaultTable, config: { ...DEFAULT_WIDGET_CONFIG.kpi } }}
             data={dataMap[defaultTable] || []}
@@ -784,6 +805,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
             columnConfig={columnConfig}
             availableTables={availableTables}
           />
+        </Suspense>
       )}
 
       {/* 위젯 편집 모달 */}
@@ -792,17 +814,19 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
         const raw = dataMap[t] || dataMap[defaultTable] || []
         const processed = filterByDate ? filterByDate(raw, columnConfig?.[t]?.dateColumn) : raw
         return (
-          <WidgetEditor
-            slotId={editingSlot.id}
-            widget={{ type: editingSlot.type, table: editingSlot.table, config: editingSlot.config }}
-            data={processed}
-            dataMap={dataMap}
-            dark={dark}
-            onSave={handleWidgetSave}
-            onClose={() => setEditSlot(null)}
-            columnConfig={columnConfig}
-            availableTables={availableTables}
-          />
+          <Suspense fallback={<Spinner dark={dark} />}>
+            <WidgetEditor
+              slotId={editingSlot.id}
+              widget={{ type: editingSlot.type, table: editingSlot.table, config: editingSlot.config }}
+              data={processed}
+              dataMap={dataMap}
+              dark={dark}
+              onSave={handleWidgetSave}
+              onClose={() => setEditSlot(null)}
+              columnConfig={columnConfig}
+              availableTables={availableTables}
+            />
+          </Suspense>
         )
       })()}
     </div>
@@ -842,6 +866,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
 
   const defaultTable = subDataSource?.table || 'marketing_data'
 
+  /* 실제 사용 테이블만 fetch — 편집모드에서만 전체 테이블 로드 */
   const neededTables = useMemo(() => {
     const norm = normalizeDashboard(dashboard)
     const tables = new Set()
@@ -850,11 +875,12 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
       const t = s.table || s.config?._table
       if (t) tables.add(t)
     })
-    /* 위젯 생성 시 테이블 변경해도 데이터가 있도록 모든 가용 테이블 포함 */
-    DB_TABLES.forEach(t => tables.add(t))
-    if (columnConfig) Object.keys(columnConfig).forEach(t => tables.add(t))
+    if (editMode) {
+      DB_TABLES.forEach(t => tables.add(t))
+      if (columnConfig) Object.keys(columnConfig).forEach(t => tables.add(t))
+    }
     return [...tables]
-  }, [dashboard, defaultTable, columnConfig])
+  }, [dashboard, defaultTable, editMode, columnConfig])
 
   const { dataMap: rawDataMap, loading, errors } = useMultiTableData(neededTables, dateRange, columnConfig)
   const errorMsg = Object.entries(errors).map(([t, e]) => `${t}: ${e}`).join(', ')

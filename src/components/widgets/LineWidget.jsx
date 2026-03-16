@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { dailyData, fmtAxis, fmtMetric, CHART_COLORS } from './widgetUtils'
 
@@ -21,7 +21,7 @@ function Tip({ active, payload, label, dark, metricsProp, isDual, rightSet }) {
   )
 }
 
-export default function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
+function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const {
     metrics = ['cost','revenue'],
     title = '일별 트렌드',
@@ -80,3 +80,5 @@ export default function LineWidget({ data, config, dark, metrics: metricsProp, d
     </div>
   )
 }
+
+export default memo(LineWidget)

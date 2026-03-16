@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { groupData, fmtMetric, CHART_COLORS } from './widgetUtils'
 
-export default function RankingWidget({ data, config, dark, metrics: metricsProp }) {
+function RankingWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = '', groupBy = '', topN = 10, sortDir = 'desc', title = '랭킹' } = config
 
   const ranked = useMemo(() => {
@@ -64,3 +64,5 @@ export default function RankingWidget({ data, config, dark, metrics: metricsProp
     </div>
   )
 }
+
+export default memo(RankingWidget)

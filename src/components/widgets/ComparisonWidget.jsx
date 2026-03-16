@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { calcMetric, fmtMetric, splitByPeriod } from './widgetUtils'
 
-export default function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn, dateRange }) {
+function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn, dateRange }) {
   const { metrics = [], compareMode = 'period', title = '기간 비교' } = config
 
   const rows = useMemo(() => {
@@ -91,3 +91,5 @@ export default function ComparisonWidget({ data, config, dark, metrics: metricsP
     </div>
   )
 }
+
+export default memo(ComparisonWidget)

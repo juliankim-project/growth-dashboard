@@ -27,7 +27,7 @@ export async function fetchAll(tableName, columns = '*') {
     return []
   }
 
-  const PAGE = 1000
+  const PAGE = 5000
   let from = 0
   const all = []
 
@@ -68,7 +68,7 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
     return fetchAll(tableName, columns)
   }
 
-  const PAGE = 1000
+  const PAGE = 5000
   let from = 0
   const all = []
 

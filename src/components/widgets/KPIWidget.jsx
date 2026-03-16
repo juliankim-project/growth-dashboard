@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { calcMetric, fmtMetric } from './widgetUtils'
 
@@ -45,7 +45,7 @@ const ICON_MAP = {
   nights:'🌙', peoples:'👥', lead_time:'⏱',
 }
 
-export default function KPIWidget({ data, config, dark, metrics: metricsProp }) {
+function KPIWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', label = '' } = config
   const metaDef  = metricsProp?.find(m => m.id === metric)
   const title    = label || metaDef?.label || metric
@@ -73,3 +73,5 @@ export default function KPIWidget({ data, config, dark, metrics: metricsProp }) 
     </div>
   )
 }
+
+export default memo(KPIWidget)

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { calcMetric, fmtMetric, getThresholdStatus } from './widgetUtils'
 
 const STATUS_STYLES = {
@@ -8,7 +8,7 @@ const STATUS_STYLES = {
   neutral: { dot: 'bg-slate-400',   bg: 'bg-slate-400/10',   text: 'text-slate-400',   label: '미설정' },
 }
 
-export default function AlertWidget({ data, config, dark, metrics: metricsProp }) {
+function AlertWidget({ data, config, dark, metrics: metricsProp }) {
   const { metrics = [], thresholds = {}, title = '알림 모니터' } = config
 
   const items = useMemo(() => {
@@ -91,3 +91,5 @@ export default function AlertWidget({ data, config, dark, metrics: metricsProp }
     </div>
   )
 }
+
+export default memo(AlertWidget)
