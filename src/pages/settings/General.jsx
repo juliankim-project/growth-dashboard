@@ -39,7 +39,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
   const removeLogo = () => setLogoUrl?.(null)
 
   const inp = `w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors
-    ${dark ? 'bg-[#13151C] border-[#252836] text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-indigo-400'}`
+    ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white focus:border-[#579DFF]' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-[#0C66E4]'}`
   const label = `block text-xs font-semibold mb-1.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`
 
   return (
@@ -50,7 +50,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
       </div>
 
       {/* ── 브랜딩 ── */}
-      <div className={`rounded-xl border p-5 flex flex-col gap-5 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`rounded-xl border p-5 flex flex-col gap-5 ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
         <p className={`text-xs font-bold uppercase tracking-wider ${dark ? 'text-slate-400' : 'text-slate-700'}`}>브랜딩</p>
 
         {/* 프로젝트명 */}
@@ -71,7 +71,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
           <div className="flex items-center gap-3">
             {/* 현재 로고 미리보기 */}
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border
-              ${dark ? 'bg-[#13151C] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+              ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
               {logoUrl ? (
                 <img src={logoUrl} alt="logo" className="w-full h-full rounded-xl object-cover"/>
               ) : (
@@ -83,7 +83,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
               <button
                 onClick={() => fileRef.current?.click()}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-300 hover:border-indigo-500 hover:text-indigo-400' : 'border-slate-200 text-slate-600 hover:border-indigo-400 hover:text-indigo-600'}`}
+                  ${dark ? 'border-[#A1BDD914] text-slate-300 hover:border-[#579DFF] hover:text-[#579DFF]' : 'border-slate-200 text-slate-600 hover:border-[#0C66E4] hover:text-[#0C66E4]'}`}
               >
                 <Upload size={12}/> {logoUrl ? '로고 변경' : '로고 업로드'}
               </button>
@@ -108,7 +108,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
       </div>
 
       {/* ── 기타 설정 ── */}
-      <div className={`rounded-xl border p-5 flex flex-col gap-4 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`rounded-xl border p-5 flex flex-col gap-4 ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
         <p className={`text-xs font-bold uppercase tracking-wider ${dark ? 'text-slate-400' : 'text-slate-700'}`}>표시 설정</p>
         <div>
           <label className={label}>통화</label>
@@ -128,7 +128,7 @@ export default function General({ dark, projectName, logoUrl, setProjectName, se
         </div>
         <button onClick={save}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors w-full justify-center
-            ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+            ${saved ? 'bg-emerald-500 text-white' : 'bg-[#0C66E4] hover:bg-[#0055CC] text-white'}`}>
           <Save size={14} />
           {saved ? '저장됨 ✓' : '저장'}
         </button>

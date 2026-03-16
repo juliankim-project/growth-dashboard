@@ -68,7 +68,7 @@ function InlineEdit({ value, dark, onSave }) {
       onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false) } }}
       onClick={e => e.stopPropagation()}
       className={`text-xs px-1 py-0.5 rounded border outline-none w-full
-        ${dark ? 'bg-[#0F1117] border-indigo-500 text-white' : 'bg-white border-indigo-400 text-slate-800'}`}
+        ${dark ? 'bg-[#1D2125] border-[#579DFF] text-white' : 'bg-white border-[#0C66E4] text-slate-800'}`}
     />
   )
 }
@@ -81,8 +81,8 @@ function SortableCard({ id, label, customLabel, dark, onLabelChange, onDelete })
   return (
     <div ref={setNodeRef} style={style}
       className={`relative flex items-center gap-1.5 px-2 py-2 rounded-lg border text-left transition-colors group/card
-        ${isDragging ? 'z-50 shadow-lg ring-2 ring-indigo-500/30' : ''}
-        ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+        ${isDragging ? 'z-50 shadow-lg ring-2 ring-[#579DFF]/30' : ''}
+        ${dark ? 'border-[#A1BDD914] bg-[#1D2125] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
       <button {...attributes} {...listeners}
         className={`cursor-grab active:cursor-grabbing shrink-0 touch-none
           ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
@@ -110,7 +110,7 @@ function DeletedItem({ id, label, dark, onRestore }) {
   return (
     <button onClick={onRestore}
       className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border transition-colors
-        ${dark ? 'border-[#252836] text-slate-600 hover:border-emerald-500/40 hover:text-emerald-400'
+        ${dark ? 'border-[#A1BDD914] text-slate-600 hover:border-emerald-500/40 hover:text-emerald-400'
           : 'border-slate-200 text-slate-400 hover:border-emerald-400 hover:text-emerald-600'}`}>
       <Plus size={10} />
       <span className="truncate">{label}</span>
@@ -207,9 +207,9 @@ function ConfigSection({ title, allItems, items, dark, onChange }) {
   const sub = dark ? 'text-slate-500' : 'text-slate-400'
 
   return (
-    <div className={`rounded-xl border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+    <div className={`rounded-xl border ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`}>
       <div className={`flex items-center justify-between px-4 py-3 border-b
-        ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+        ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
         <div>
           <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>{title}</p>
           <p className={`text-[10px] mt-0.5 ${sub}`}>
@@ -260,7 +260,7 @@ function PickerPreview({ items, dark }) {
     <div className="grid grid-cols-3 gap-1.5">
       {items.map(m => (
         <span key={m.id} className={`text-[10px] px-2 py-1.5 rounded-lg border text-left truncate
-          ${dark ? 'border-[#252836] text-slate-400 bg-[#13151F]' : 'border-slate-200 text-slate-600 bg-white'}`}>
+          ${dark ? 'border-[#A1BDD914] text-slate-400 bg-[#1D2125]' : 'border-slate-200 text-slate-600 bg-white'}`}>
           {m.label}
         </span>
       ))}
@@ -296,7 +296,7 @@ export default function UnifiedColumnConfig({ dark }) {
   const [selTable, setSelTable] = useState(TABLES[0])
 
   /* ─── 스타일 ─── */
-  const card = dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'
+  const card = dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'
   const sub = dark ? 'text-slate-400' : 'text-slate-500'
 
   const tCfg = columnConfig[selTable]
@@ -362,7 +362,7 @@ export default function UnifiedColumnConfig({ dark }) {
     <div className="max-w-5xl mx-auto p-6 flex flex-col gap-6">
       {/* ─── 헤더 ─── */}
       <div className="flex items-center gap-3">
-        <Table2 size={20} className={dark ? 'text-indigo-400' : 'text-indigo-600'} />
+        <Table2 size={20} className={dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'} />
         <h1 className={`text-lg font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
           데이터 설정
         </h1>
@@ -376,8 +376,8 @@ export default function UnifiedColumnConfig({ dark }) {
             <button key={t} onClick={() => setSelTable(t)}
               className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors border
                 ${active
-                  ? (dark ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700')
-                  : (dark ? 'border-[#252836] text-slate-500 hover:text-slate-300' : 'border-slate-200 text-slate-400 hover:text-slate-600')
+                  ? (dark ? 'bg-[#579DFF]/20 border-[#579DFF]/40 text-[#579DFF]' : 'bg-[#E9F2FF] border-[#B3D4FF] text-[#0055CC]')
+                  : (dark ? 'border-[#A1BDD914] text-slate-500 hover:text-slate-300' : 'border-slate-200 text-slate-400 hover:text-slate-600')
                 }`}>
               {getTableDisplayName(t, columnConfig)}
             </button>
@@ -413,7 +413,7 @@ export default function UnifiedColumnConfig({ dark }) {
           {/* ─── 지표 컬럼 ─── */}
           {categorizedColumns.metrics.length > 0 && (
             <div className={`rounded-xl border ${card}`}>
-              <div className={`px-4 py-3 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+              <div className={`px-4 py-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                 <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
                   지표 ({categorizedColumns.metrics.length})
                 </p>
@@ -430,7 +430,7 @@ export default function UnifiedColumnConfig({ dark }) {
                   </thead>
                   <tbody>
                     {categorizedColumns.metrics.map(({ col, alias, fmt, agg }) => (
-                      <tr key={col} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                      <tr key={col} className={`border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                         <td className={`px-4 py-2 font-mono ${dark ? 'text-slate-300' : 'text-slate-700'}`}>{col}</td>
                         <td className={`px-4 py-2 ${dark ? 'text-white' : 'text-slate-800'}`}>{alias || '—'}</td>
                         <td className="px-4 py-2"><Badge category="metric" dark={dark} />{' '}<span className={sub}>{fmt}</span></td>
@@ -446,7 +446,7 @@ export default function UnifiedColumnConfig({ dark }) {
           {/* ─── 디멘전 컬럼 ─── */}
           {categorizedColumns.dimensions.length > 0 && (
             <div className={`rounded-xl border ${card}`}>
-              <div className={`px-4 py-3 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+              <div className={`px-4 py-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                 <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
                   디멘전 ({categorizedColumns.dimensions.length})
                 </p>
@@ -461,7 +461,7 @@ export default function UnifiedColumnConfig({ dark }) {
                   </thead>
                   <tbody>
                     {categorizedColumns.dimensions.map(({ col, alias }) => (
-                      <tr key={col} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                      <tr key={col} className={`border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                         <td className={`px-4 py-2 font-mono ${dark ? 'text-slate-300' : 'text-slate-700'}`}>{col}</td>
                         <td className={`px-4 py-2 ${dark ? 'text-white' : 'text-slate-800'}`}>{alias || '—'}</td>
                       </tr>
@@ -475,7 +475,7 @@ export default function UnifiedColumnConfig({ dark }) {
           {/* ─── 산술 지표 ─── */}
           {(tCfg.computed || []).length > 0 && (
             <div className={`rounded-xl border ${card}`}>
-              <div className={`px-4 py-3 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+              <div className={`px-4 py-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                 <p className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
                   산술 지표 ({tCfg.computed.length})
                 </p>
@@ -496,7 +496,7 @@ export default function UnifiedColumnConfig({ dark }) {
                         ? 'COUNT(*)'
                         : (cc.terms || []).map((t, i) => `${i > 0 ? ` ${t.sign} ` : ''}${t.col}`).join('')
                       return (
-                        <tr key={cc.id} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                        <tr key={cc.id} className={`border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                           <td className={`px-4 py-2 font-mono ${dark ? 'text-slate-300' : 'text-slate-700'}`}>{cc.id}</td>
                           <td className={`px-4 py-2 ${dark ? 'text-white' : 'text-slate-800'}`}>{cc.name}</td>
                           <td className="px-4 py-2"><Badge category="computed" dark={dark} />{' '}<span className={sub}>{cc.fmt}</span></td>

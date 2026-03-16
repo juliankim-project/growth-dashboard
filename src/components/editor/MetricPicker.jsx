@@ -85,14 +85,14 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
         type="button"
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs w-full text-left transition-colors
-          ${dark ? 'bg-[#0F1117] border-[#252836] text-slate-300 hover:border-indigo-500/40'
-                 : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}`}
+          ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-slate-300 hover:border-[#579DFF]/40'
+                 : 'bg-white border-slate-200 text-slate-600 hover:border-[#85B8FF]'}`}
       >
         <span className="flex-1 truncate">{triggerLabel}</span>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded
           ${selArr.length > 0
-            ? 'bg-indigo-500/10 text-indigo-400'
-            : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
+            ? 'bg-[#579DFF]/10 text-[#579DFF]'
+            : dark ? 'bg-[#2C333A] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
           {selArr.length}
         </span>
         <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -101,7 +101,7 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
       {/* 팝오버 */}
       {open && (
         <div className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border shadow-xl
-          ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200'}`}>
+          ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
 
           {/* 검색 */}
           <div className="relative px-3 pt-3 pb-2">
@@ -112,7 +112,7 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
               onChange={e => setQuery(e.target.value)}
               placeholder="메트릭 검색"
               className={`w-full pl-7 pr-3 py-1.5 rounded-lg border text-xs outline-none
-                ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500'
+                ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500'
                        : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400'}`}
               autoFocus
             />
@@ -120,7 +120,7 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
 
           {/* 탭 */}
           <div className={`flex gap-1 px-3 pb-2 border-b
-            ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+            ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
             {TAB_DEFS.filter(t => t.id === 'all' || tabCounts[t.id] > 0).map(t => (
               <button
                 key={t.id}
@@ -128,7 +128,7 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
                 onClick={() => setActiveTab(t.id)}
                 className={`text-[11px] px-2 py-1 rounded-md font-medium transition-colors
                   ${activeTab === t.id
-                    ? 'bg-indigo-500/10 text-indigo-400 font-semibold'
+                    ? 'bg-[#579DFF]/10 text-[#579DFF] font-semibold'
                     : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 {t.label} <span className="text-[10px] opacity-70">{tabCounts[t.id]}</span>
@@ -153,27 +153,27 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
                   className={`w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs transition-colors
                     ${isComputed ? 'border-l-2 border-l-violet-500' : 'border-l-2 border-l-transparent'}
                     ${checked
-                      ? dark ? 'bg-indigo-500/5' : 'bg-indigo-50/50'
-                      : dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}
+                      ? dark ? 'bg-[#579DFF]/5' : 'bg-[#E9F2FF]/50'
+                      : dark ? 'hover:bg-[#22272B]' : 'hover:bg-slate-50'}`}
                 >
                   {/* 체크박스 */}
                   <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors
                     ${checked
-                      ? 'bg-indigo-500 border-indigo-500'
+                      ? 'bg-[#579DFF] border-[#579DFF]'
                       : dark ? 'border-[#3a3f50]' : 'border-slate-300'}`}>
                     {checked && <Check size={10} className="text-white" strokeWidth={3} />}
                   </div>
                   {/* 라벨 */}
                   <span className={`flex-1 truncate
                     ${checked
-                      ? 'text-indigo-400 font-medium'
+                      ? 'text-[#579DFF] font-medium'
                       : dark ? 'text-slate-300' : 'text-slate-600'}`}>
                     {m.label}
                   </span>
                   {/* 포맷 뱃지 */}
                   {m.fmt && m.fmt !== 'number' && (
                     <span className={`text-[9px] px-1 py-0.5 rounded shrink-0
-                      ${dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
+                      ${dark ? 'bg-[#2C333A] text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
                       {m.fmt === 'currency' ? '₩' : m.fmt === 'pct' ? '%' : m.fmt === 'roas' ? 'x' : m.fmt}
                     </span>
                   )}
@@ -185,7 +185,7 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
           {/* 하단 액션 바 */}
           {multi && (
             <div className={`flex items-center justify-between px-3 py-2 border-t
-              ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+              ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
               <button
                 type="button"
                 onClick={onRefresh}
@@ -201,7 +201,7 @@ export default function MetricPicker({ metrics = [], selected, onSelect, multi =
                   취소
                 </button>
                 <button type="button" onClick={apply}
-                  className="text-[11px] px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium">
+                  className="text-[11px] px-3 py-1 rounded-md bg-[#0C66E4] text-white hover:bg-[#0055CC] font-medium">
                   적용
                 </button>
               </div>

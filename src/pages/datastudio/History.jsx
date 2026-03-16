@@ -58,7 +58,7 @@ export default function History({ dark }) {
         <div className="flex items-center gap-2">
           <button onClick={refresh}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors
-              ${dark ? 'text-slate-400 hover:bg-[#1A1D27]' : 'text-slate-700 hover:bg-slate-100'}`}>
+              ${dark ? 'text-slate-400 hover:bg-[#22272B]' : 'text-slate-700 hover:bg-slate-100'}`}>
             <RefreshCw size={12}/> 새로고침
           </button>
           {history.length > 0 && (
@@ -70,7 +70,7 @@ export default function History({ dark }) {
         </div>
       </div>
 
-      <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
         {history.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16">
             <FileText size={32} className={dark ? 'text-slate-400' : 'text-slate-700'} />
@@ -85,7 +85,7 @@ export default function History({ dark }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
+                <tr className={dark ? 'bg-[#1D2125]' : 'bg-slate-50'}>
                   {['파일명', '테이블', '행 수', '업로드 방식', '날짜 범위', '상태', '일시'].map(h => (
                     <th key={h} className={th}>{h}</th>
                   ))}
@@ -93,12 +93,12 @@ export default function History({ dark }) {
               </thead>
               <tbody>
                 {history.map((h, i) => (
-                  <tr key={i} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+                  <tr key={i} className={`border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                     <td className={`${td} font-medium font-mono max-w-[180px] truncate`} title={h.filename}>
                       {h.filename}
                     </td>
                     <td className={td}>
-                      <span className={`font-mono text-[11px] px-1.5 py-0.5 rounded ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                      <span className={`font-mono text-[11px] px-1.5 py-0.5 rounded ${dark ? 'bg-[#579DFF]/10 text-[#579DFF]' : 'bg-[#E9F2FF] text-[#0C66E4]'}`}>
                         {h.table || '—'}
                       </span>
                     </td>

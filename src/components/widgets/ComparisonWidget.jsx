@@ -42,7 +42,7 @@ function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col
-      ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
 
       {rows.length === 0 ? (
@@ -57,7 +57,7 @@ function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn
             return (
               <div key={row.id}
                 className={`rounded-lg border px-4 py-3 flex items-center gap-4
-                  ${dark ? 'bg-[#20232E] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+                  ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 {/* 지표명 */}
                 <div className="flex-1 min-w-0">
                   <p className={`text-[10px] font-semibold uppercase tracking-wider truncate

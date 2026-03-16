@@ -20,14 +20,14 @@ function TableWidget({ data, config, dark, metrics: metricsProp }) {
   const td = `px-3 py-2.5 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   return (
-    <div className={`rounded-xl border h-full flex flex-col overflow-hidden ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <div className={`px-4 py-3 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+    <div className={`rounded-xl border h-full flex flex-col overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`px-4 py-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
         <p className={`text-xs font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       </div>
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs">
           <thead className="sticky top-0">
-            <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
+            <tr className={dark ? 'bg-[#1D2125]' : 'bg-slate-50'}>
               <th className={th} onClick={() => toggle('name')}>이름</th>
               {metrics.map(mid => {
                 const meta = metricsProp?.find(x => x.id === mid)
@@ -44,7 +44,7 @@ function TableWidget({ data, config, dark, metrics: metricsProp }) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} className={`border-t transition-colors ${dark ? 'border-[#252836] hover:bg-[#13151C]' : 'border-slate-100 hover:bg-slate-50'}`}>
+              <tr key={i} className={`border-t transition-colors ${dark ? 'border-[#A1BDD914] hover:bg-[#1D2125]' : 'border-slate-100 hover:bg-slate-50'}`}>
                 <td className={`${td} font-medium ${dark ? 'text-white' : 'text-slate-700'}`}>{row.name}</td>
                 {metrics.map(mid => {
                   const meta = metricsProp?.find(x => x.id === mid)

@@ -316,13 +316,13 @@ export default function Sidebar({
         }}
         onClick={e => e.stopPropagation()}
         className={`flex-1 min-w-0 px-1.5 py-0.5 rounded text-xs outline-none
-          ${dark ? 'bg-[#252836] text-white border border-indigo-500' : 'bg-white text-slate-800 border border-indigo-400'}`}
+          ${dark ? 'bg-[#2C333A] text-white border border-[#579DFF]' : 'bg-white text-slate-800 border border-[#0C66E4]'}`}
       />
     )
   }
 
   const t = dark
-    ? { text:'text-slate-400', hover:'hover:bg-[#1A1D27] hover:text-white', border:'border-[#1E2130]' }
+    ? { text:'text-slate-400', hover:'hover:bg-[#22272B] hover:text-white', border:'border-[#A1BDD914]' }
     : { text:'text-slate-700', hover:'hover:bg-slate-100 hover:text-slate-800', border:'border-slate-200' }
 
   /* config 값 */
@@ -331,14 +331,14 @@ export default function Sidebar({
 
   return (
     <aside className={`flex flex-col w-[220px] min-h-screen shrink-0 border-r transition-colors duration-200
-      ${dark ? 'bg-[#0F1117] border-[#1E2130]' : 'bg-white border-slate-200'}`}>
+      ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
 
       {/* 로고 */}
       <div className={`flex items-center gap-2.5 px-5 py-5 border-b ${t.border}`}>
         {logoUrl ? (
           <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-lg object-cover shrink-0"/>
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#0C66E4] flex items-center justify-center shrink-0">
             <BarChart2 size={16} className="text-white"/>
           </div>
         )}
@@ -405,7 +405,7 @@ export default function Sidebar({
               >
                 <GripVertical size={12}
                   className={`shrink-0 cursor-grab active:cursor-grabbing ${dark ? 'text-slate-600 group-hover/sec:text-slate-400' : 'text-slate-600 group-hover/sec:text-slate-700'}`}/>
-                <Icon name={secIcon} size={14} className={isActive ? 'text-indigo-500' : 'opacity-80'}/>
+                <Icon name={secIcon} size={14} className={isActive ? 'text-[#579DFF]' : 'opacity-80'}/>
 
                 {isEditingSection ? (
                   <InlineInput
@@ -423,7 +423,7 @@ export default function Sidebar({
                         setSidebarEdit({ type: 'section', key: sec.id, value: secLabel })
                       }}
                       className={`opacity-0 group-hover/sec:opacity-100 p-0.5 rounded transition-opacity shrink-0
-                        ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-500'}`}
+                        ${dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
                       title="이름 변경"
                     >
                       <Pencil size={9}/>
@@ -466,14 +466,14 @@ export default function Sidebar({
                         <button
                           onClick={() => { if (!isEditingSub) handleSubClick(sec.id, sub.id) }}
                           className={`w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-all duration-150 text-left group/sub
-                            ${subActive ? 'bg-indigo-600 text-white'
-                              : l3subActive ? dark ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-50 text-indigo-700'
+                            ${subActive ? 'bg-[#0C66E4] text-white'
+                              : l3subActive ? dark ? 'bg-[#579DFF]/15 text-[#85B8FF]' : 'bg-[#E9F2FF] text-[#0055CC]'
                               : `${t.text} ${t.hover}`}`}
                         >
                           <GripVertical size={10}
                             className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/sub:opacity-100 transition-opacity
                               ${subActive ? 'text-white/50' : dark ? 'text-slate-400' : 'text-slate-700'}`}/>
-                          <Icon name={subIcon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-indigo-400') : 'opacity-60'}/>
+                          <Icon name={subIcon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-[#579DFF]') : 'opacity-60'}/>
 
                           {isEditingSub ? (
                             <InlineInput
@@ -497,7 +497,7 @@ export default function Sidebar({
                                   setSidebarEdit({ type: 'sub', key: editKey, value: subLabel })
                                 }}
                                 className={`opacity-0 group-hover/sub:opacity-100 p-0.5 rounded transition-opacity shrink-0
-                                  ${subActive ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-500'}`}
+                                  ${subActive ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
                                 title="이름 변경"
                               >
                                 <Pencil size={8}/>
@@ -508,7 +508,7 @@ export default function Sidebar({
                           {!isEditingSub && hasL3Subs && (
                             <ChevronDown size={10}
                               className={`shrink-0 transition-transform duration-200 ${l3IsOpen ? '' : '-rotate-90'}
-                                ${anyActive ? (subActive ? 'text-white/70' : 'text-indigo-400') : dark ? 'text-slate-400' : 'text-slate-700'}`}
+                                ${anyActive ? (subActive ? 'text-white/70' : 'text-[#579DFF]') : dark ? 'text-slate-400' : 'text-slate-700'}`}
                             />
                           )}
                         </button>
@@ -535,7 +535,7 @@ export default function Sidebar({
                                   <button
                                     onClick={() => { if (!isEditingL3) goTo(sec.id, sub.id, ls.id) }}
                                     className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left group/l3
-                                      ${l3Active ? 'bg-indigo-600 text-white' : `${t.text} ${t.hover}`}`}
+                                      ${l3Active ? 'bg-[#0C66E4] text-white' : `${t.text} ${t.hover}`}`}
                                   >
                                     <GripVertical size={9}
                                       className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/l3:opacity-100 transition-opacity
@@ -560,7 +560,7 @@ export default function Sidebar({
                                             setSidebarEdit({ type: 'l3sub', key: l3EditKey, value: ls.label })
                                           }}
                                           className={`opacity-0 group-hover/l3:opacity-100 p-0.5 rounded transition-opacity shrink-0
-                                            ${l3Active ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-500'}`}
+                                            ${l3Active ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
                                           title="이름 변경"
                                         >
                                           <Pencil size={8}/>
@@ -587,7 +587,7 @@ export default function Sidebar({
       <div className={`px-2 pb-4 border-t pt-3 ${t.border}`}>
         <button onClick={toggleDark}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition-all ${t.text} ${t.hover}`}>
-          {dark ? <Sun size={14} className="text-yellow-400"/> : <Moon size={14} className="text-indigo-400"/>}
+          {dark ? <Sun size={14} className="text-yellow-400"/> : <Moon size={14} className="text-[#579DFF]"/>}
           <span className="font-medium">{dark ? 'Light Mode' : 'Dark Mode'}</span>
           <span className={`ml-auto text-[10px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>Ver {APP_VERSION}</span>
         </button>

@@ -22,7 +22,7 @@ function CustomTooltip({ active, payload, label, dark }) {
   return (
     <div className={`
       rounded-xl px-4 py-3 shadow-xl text-xs border
-      ${dark ? 'bg-[#1A1D27] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914] text-white' : 'bg-white border-slate-200 text-slate-700'}
     `}>
       <p className="font-semibold mb-1">{label}</p>
       {payload.map(p => (
@@ -83,11 +83,11 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
   )
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+    <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
+            <tr className={dark ? 'bg-[#1D2125]' : 'bg-slate-50'}>
               {COLS.map(c => (
                 <th
                   key={c.key}
@@ -112,7 +112,7 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
                 key={row.name}
                 className={`
                   border-t transition-colors
-                  ${dark ? 'border-[#252836] hover:bg-[#13151C]' : 'border-slate-100 hover:bg-slate-50'}
+                  ${dark ? 'border-[#A1BDD914] hover:bg-[#1D2125]' : 'border-slate-100 hover:bg-slate-50'}
                   ${onDrill ? 'cursor-pointer' : ''}
                 `}
                 onClick={() => onDrill?.(row.name)}
@@ -122,7 +122,7 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
                     <span className={`font-medium text-xs ${dark ? 'text-white' : 'text-slate-700'}`}>
                       {row.name}
                     </span>
-                    {onDrill && <ChevronRight size={12} className="text-indigo-400 opacity-60" />}
+                    {onDrill && <ChevronRight size={12} className="text-[#579DFF] opacity-60" />}
                   </div>
                 </td>
                 <td className={`px-4 py-3 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`}>{fmtW(row.cost)}</td>
@@ -211,7 +211,7 @@ export default function Marketing({ dark, filterByDate }) {
   }, [chanData])
 
   const tick = dark ? '#64748B' : '#475569'
-  const grid = dark ? '#1E2130' : '#F1F5F9'
+  const grid = dark ? '#2C333A' : '#F1F5F9'
 
   /* 드릴 레벨 */
   const drillLevel = selAdgroup ? 'adgroup' : selCampaign ? 'campaign' : 'overview'
@@ -231,9 +231,9 @@ export default function Marketing({ dark, filterByDate }) {
             className={`
               px-4 py-2 rounded-lg text-sm font-semibold transition-all
               ${selChannel === ch
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-[#0C66E4] text-white shadow-sm'
                 : dark
-                  ? 'bg-[#1A1D27] text-slate-400 hover:text-white border border-[#252836]'
+                  ? 'bg-[#22272B] text-slate-400 hover:text-white border border-[#A1BDD914]'
                   : 'bg-white text-slate-700 hover:text-slate-700 border border-slate-200 shadow-sm'
               }
             `}
@@ -252,14 +252,14 @@ export default function Marketing({ dark, filterByDate }) {
       {(selCampaign || selAdgroup) && (
         <div className={`
           flex items-center gap-2 text-xs px-4 py-2.5 rounded-lg border
-          ${dark ? 'bg-[#1A1D27] border-[#252836] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700'}
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-700'}
         `}>
           <button onClick={() => { setSelCampaign(null); setSelAdgroup(null) }}
-            className="text-indigo-500 hover:underline font-medium">{selChannel}</button>
+            className="text-[#579DFF] hover:underline font-medium">{selChannel}</button>
           {selCampaign && <>
             <ChevronRight size={12} />
             <button onClick={() => setSelAdgroup(null)}
-              className={selAdgroup ? 'text-indigo-500 hover:underline font-medium' : 'font-medium text-white'}>
+              className={selAdgroup ? 'text-[#579DFF] hover:underline font-medium' : 'font-medium text-white'}>
               {selCampaign}
             </button>
           </>}
@@ -280,7 +280,7 @@ export default function Marketing({ dark, filterByDate }) {
         ].map(k => (
           <div key={k.label} className={`
             rounded-xl px-4 py-3 border
-            ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
+            ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}
           `}>
             <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{k.label}</p>
             <p className={`text-lg font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>{k.value}</p>
@@ -290,7 +290,7 @@ export default function Marketing({ dark, filterByDate }) {
 
       {/* 트렌드 차트 (overview 레벨만) */}
       {drillLevel === 'overview' && trendData.length > 0 && (
-        <div className={`rounded-xl p-5 border ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+        <div className={`rounded-xl p-5 border ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
           <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
             일별 트렌드 — {selChannel}
           </p>
@@ -302,7 +302,7 @@ export default function Marketing({ dark, filterByDate }) {
                 tickFormatter={v => fmtW(v)} width={48} />
               <Tooltip content={<CustomTooltip dark={dark} />} />
               <Legend wrapperStyle={{ fontSize: 11, color: tick }} />
-              <Line type="monotone" dataKey="cost"     name="광고비" stroke="#6366F1" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="cost"     name="광고비" stroke="#579DFF" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="installs" name="인스톨" stroke="#10B981" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -313,7 +313,7 @@ export default function Marketing({ dark, filterByDate }) {
       {drillLevel === 'overview' && (
         <>
           <h3 className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-            캠페인별 성과 <span className="text-indigo-400 text-xs ml-1">← 클릭해서 드릴다운</span>
+            캠페인별 성과 <span className="text-[#579DFF] text-xs ml-1">← 클릭해서 드릴다운</span>
           </h3>
           <PerfTable rows={chanData} groupKey="Campaign" dark={dark}
             onDrill={name => { setSelCampaign(name); setSelAdgroup(null) }} />
@@ -325,11 +325,11 @@ export default function Marketing({ dark, filterByDate }) {
           <div className="flex items-center gap-3">
             <button onClick={() => { setSelCampaign(null); setSelAdgroup(null) }}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#13151C]' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
+                ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#1D2125]' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
               <ChevronLeft size={13} /> 채널로
             </button>
             <h3 className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-              광고그룹별 성과 <span className="text-indigo-400 text-xs ml-1">← 클릭해서 드릴다운</span>
+              광고그룹별 성과 <span className="text-[#579DFF] text-xs ml-1">← 클릭해서 드릴다운</span>
             </h3>
           </div>
           <PerfTable rows={campData} groupKey="Ad Group" dark={dark}
@@ -342,7 +342,7 @@ export default function Marketing({ dark, filterByDate }) {
           <div className="flex items-center gap-3">
             <button onClick={() => setSelAdgroup(null)}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#13151C]' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
+                ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#1D2125]' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
               <ChevronLeft size={13} /> 광고그룹으로
             </button>
             <h3 className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>

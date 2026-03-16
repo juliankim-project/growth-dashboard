@@ -8,10 +8,10 @@ export default function ComingSoon({ dark, nav }) {
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className={`rounded-2xl border p-12 text-center max-w-sm w-full mx-6
-        ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+        ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4
-          ${dark ? 'bg-[#13151C]' : 'bg-slate-50'}`}>
-          <Construction size={24} className="text-indigo-500" />
+          ${dark ? 'bg-[#1D2125]' : 'bg-slate-50'}`}>
+          <Construction size={24} className="text-[#579DFF]" />
         </div>
         <p className={`font-bold text-base ${dark ? 'text-white' : 'text-slate-800'}`}>
           {sub?.label || '준비 중'}

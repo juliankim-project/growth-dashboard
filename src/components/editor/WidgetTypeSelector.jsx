@@ -14,10 +14,10 @@ export default function WidgetTypeSelector({ value, onChange, dark }) {
             onClick={() => onChange(wt.id)}
             className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all
               ${on
-                ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30'
+                ? 'border-[#579DFF] bg-[#579DFF]/10 ring-1 ring-[#579DFF]/30'
                 : dark
-                  ? 'border-[#252836] bg-[#0F1117] hover:border-indigo-500/40'
-                  : 'border-slate-200 bg-white hover:border-indigo-300'
+                  ? 'border-[#A1BDD914] bg-[#1D2125] hover:border-[#579DFF]/40'
+                  : 'border-slate-200 bg-white hover:border-[#85B8FF]'
               }`}
           >
             <div className="w-full h-7">
@@ -25,7 +25,7 @@ export default function WidgetTypeSelector({ value, onChange, dark }) {
             </div>
             <span className={`text-[9px] font-medium leading-tight text-center
               ${on
-                ? 'text-indigo-400'
+                ? 'text-[#579DFF]'
                 : dark ? 'text-slate-400' : 'text-slate-500'
               }`}>
               {wt.label}

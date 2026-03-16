@@ -12,7 +12,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 const CARD_COLORS = [
-  { id: 'indigo', label: '인디고', bg: 'bg-indigo-500', hex: '#6366F1' },
+  { id: 'indigo', label: '인디고', bg: 'bg-[#579DFF]', hex: '#579DFF' },
   { id: 'emerald', label: '그린', bg: 'bg-emerald-500', hex: '#10B981' },
   { id: 'amber', label: '앰버', bg: 'bg-amber-500', hex: '#F59E0B' },
   { id: 'rose', label: '로즈', bg: 'bg-rose-500', hex: '#EF4444' },
@@ -78,7 +78,7 @@ function SortableCard({ card, dark, onEdit, onDelete, columnId }) {
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={(e) => { e.stopPropagation(); onEdit(card) }}
-          className={`p-1 rounded ${dark ? 'hover:bg-[#252836] text-slate-400' : 'hover:bg-slate-100 text-slate-700'}`}>
+          className={`p-1 rounded ${dark ? 'hover:bg-[#2C333A] text-slate-400' : 'hover:bg-slate-100 text-slate-700'}`}>
           <Pencil size={10} />
         </button>
         <button onClick={(e) => { e.stopPropagation(); onDelete(card.id) }}
@@ -109,13 +109,13 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         className={`rounded-2xl border w-full max-w-sm p-5
-        ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+        ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-xl'}`}>
         <div className="flex items-center justify-between mb-4">
           <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
             {initial ? '카드 편집' : '카드 추가'}
           </p>
           <button onClick={onClose}
-            className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-600 hover:bg-slate-100'}`}>
+            className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#2C333A]' : 'text-slate-600 hover:bg-slate-100'}`}>
             <X size={14} />
           </button>
         </div>
@@ -124,14 +124,14 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
           placeholder="카드 제목"
           onKeyDown={e => e.key === 'Enter' && handleSave()}
           className={`w-full text-xs px-3 py-2 rounded-lg border outline-none mb-3
-          ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+          ${dark ? 'bg-transparent border-[#A1BDD914] text-white placeholder:text-slate-500'
                 : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-700'}`}
         />
         <textarea value={desc} onChange={e => setDesc(e.target.value)}
           placeholder="설명 (선택)"
           rows={2}
           className={`w-full text-xs px-3 py-2 rounded-lg border outline-none mb-3 resize-none
-          ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+          ${dark ? 'bg-transparent border-[#A1BDD914] text-white placeholder:text-slate-500'
                 : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-700'}`}
         />
 
@@ -139,8 +139,8 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
           {CARD_COLORS.map(c => (
             <button key={c.id} onClick={() => setColor(c.id)}
               className={`w-5 h-5 rounded-full ${c.bg} transition-all
-              ${color === c.id ? 'ring-2 ring-offset-1 ring-indigo-400 scale-110' : 'opacity-60 hover:opacity-100'}`}
-              style={dark ? { ringOffsetColor: '#1A1D27' } : {}}
+              ${color === c.id ? 'ring-2 ring-offset-1 ring-[#0C66E4] scale-110' : 'opacity-60 hover:opacity-100'}`}
+              style={dark ? { ringOffsetColor: '#22272B' } : {}}
             />
           ))}
         </div>
@@ -180,7 +180,7 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
               onBlur={() => setEditingLabelId(null)}
               placeholder="라벨 텍스트 (선택)"
               className={`w-full text-[10px] px-2 py-1 rounded border outline-none mb-2
-                ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+                ${dark ? 'bg-transparent border-[#A1BDD914] text-white placeholder:text-slate-500'
                       : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
             />
           )}
@@ -198,8 +198,8 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
                   }
                 }}
                   className={`w-5 h-5 rounded-full transition-all
-                    ${active ? 'ring-2 ring-offset-1 ring-indigo-400 scale-110' : 'opacity-50 hover:opacity-100'}`}
-                  style={{ backgroundColor: c.hex, ...(dark ? { ringOffsetColor: '#1A1D27' } : {}) }}
+                    ${active ? 'ring-2 ring-offset-1 ring-[#0C66E4] scale-110' : 'opacity-50 hover:opacity-100'}`}
+                  style={{ backgroundColor: c.hex, ...(dark ? { ringOffsetColor: '#22272B' } : {}) }}
                 />
               )
             })}
@@ -207,7 +207,7 @@ function CardModal({ dark, onClose, onSave, initial = null }) {
         </div>
 
         <button onClick={handleSave}
-          className="w-full text-xs py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+          className="w-full text-xs py-2 rounded-lg bg-[#0C66E4] hover:bg-[#0055CC] text-white font-semibold">
           {initial ? '수정' : '추가'}
         </button>
       </div>
@@ -250,7 +250,7 @@ function ColResizeHandle({ dark, baseWidth, onResizeEnd }) {
       onPointerDown={onPointerDown}
       className={`absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-10
         group/handle flex items-center justify-center
-        hover:bg-indigo-500/20 active:bg-indigo-500/30 transition-colors`}
+        hover:bg-[#579DFF]/20 active:bg-[#579DFF]/30 transition-colors`}
       style={{ touchAction: 'none' }}
     >
       <div className={`w-0.5 h-6 rounded-full opacity-0 group-hover/handle:opacity-100 transition-opacity
@@ -269,7 +269,7 @@ function DroppableColumn({ columnId, dark, children }) {
   return (
     <div ref={setNodeRef}
       className={`flex-1 overflow-y-auto p-2 space-y-2 min-h-[60px] transition-colors rounded-lg
-        ${isOver ? (dark ? 'bg-indigo-500/10' : 'bg-indigo-50') : ''}`}>
+        ${isOver ? (dark ? 'bg-[#579DFF]/10' : 'bg-[#E9F2FF]') : ''}`}>
       {children}
     </div>
   )
@@ -435,12 +435,12 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
         {columns.map(col => (
           <div key={col.id}
             className={`shrink-0 rounded-xl border flex flex-col h-full relative
-            ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}
+            ${dark ? 'bg-[#22272B]/60 border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}
             style={{ width: col.width || 256 }}>
 
             {/* 컬럼 헤더 */}
             <div className={`flex items-center justify-between px-3 py-2.5 border-b
-              ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+              ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`}>
               {editingColId === col.id ? (
                 <div className="flex items-center gap-1 flex-1">
                   <input autoFocus value={editingColTitle}
@@ -460,14 +460,14 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
                     {col.title}
                   </span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0
-                    ${dark ? 'bg-[#252836] text-slate-400' : 'bg-slate-200 text-slate-600'}`}>
+                    ${dark ? 'bg-[#2C333A] text-slate-400' : 'bg-slate-200 text-slate-600'}`}>
                     {col.cards.length}
                   </span>
                 </div>
               )}
               <div className="flex items-center gap-0.5 shrink-0">
                 <button onClick={() => { setEditingColId(col.id); setEditingColTitle(col.title) }}
-                  className={`p-1 rounded ${dark ? 'text-slate-500 hover:text-slate-200 hover:bg-[#252836]' : 'text-slate-700 hover:text-slate-700 hover:bg-slate-100'}`}>
+                  className={`p-1 rounded ${dark ? 'text-slate-500 hover:text-slate-200 hover:bg-[#2C333A]' : 'text-slate-700 hover:text-slate-700 hover:bg-slate-100'}`}>
                   <Pencil size={10} />
                 </button>
                 {columns.length > 1 && (
@@ -519,7 +519,7 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
       {/* 컬럼 추가 */}
       {addingCol ? (
         <div className={`shrink-0 rounded-xl border p-3
-          ${dark ? 'bg-[#1A1D27]/60 border-[#252836]' : 'bg-slate-50 border-slate-200'}`}
+          ${dark ? 'bg-[#22272B]/60 border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}
           style={{ width: 256 }}>
           <input autoFocus value={newColTitle}
             onChange={e => setNewColTitle(e.target.value)}
@@ -529,12 +529,12 @@ export default function KanbanBoard({ dashboard, setDashboard, dark }) {
             }}
             placeholder="컬럼 이름"
             className={`w-full text-xs px-3 py-2 rounded-lg border outline-none mb-2
-            ${dark ? 'bg-transparent border-[#252836] text-white placeholder:text-slate-500'
+            ${dark ? 'bg-transparent border-[#A1BDD914] text-white placeholder:text-slate-500'
                   : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-700'}`}
           />
           <div className="flex gap-1.5">
             <button onClick={addColumn}
-              className="flex-1 text-xs py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+              className="flex-1 text-xs py-1.5 rounded-lg bg-[#0C66E4] hover:bg-[#0055CC] text-white font-semibold">
               추가
             </button>
             <button onClick={() => { setAddingCol(false); setNewColTitle('') }}

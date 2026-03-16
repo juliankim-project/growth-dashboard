@@ -16,7 +16,7 @@ function PieWidget({ data, config, dark, metrics: metricsProp }) {
   const meta = metricsProp?.find(x => x.id === metric)
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <p className={`text-xs font-semibold mb-2 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -32,8 +32,8 @@ function PieWidget({ data, config, dark, metrics: metricsProp }) {
             <Tooltip
               formatter={(v, n) => [fmtW(v), n]}
               contentStyle={{
-                background: dark ? '#1A1D27' : '#fff',
-                border: dark ? '1px solid #252836' : '1px solid #e2e8f0',
+                background: dark ? '#22272B' : '#fff',
+                border: dark ? '1px solid #A1BDD914' : '1px solid #e2e8f0',
                 borderRadius: 10, fontSize: 11, color: dark ? '#e2e8f0' : '#334155'
               }}
             />

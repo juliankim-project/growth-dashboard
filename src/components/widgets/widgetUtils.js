@@ -333,7 +333,7 @@ export function dailyData(data, metrics, mList, dateColumn) {
   return Object.values(map).sort((a, b) => a.label.localeCompare(b.label))
 }
 
-export const CHART_COLORS = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#EC4899']
+export const CHART_COLORS = ['#0C66E4','#1F845A','#E56910','#CA3521','#6E5DC6','#0055CC','#E774BB']
 
 /* ─── 기간 분할 (ComparisonWidget용) ─── */
 export function splitByPeriod(data, dateRange, dateColumn) {

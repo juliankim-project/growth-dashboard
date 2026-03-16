@@ -31,7 +31,7 @@ function AlertWidget({ data, config, dark, metrics: metricsProp }) {
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col
-      ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       {/* 헤더 + 요약 */}
       <div className="flex items-center justify-between mb-4">
         <p className={`text-xs font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
@@ -65,7 +65,7 @@ function AlertWidget({ data, config, dark, metrics: metricsProp }) {
             return (
               <div key={item.id}
                 className={`rounded-lg border px-4 py-3 flex items-center gap-3
-                  ${dark ? 'bg-[#20232E] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+                  ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 {/* 상태 점 */}
                 <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.dot}`} />
                 {/* 지표명 */}

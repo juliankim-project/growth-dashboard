@@ -218,7 +218,7 @@ function detectNumericCols(rows, csvCols, colMap, knownNumeric) {
 
 const colorClass = (i, dark) => {
   const colors = [
-    dark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'  : 'bg-indigo-50 border-indigo-100 text-indigo-600',
+    dark ? 'bg-[#579DFF]/10 border-[#579DFF]/20 text-[#579DFF]'  : 'bg-[#E9F2FF] border-[#B3D4FF] text-[#0C66E4]',
     dark ? 'bg-violet-500/10 border-violet-500/20 text-violet-300'  : 'bg-violet-50 border-violet-100 text-violet-600',
     dark ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300'        : 'bg-cyan-50 border-cyan-100 text-cyan-600',
     dark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300': 'bg-emerald-50 border-emerald-100 text-emerald-600',
@@ -395,17 +395,17 @@ export default function DataStudio({ dark }) {
   }
 
   /* 스타일 */
-  const card = `rounded-xl border p-6 ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`
+  const card = `rounded-xl border p-6 ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`
   const txt  = dark ? 'text-white' : 'text-slate-800'
   const sub  = dark ? 'text-slate-400' : 'text-slate-700'
 
   const accentBorder = cfg.color === 'violet'
     ? dark ? 'border-violet-500' : 'border-violet-500'
-    : dark ? 'border-indigo-500' : 'border-indigo-500'
+    : dark ? 'border-[#579DFF]' : 'border-[#579DFF]'
   const accentBg = cfg.color === 'violet'
     ? dark ? 'bg-violet-500/10' : 'bg-violet-50'
-    : dark ? 'bg-indigo-500/10' : 'bg-indigo-50'
-  const accentText = cfg.color === 'violet' ? 'text-violet-400' : 'text-indigo-400'
+    : dark ? 'bg-[#579DFF]/10' : 'bg-[#E9F2FF]'
+  const accentText = cfg.color === 'violet' ? 'text-violet-400' : 'text-[#579DFF]'
 
   return (
     <div className="p-6 flex flex-col gap-6 max-w-3xl mx-auto">
@@ -439,9 +439,9 @@ export default function DataStudio({ dark }) {
                       ${active
                         ? isViolet
                           ? dark ? 'border-violet-500 bg-violet-500/10' : 'border-violet-500 bg-violet-50'
-                          : dark ? 'border-indigo-500 bg-indigo-500/10' : 'border-indigo-500 bg-indigo-50'
+                          : dark ? 'border-[#579DFF] bg-[#579DFF]/10' : 'border-[#579DFF] bg-[#E9F2FF]'
                         : dark
-                          ? 'border-[#252836] hover:border-slate-600 bg-[#13151C]'
+                          ? 'border-[#A1BDD914] hover:border-slate-600 bg-[#1D2125]'
                           : 'border-slate-200 hover:border-slate-300 bg-slate-50'
                       }
                     `}
@@ -449,13 +449,13 @@ export default function DataStudio({ dark }) {
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center
                         ${active
-                          ? isViolet ? 'bg-violet-500 text-white' : 'bg-indigo-500 text-white'
-                          : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-600'
+                          ? isViolet ? 'bg-violet-500 text-white' : 'bg-[#579DFF] text-white'
+                          : dark ? 'bg-[#2C333A] text-slate-500' : 'bg-slate-200 text-slate-600'
                         }`}>
                         {isViolet ? <Package size={14} /> : <TrendingUp size={14} />}
                       </div>
                       <span className={`text-xs font-bold ${active
-                        ? isViolet ? 'text-violet-400' : 'text-indigo-400'
+                        ? isViolet ? 'text-violet-400' : 'text-[#579DFF]'
                         : sub}`}>
                         {c.label}
                       </span>
@@ -484,11 +484,11 @@ export default function DataStudio({ dark }) {
                 cursor-pointer transition-all
                 ${dragOver
                   ? `${accentBorder} ${accentBg}`
-                  : dark ? 'border-[#2E3450] hover:border-indigo-600' : 'border-slate-200 hover:border-indigo-400'}
+                  : dark ? 'border-[#2E3450] hover:border-[#0C66E4]' : 'border-slate-200 hover:border-[#0C66E4]'}
               `}
             >
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center
-                ${dark ? 'bg-[#13151C]' : 'bg-slate-50'}`}>
+                ${dark ? 'bg-[#1D2125]' : 'bg-slate-50'}`}>
                 <Upload size={28} className={accentText} />
               </div>
               <div className="text-center">
@@ -505,7 +505,7 @@ export default function DataStudio({ dark }) {
 
             {/* 필수 컬럼 안내 */}
             <div className={`mt-4 rounded-lg px-4 py-3 text-xs flex gap-3 items-start
-              ${dark ? 'bg-indigo-500/5 border border-indigo-500/15 text-slate-400' : 'bg-indigo-50 border border-indigo-100 text-slate-700'}`}>
+              ${dark ? 'bg-[#579DFF]/5 border border-[#579DFF]/15 text-slate-400' : 'bg-[#E9F2FF] border border-[#B3D4FF] text-slate-700'}`}>
               <Info size={13} className={`${accentText} mt-0.5 shrink-0`} />
               <div>
                 <p className={`font-semibold ${accentText} mb-1`}>
@@ -548,7 +548,7 @@ export default function DataStudio({ dark }) {
 
             {/* 테이블 전환 */}
             <div className={`mb-4 rounded-lg px-3 py-2 flex items-center gap-2 border
-              ${dark ? 'border-[#252836] bg-[#13151C]' : 'border-slate-100 bg-slate-50'}`}>
+              ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'}`}>
               <span className={`text-[10px] shrink-0 ${sub}`}>테이블:</span>
               <div className="flex gap-1.5">
                 {TABLE_KEYS.map(key => {
@@ -561,7 +561,7 @@ export default function DataStudio({ dark }) {
                         ${active
                           ? c.color === 'violet'
                             ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                            : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                            : 'bg-[#579DFF]/20 text-[#579DFF] border border-[#579DFF]/30'
                           : dark
                             ? 'text-slate-500 hover:text-slate-300 border border-transparent'
                             : 'text-slate-400 hover:text-slate-600 border border-transparent'
@@ -592,7 +592,7 @@ export default function DataStudio({ dark }) {
                 { label: '매핑 컬럼', value: `${matchedCols.length} / ${allCols.length}` },
               ].map(({ label, value }) => (
                 <div key={label} className={`rounded-lg px-3 py-3 text-center
-                  ${dark ? 'bg-[#13151C]' : 'bg-slate-50'}`}>
+                  ${dark ? 'bg-[#1D2125]' : 'bg-slate-50'}`}>
                   <p className={`text-[10px] ${sub} mb-0.5`}>{label}</p>
                   <p className={`text-xs font-bold ${txt}`}>{value}</p>
                 </div>
@@ -643,7 +643,7 @@ export default function DataStudio({ dark }) {
               })}
               {unmatchedCols.map(col => (
                 <span key={col} className={`text-[11px] px-2 py-1 rounded font-mono border
-                  ${dark ? 'bg-[#13151C] text-slate-600 border-[#252836]' : 'bg-slate-50 text-slate-700 border-slate-100'}`}>
+                  ${dark ? 'bg-[#1D2125] text-slate-600 border-[#A1BDD914]' : 'bg-slate-50 text-slate-700 border-slate-100'}`}>
                   — {col}
                 </span>
               ))}
@@ -672,16 +672,16 @@ export default function DataStudio({ dark }) {
                       ? `${accentBorder} ${accentBg}`
                       : `${accentBorder} ${accentBg}`
                     : dark
-                      ? 'border-[#252836] hover:border-indigo-500/40 bg-[#13151C]'
-                      : 'border-slate-200 hover:border-indigo-300 bg-slate-50'
+                      ? 'border-[#A1BDD914] hover:border-[#579DFF]/40 bg-[#1D2125]'
+                      : 'border-slate-200 hover:border-[#85B8FF] bg-slate-50'
                   }
                 `}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center
                     ${uploadMode === 'overwrite'
-                      ? cfg.color === 'violet' ? 'bg-violet-500 text-white' : 'bg-indigo-500 text-white'
-                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-600'}`}>
+                      ? cfg.color === 'violet' ? 'bg-violet-500 text-white' : 'bg-[#579DFF] text-white'
+                      : dark ? 'bg-[#2C333A] text-slate-500' : 'bg-slate-200 text-slate-600'}`}>
                     <RefreshCw size={14} />
                   </div>
                   <span className={`text-xs font-bold ${uploadMode === 'overwrite' ? accentText : sub}`}>
@@ -689,7 +689,7 @@ export default function DataStudio({ dark }) {
                   </span>
                   {uploadMode === 'overwrite' && (
                     <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded text-white font-semibold
-                      ${cfg.color === 'violet' ? 'bg-violet-500' : 'bg-indigo-500'}`}>
+                      ${cfg.color === 'violet' ? 'bg-violet-500' : 'bg-[#579DFF]'}`}>
                       권장
                     </span>
                   )}
@@ -702,7 +702,7 @@ export default function DataStudio({ dark }) {
                   <div className={`mt-2.5 rounded-lg px-2.5 py-2 text-[11px] font-mono
                     ${cfg.color === 'violet'
                       ? dark ? 'bg-violet-500/10 text-violet-300' : 'bg-violet-100 text-violet-600'
-                      : dark ? 'bg-indigo-500/10 text-indigo-300' : 'bg-indigo-100 text-indigo-600'
+                      : dark ? 'bg-[#579DFF]/10 text-[#579DFF]' : 'bg-[#E9F2FF] text-[#0C66E4]'
                     }`}>
                     🗓 {dateRange.start} ~ {dateRange.end}
                   </div>
@@ -716,7 +716,7 @@ export default function DataStudio({ dark }) {
                   rounded-xl border p-4 text-left transition-all
                   ${uploadMode === 'clear_all'
                     ? dark ? 'border-red-500/60 bg-red-500/10' : 'border-red-400 bg-red-50'
-                    : dark ? 'border-[#252836] hover:border-red-500/30 bg-[#13151C]' : 'border-slate-200 hover:border-red-300 bg-slate-50'
+                    : dark ? 'border-[#A1BDD914] hover:border-red-500/30 bg-[#1D2125]' : 'border-slate-200 hover:border-red-300 bg-slate-50'
                   }
                 `}
               >
@@ -724,7 +724,7 @@ export default function DataStudio({ dark }) {
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center
                     ${uploadMode === 'clear_all'
                       ? 'bg-red-500 text-white'
-                      : dark ? 'bg-[#252836] text-slate-500' : 'bg-slate-200 text-slate-600'}`}>
+                      : dark ? 'bg-[#2C333A] text-slate-500' : 'bg-slate-200 text-slate-600'}`}>
                     <Trash2 size={14} />
                   </div>
                   <span className={`text-xs font-bold ${uploadMode === 'clear_all' ? 'text-red-400' : sub}`}>
@@ -745,7 +745,7 @@ export default function DataStudio({ dark }) {
                 border transition-all select-none
                 ${clearConfirm
                   ? dark ? 'border-red-500/40 bg-red-500/10' : 'border-red-300 bg-red-50'
-                  : dark ? 'border-[#252836] bg-[#13151C]' : 'border-slate-200 bg-slate-50'
+                  : dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-200 bg-slate-50'
                 }
               `}>
                 <input
@@ -765,10 +765,10 @@ export default function DataStudio({ dark }) {
           {uploading && (
             <div className={card}>
               <p className={`text-xs font-semibold mb-3 ${txt}`}>업로드 중...</p>
-              <div className={`w-full rounded-full h-2 ${dark ? 'bg-[#13151C]' : 'bg-slate-100'}`}>
+              <div className={`w-full rounded-full h-2 ${dark ? 'bg-[#1D2125]' : 'bg-slate-100'}`}>
                 <div
                   className={`h-2 rounded-full transition-all duration-300
-                    ${cfg.color === 'violet' ? 'bg-violet-500' : 'bg-indigo-500'}`}
+                    ${cfg.color === 'violet' ? 'bg-violet-500' : 'bg-[#579DFF]'}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -787,7 +787,7 @@ export default function DataStudio({ dark }) {
                 ? 'bg-red-600 hover:bg-red-700'
                 : cfg.color === 'violet'
                   ? 'bg-violet-600 hover:bg-violet-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700'}
+                  : 'bg-[#0C66E4] hover:bg-[#0055CC]'}
             `}
           >
             {uploading
@@ -838,7 +838,7 @@ export default function DataStudio({ dark }) {
             </div>
             <button onClick={reset}
               className={`px-8 py-2.5 text-white text-sm font-semibold rounded-xl transition-colors
-                ${cfg.color === 'violet' ? 'bg-violet-600 hover:bg-violet-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                ${cfg.color === 'violet' ? 'bg-violet-600 hover:bg-violet-700' : 'bg-[#0C66E4] hover:bg-[#0055CC]'}`}>
               새로 업로드
             </button>
           </div>

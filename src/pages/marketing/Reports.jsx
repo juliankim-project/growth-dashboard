@@ -69,8 +69,8 @@ export default function Reports({ dark }) {
             <button key={v} onClick={() => setGroupBy(v)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
                 ${groupBy === v
-                  ? 'bg-indigo-600 text-white'
-                  : dark ? 'bg-[#1A1D27] text-slate-400 border border-[#252836]' : 'bg-white text-slate-700 border border-slate-200'}`}>
+                  ? 'bg-[#0C66E4] text-white'
+                  : dark ? 'bg-[#22272B] text-slate-400 border border-[#A1BDD914]' : 'bg-white text-slate-700 border border-slate-200'}`}>
               {l}
             </button>
           ))}
@@ -78,7 +78,7 @@ export default function Reports({ dark }) {
 
         <button onClick={exportCSV}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
-            ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+            ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
           <Download size={13} /> CSV 내보내기
         </button>
       </div>
@@ -93,7 +93,7 @@ export default function Reports({ dark }) {
           ['구매',      Math.round(totals.conv).toLocaleString()],
           ['ROAS',      totals.cost > 0 ? Math.round(totals.revenue / totals.cost * 100).toLocaleString() + '%' : '—'],
         ].map(([label, value]) => (
-          <div key={label} className={`rounded-xl px-4 py-3 border ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div key={label} className={`rounded-xl px-4 py-3 border ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
             <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{label}</p>
             <p className={`text-base font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>{value}</p>
           </div>
@@ -101,11 +101,11 @@ export default function Reports({ dark }) {
       </div>
 
       {/* 테이블 */}
-      <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
+              <tr className={dark ? 'bg-[#1D2125]' : 'bg-slate-50'}>
                 {['이름', '광고비', '노출', '클릭', '인스톨', '구매', '매출', 'ROAS', 'CTR'].map(h => (
                   <th key={h} className={th}>{h}</th>
                 ))}
@@ -113,7 +113,7 @@ export default function Reports({ dark }) {
             </thead>
             <tbody>
               {report.map((r, i) => (
-                <tr key={i} className={`border-t transition-colors ${dark ? 'border-[#252836] hover:bg-[#13151C]' : 'border-slate-100 hover:bg-slate-50'}`}>
+                <tr key={i} className={`border-t transition-colors ${dark ? 'border-[#A1BDD914] hover:bg-[#1D2125]' : 'border-slate-100 hover:bg-slate-50'}`}>
                   <td className={`px-4 py-3 text-xs font-medium ${dark ? 'text-white' : 'text-slate-700'}`}>{r.name}</td>
                   <td className={td}>{fmtW(r.cost)}</td>
                   <td className={td}>{Math.round(r.impressions).toLocaleString()}</td>

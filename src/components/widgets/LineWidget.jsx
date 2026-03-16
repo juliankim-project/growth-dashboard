@@ -5,7 +5,7 @@ import { dailyData, fmtAxis, fmtMetric, CHART_COLORS } from './widgetUtils'
 function Tip({ active, payload, label, dark, metricsProp, isDual, rightSet }) {
   if (!active || !payload?.length) return null
   return (
-    <div className={`rounded-xl px-4 py-3 shadow-xl text-xs border ${dark ? 'bg-[#1A1D27] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
+    <div className={`rounded-xl px-4 py-3 shadow-xl text-xs border ${dark ? 'bg-[#22272B] border-[#A1BDD914] text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
       <p className="font-semibold mb-1">{label}</p>
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2 mt-0.5">
@@ -43,7 +43,7 @@ function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const fmtRight = v => fmtAxis(v, rightMetrics[0], metricsProp)
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">

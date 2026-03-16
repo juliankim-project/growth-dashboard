@@ -17,7 +17,7 @@ function RankingWidget({ data, config, dark, metrics: metricsProp }) {
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col
-      ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
 
       {ranked.length === 0 ? (
@@ -51,7 +51,7 @@ function RankingWidget({ data, config, dark, metrics: metricsProp }) {
                     </span>
                   </div>
                   <div className={`h-1.5 rounded-full overflow-hidden
-                    ${dark ? 'bg-[#252836]' : 'bg-slate-100'}`}>
+                    ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
                     <div className="h-full rounded-full transition-all"
                       style={{ width: `${pct}%`, backgroundColor: color }} />
                   </div>

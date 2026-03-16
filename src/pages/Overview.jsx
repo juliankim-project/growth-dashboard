@@ -36,7 +36,7 @@ function CustomTooltip({ active, payload, label, dark }) {
   return (
     <div className={`
       rounded-xl px-4 py-3 shadow-xl text-xs border
-      ${dark ? 'bg-[#1A1D27] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914] text-white' : 'bg-white border-slate-200 text-slate-700'}
     `}>
       <p className="font-semibold mb-1">{label}</p>
       {payload.map(p => (
@@ -109,7 +109,7 @@ export default function Overview({ dark, filterByDate }) {
   }, [data])
 
   const tick = dark ? '#64748B' : '#475569'
-  const grid = dark ? '#1E2130' : '#F1F5F9'
+  const grid = dark ? '#2C333A' : '#F1F5F9'
 
   if (loading) return <Spinner dark={dark} />
   if (error)   return (
@@ -137,7 +137,7 @@ export default function Overview({ dark, filterByDate }) {
         {/* 일별 비용/매출 트렌드 */}
         <div className={`
           xl:col-span-2 rounded-xl p-5 border
-          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}
         `}>
           <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
             일별 광고비 vs 매출
@@ -146,8 +146,8 @@ export default function Overview({ dark, filterByDate }) {
             <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="gCost" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#6366F1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="#579DFF" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#579DFF" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#10B981" stopOpacity={0.3} />
@@ -160,7 +160,7 @@ export default function Overview({ dark, filterByDate }) {
                 tickFormatter={v => fmtW(v)} width={48} />
               <Tooltip content={<CustomTooltip dark={dark} />} />
               <Legend wrapperStyle={{ fontSize: 11, color: tick }} />
-              <Area type="monotone" dataKey="cost"    name="광고비" stroke="#6366F1" fill="url(#gCost)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="cost"    name="광고비" stroke="#579DFF" fill="url(#gCost)" strokeWidth={2} dot={false} />
               <Area type="monotone" dataKey="revenue" name="매출"   stroke="#10B981" fill="url(#gRev)"  strokeWidth={2} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
@@ -169,7 +169,7 @@ export default function Overview({ dark, filterByDate }) {
         {/* 채널별 비용 */}
         <div className={`
           rounded-xl p-5 border
-          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}
         `}>
           <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
             채널별 광고비
@@ -181,7 +181,7 @@ export default function Overview({ dark, filterByDate }) {
                 tickFormatter={v => fmtW(v)} />
               <YAxis type="category" dataKey="channel" tick={{ fill: tick, fontSize: 10 }} tickLine={false} width={70} />
               <Tooltip content={<CustomTooltip dark={dark} />} />
-              <Bar dataKey="cost" name="광고비" fill="#6366F1" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="cost" name="광고비" fill="#579DFF" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -190,9 +190,9 @@ export default function Overview({ dark, filterByDate }) {
       {/* 채널 요약 테이블 */}
       <div className={`
         rounded-xl border overflow-hidden
-        ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
+        ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}
       `}>
-        <div className={`px-5 py-4 border-b ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+        <div className={`px-5 py-4 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
           <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>
             채널별 성과 요약
           </p>
@@ -200,7 +200,7 @@ export default function Overview({ dark, filterByDate }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
+              <tr className={dark ? 'bg-[#1D2125]' : 'bg-slate-50'}>
                 {['채널', '광고비', '인스톨', '구매', '매출', 'ROAS'].map(h => (
                   <th key={h} className={`
                     px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide
@@ -216,13 +216,13 @@ export default function Overview({ dark, filterByDate }) {
                   <tr key={ch.channel} className={`
                     border-t transition-colors
                     ${dark
-                      ? 'border-[#252836] hover:bg-[#13151C]'
+                      ? 'border-[#A1BDD914] hover:bg-[#1D2125]'
                       : 'border-slate-100 hover:bg-slate-50'}
                   `}>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{
-                          background: CHANNEL_COLORS[ch.channel] || '#6366F1'
+                          background: CHANNEL_COLORS[ch.channel] || '#579DFF'
                         }} />
                         <span className={`font-medium ${dark ? 'text-white' : 'text-slate-700'}`}>
                           {ch.channel}

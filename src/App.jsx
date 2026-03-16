@@ -176,7 +176,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden ${dark ? 'bg-[#13151C]' : 'bg-[#F4F6FA]'}`}>
+    <div className={`flex h-screen overflow-hidden ${dark ? 'bg-[#1D2125]' : 'bg-[#F7F8F9]'}`}>
       <Sidebar
         nav={nav} setNav={setNav}
         dark={dark} toggleDark={() => setDark(d => !d)}
@@ -232,7 +232,7 @@ export default function App() {
   }, [dark])
 
   if (loading) return (
-    <div className={`min-h-screen flex items-center justify-center ${dark ? 'bg-[#0F1117]' : 'bg-[#F4F6FA]'}`}>
+    <div className={`min-h-screen flex items-center justify-center ${dark ? 'bg-[#1D2125]' : 'bg-[#F7F8F9]'}`}>
       <Spinner dark={dark} />
     </div>
   )

@@ -33,16 +33,16 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
 
   const inp = `w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors
     ${dark
-      ? 'bg-[#13151C] border-[#252836] text-white placeholder:text-slate-500 focus:border-indigo-500'
-      : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-600 focus:border-indigo-400'}`
+      ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500 focus:border-[#579DFF]'
+      : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-600 focus:border-[#0C66E4]'}`
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${dark ? 'bg-[#0F1117]' : 'bg-[#F4F6FA]'}`}>
+    <div className={`min-h-screen flex items-center justify-center p-4 ${dark ? 'bg-[#1D2125]' : 'bg-[#F7F8F9]'}`}>
       <div className="w-full max-w-sm">
 
         {/* 로고 */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center mb-3 shadow-lg shadow-indigo-500/30">
+          <div className="w-12 h-12 rounded-2xl bg-[#0C66E4] flex items-center justify-center mb-3 shadow-lg shadow-[#0C66E4]/30">
             <BarChart2 size={24} className="text-white" />
           </div>
           <h1 className={`text-xl font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
@@ -54,7 +54,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
         </div>
 
         {/* 카드 */}
-        <div className={`rounded-2xl border p-6 shadow-xl ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
+        <div className={`rounded-2xl border p-6 shadow-xl ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
 
           {sent ? (
             /* ── 전송 완료 상태 ── */
@@ -67,7 +67,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
                   이메일을 확인해주세요
                 </p>
                 <p className={`text-xs mt-1.5 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                  <span className="font-medium text-indigo-400">{email}</span>으로<br/>
+                  <span className="font-medium text-[#579DFF]">{email}</span>으로<br/>
                   로그인 링크를 보냈어요.<br/>
                   링크를 클릭하면 바로 접속됩니다.
                 </p>
@@ -121,7 +121,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
               <button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#0C66E4] text-white text-sm font-semibold rounded-xl hover:bg-[#0055CC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
                   ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

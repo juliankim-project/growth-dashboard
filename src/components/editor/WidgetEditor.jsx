@@ -29,8 +29,8 @@ function SortableMetricItem({ id, label, isComputed, dark, onRemove }) {
   return (
     <div ref={setNodeRef} style={style}
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors
-        ${isDragging ? 'z-50 shadow-lg ring-2 ring-indigo-500/30' : ''}
-        ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+        ${isDragging ? 'z-50 shadow-lg ring-2 ring-[#579DFF]/30' : ''}
+        ${dark ? 'border-[#A1BDD914] bg-[#1D2125] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
       <button {...attributes} {...listeners}
         className={`cursor-grab active:cursor-grabbing shrink-0 touch-none
           ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
@@ -106,9 +106,9 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
 
   const S = {
     sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
-      ${dark ? 'bg-[#0F1117] border-[#252836] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
+      ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
     inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
-      ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
+      ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
     lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
   }
 
@@ -124,7 +124,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
             <span key={id} className={`text-[10px] px-2 py-0.5 rounded-md
               ${m?._computed
                 ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
-                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
+                : 'bg-[#579DFF]/10 text-[#579DFF] border border-[#579DFF]/20'}`}>
               {m?.label || id}
             </span>
           )
@@ -136,15 +136,15 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <div className={`rounded-t-2xl sm:rounded-2xl border w-full sm:max-w-xl flex flex-col max-h-[90vh]
-        ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200 shadow-2xl'}`}>
+        ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-2xl'}`}>
 
         {/* 헤더 */}
         <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0
-          ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+          ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
           <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
             {isNew ? '카드 추가' : '위젯 편집'}
           </p>
-          <button onClick={onClose} className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#2C333A] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
             <X size={16} />
           </button>
         </div>
@@ -227,7 +227,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                           className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer
                             ${isRight
                               ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-                              : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20'}`}>
+                              : 'bg-[#579DFF]/10 text-[#579DFF] border-[#579DFF]/20 hover:bg-[#579DFF]/20'}`}>
                           {isRight ? '우' : '좌'} {m?.label || mid}
                         </button>
                       )
@@ -288,7 +288,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
               ))}
               <button onClick={() => upd('stages', [...(config.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || ''}])}
                 className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-indigo-400' : 'border-slate-200 text-slate-500'}`}>
+                  ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-[#579DFF]' : 'border-slate-200 text-slate-500'}`}>
                 + 단계 추가
               </button>
             </div>
@@ -391,7 +391,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                     }
                     return (
                       <div key={mid}
-                        className={`rounded-lg border p-3 mb-2 ${dark ? 'border-[#252836] bg-[#0F1117]' : 'border-slate-200 bg-slate-50'}`}>
+                        className={`rounded-lg border p-3 mb-2 ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-200 bg-slate-50'}`}>
                         <p className={`text-[10px] font-semibold mb-2 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
                           {m?.label || mid}
                         </p>
@@ -411,7 +411,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                         </div>
                         <label className={`flex items-center gap-1.5 mt-2 cursor-pointer select-none
                           ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          <input type="checkbox" className="accent-indigo-500 rounded"
+                          <input type="checkbox" className="accent-[#579DFF] rounded"
                             checked={!!th.inverse}
                             onChange={e => updTh('inverse', e.target.checked)} />
                           <span className="text-[10px]">낮을수록 양호 (비용, CPC 등)</span>
@@ -453,14 +453,14 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
 
         {/* 푸터 */}
         <div className={`flex items-center justify-between px-5 py-4 border-t shrink-0
-          ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+          ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
           <button onClick={onClose}
             className={`text-xs px-4 py-2 rounded-xl border transition-colors
-              ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
             취소
           </button>
           <button onClick={handleSave}
-            className="flex items-center gap-1.5 text-xs px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
+            className="flex items-center gap-1.5 text-xs px-5 py-2 bg-[#0C66E4] text-white rounded-xl hover:bg-[#0055CC] font-semibold">
             {isNew ? <><Plus size={12} /> 카드 추가</> : <><Check size={12} /> 저장</>}
           </button>
         </div>

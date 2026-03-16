@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react'
 
 /* ── 슬롯 타입별 색상 ── */
 const TYPE_COLORS = {
-  kpi:        { bg: 'bg-indigo-500', label: 'KPI' },
+  kpi:        { bg: 'bg-[#579DFF]', label: 'KPI' },
   line:       { bg: 'bg-emerald-500', label: '라인' },
   bar:        { bg: 'bg-amber-500', label: '바' },
   pie:        { bg: 'bg-rose-500', label: '파이' },
@@ -38,7 +38,7 @@ function MiniPreview({ slotDefs, dark }) {
 
   return (
     <div className={`rounded-lg p-2 flex flex-col gap-1
-      ${dark ? 'bg-[#0D0F18]' : 'bg-slate-50'}`}>
+      ${dark ? 'bg-[#1D2125]' : 'bg-slate-50'}`}>
       {rows.map((row, ri) => (
         <div key={ri} className="flex gap-1">
           {row.map((def, ci) => {
@@ -84,7 +84,7 @@ function SlotSummary({ slotDefs, dark }) {
 function TemplateCard({ tpl, dark, sub, onDelete }) {
   return (
     <div className={`relative group rounded-xl border p-4 flex flex-col gap-3 transition-colors
-      ${dark ? 'border-[#252836] bg-[#13151F] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+      ${dark ? 'border-[#A1BDD914] bg-[#1D2125] hover:border-slate-600' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
       {onDelete && (
         <button onClick={() => onDelete(tpl.id)}
           className="absolute top-3 right-3 z-10 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
@@ -126,15 +126,15 @@ export default function Templates({ dark }) {
       </div>
 
       {/* 기본 / 커스텀 탭 */}
-      <div className={`flex gap-1 p-1 rounded-lg ${dark ? 'bg-[#0D0F18]' : 'bg-slate-100'}`}>
+      <div className={`flex gap-1 p-1 rounded-lg ${dark ? 'bg-[#1D2125]' : 'bg-slate-100'}`}>
         {[{ id: 'default', label: '기본 템플릿', count: DASHBOARD_TEMPLATES.length },
           { id: 'custom', label: '커스텀 템플릿', count: customTemplates.length }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 text-xs py-2.5 rounded-md font-semibold transition-colors
               ${tab === t.id
-                ? dark ? 'bg-[#1A1D27] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                ? dark ? 'bg-[#22272B] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
                 : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
-            {t.label} <span className={`ml-1 ${tab === t.id ? 'text-indigo-400' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
+            {t.label} <span className={`ml-1 ${tab === t.id ? 'text-[#579DFF]' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
           </button>
         ))}
       </div>
@@ -142,7 +142,7 @@ export default function Templates({ dark }) {
       {/* 템플릿 그리드 */}
       {templates.length === 0 ? (
         <div className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-16 gap-3
-          ${dark ? 'border-[#252836] text-slate-600' : 'border-slate-200 text-slate-400'}`}>
+          ${dark ? 'border-[#A1BDD914] text-slate-600' : 'border-slate-200 text-slate-400'}`}>
           <span className="text-4xl">📁</span>
           <p className="text-sm">저장된 커스텀 템플릿이 없습니다</p>
           <p className={`text-xs ${dark ? 'text-slate-700' : 'text-slate-300'}`}>대시보드에서 "템플릿 저장" 버튼으로 추가해보세요</p>
@@ -158,7 +158,7 @@ export default function Templates({ dark }) {
 
       {/* 안내 */}
       <div className={`rounded-lg border px-4 py-3 text-xs
-        ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-200 text-slate-400'}`}>
+        ${dark ? 'border-[#A1BDD914] text-slate-500' : 'border-slate-200 text-slate-400'}`}>
         💡 템플릿 적용 방법: 대시보드 탭 → 상단 "템플릿 불러오기" 버튼 클릭 → 원하는 템플릿 선택.
         적용 후 각 위젯의 지표와 설정을 자유롭게 수정할 수 있습니다.
       </div>

@@ -43,8 +43,8 @@ export default function Goals({ dark }) {
   const inp = `
     px-2.5 py-1.5 rounded-lg border text-xs outline-none transition-colors w-full
     ${dark
-      ? 'bg-[#13151C] border-[#252836] text-white focus:border-indigo-500'
-      : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-indigo-400'}
+      ? 'bg-[#1D2125] border-[#A1BDD914] text-white focus:border-[#579DFF]'
+      : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-[#0C66E4]'}
   `
 
   return (
@@ -58,16 +58,16 @@ export default function Goals({ dark }) {
         </div>
         <button onClick={save}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors
-            ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+            ${saved ? 'bg-emerald-500 text-white' : 'bg-[#0C66E4] hover:bg-[#0055CC] text-white'}`}>
           <Save size={13} />
           {saved ? '저장됨 ✓' : '저장'}
         </button>
       </div>
 
-      <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <div className={`rounded-xl border overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
         <table className="w-full text-xs">
           <thead>
-            <tr className={dark ? 'bg-[#13151C]' : 'bg-slate-50'}>
+            <tr className={dark ? 'bg-[#1D2125]' : 'bg-slate-50'}>
               {['채널', '지표', '목표값', '기간', ''].map(h => (
                 <th key={h} className={`px-4 py-3 text-left font-semibold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   {h}
@@ -77,7 +77,7 @@ export default function Goals({ dark }) {
           </thead>
           <tbody>
             {goals.map(row => (
-              <tr key={row.id} className={`border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+              <tr key={row.id} className={`border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
                 <td className="px-4 py-2.5">
                   <select value={row.channel} onChange={e => update(row.id, 'channel', e.target.value)} className={inp}>
                     {CHANNELS.map(c => <option key={c}>{c}</option>)}
@@ -110,10 +110,10 @@ export default function Goals({ dark }) {
           </tbody>
         </table>
 
-        <div className={`px-4 py-3 border-t ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+        <div className={`px-4 py-3 border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
           <button onClick={addRow}
             className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors
-              ${dark ? 'text-indigo-400 hover:bg-indigo-500/10' : 'text-indigo-500 hover:bg-indigo-50'}`}>
+              ${dark ? 'text-[#579DFF] hover:bg-[#579DFF]/10' : 'text-[#579DFF] hover:bg-[#E9F2FF]'}`}>
             <Plus size={13} /> 행 추가
           </button>
         </div>

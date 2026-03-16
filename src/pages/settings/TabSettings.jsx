@@ -54,7 +54,7 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
         placeholder={placeholder}
         className={`px-2 py-0.5 rounded border text-xs outline-none
           ${size === 'sm' ? 'w-28' : 'w-36'}
-          ${dark ? 'bg-[#13151C] border-indigo-500 text-white' : 'bg-white border-indigo-400 text-slate-700'}`}
+          ${dark ? 'bg-[#1D2125] border-[#579DFF] text-white' : 'bg-white border-[#0C66E4] text-slate-700'}`}
       />
       <button onClick={commit}  className="p-0.5 text-emerald-400 hover:bg-emerald-400/10 rounded"><Check size={11}/></button>
       <button onClick={cancel}  className="p-0.5 text-slate-400   hover:bg-slate-400/10   rounded"><X     size={11}/></button>
@@ -67,7 +67,7 @@ function EditableLabel({ value, onSave, dark, placeholder, size = 'base' }) {
       <button
         onClick={() => { setDraft(value); setEditing(true) }}
         className={`opacity-0 group-hover/label:opacity-100 p-0.5 rounded transition-opacity
-          ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-500'}`}
+          ${dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#579DFF]'}`}
       >
         <Pencil size={10}/>
       </button>
@@ -113,8 +113,8 @@ function IconPicker({ value, onChange, dark, size = 12 }) {
         title="아이콘 변경"
         className={`p-1 rounded transition-colors group/iconbtn
           ${open
-            ? dark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
-            : dark ? 'text-slate-500 hover:bg-[#252836] hover:text-slate-300' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-700'
+            ? dark ? 'bg-[#579DFF]/20 text-[#579DFF]' : 'bg-[#E9F2FF] text-[#0C66E4]'
+            : dark ? 'text-slate-500 hover:bg-[#2C333A] hover:text-slate-300' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-700'
           }`}
       >
         {value ? <Icon name={value} size={size}/> : <Smile size={size}/>}
@@ -124,7 +124,7 @@ function IconPicker({ value, onChange, dark, size = 12 }) {
         <div
           ref={ref}
           className={`fixed z-[9999] p-2 rounded-xl border shadow-xl
-            ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}
+            ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}
           style={{ width: 216, top: pos.top, left: pos.left }}
           onClick={e => e.stopPropagation()}
         >
@@ -138,8 +138,8 @@ function IconPicker({ value, onChange, dark, size = 12 }) {
                 title={name}
                 className={`p-1.5 rounded transition-colors
                   ${value === name
-                    ? dark ? 'bg-indigo-500/25 text-indigo-300' : 'bg-indigo-50 text-indigo-600'
-                    : dark ? 'text-slate-400 hover:bg-[#252836] hover:text-white' : 'text-slate-700 hover:bg-slate-100'
+                    ? dark ? 'bg-[#579DFF]/25 text-[#579DFF]' : 'bg-[#E9F2FF] text-[#0C66E4]'
+                    : dark ? 'text-slate-400 hover:bg-[#2C333A] hover:text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
               >
                 <Icon name={name} size={13}/>
@@ -194,17 +194,17 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
   }
 
   const inp = `px-2 py-1 rounded-lg border text-xs outline-none w-full font-mono
-    ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500'
+    ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500'
            : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-600'}`
 
   const lab = `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`
 
   return (
     <div className={`mt-1.5 mb-2 mx-3 rounded-xl border p-4 flex flex-col gap-4
-      ${dark ? 'bg-[#0F1117] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+      ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
 
       <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest
-        ${dark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+        ${dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'}`}>
         <Database size={12}/> 데이터 소스 설정
       </div>
 
@@ -253,14 +253,14 @@ function DataSourcePanel({ sectionId, subId, getSubDataSource, setSubDataSource,
           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
             ${saved
               ? 'bg-emerald-500 text-white'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+              : 'bg-[#0C66E4] hover:bg-[#0055CC] text-white'}`}
         >
           <Check size={11}/> {saved ? '저장됨 ✓' : '저장'}
         </button>
         <button
           onClick={reset}
           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-            ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
+            ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-700 hover:bg-slate-100'}`}
         >
           <RefreshCw size={11}/> 기본값으로
         </button>
@@ -299,8 +299,8 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
       {tabs.map(tab => (
         <div key={tab.id} className={`${chipBase}
           ${dark
-            ? 'border-[#2A2E42] text-indigo-300 bg-indigo-500/10 hover:border-indigo-500/50'
-            : 'border-indigo-100 text-indigo-600 bg-indigo-50 hover:border-indigo-300'}`}>
+            ? 'border-[#2A2E42] text-[#579DFF] bg-[#579DFF]/10 hover:border-[#579DFF]/50'
+            : 'border-[#B3D4FF] text-[#0C66E4] bg-[#E9F2FF] hover:border-[#85B8FF]'}`}>
           {renaming?.id === tab.id ? (
             <input
               autoFocus
@@ -345,11 +345,11 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
             placeholder="탭 이름"
             className={`text-[10px] px-2 py-0.5 rounded-full border outline-none w-24
               ${dark
-                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500'
-                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-600'}`}
+                ? 'border-[#579DFF] bg-transparent text-white placeholder:text-slate-500'
+                : 'border-[#85B8FF] bg-white text-slate-800 placeholder:text-slate-600'}`}
           />
           <button onClick={commitAdd}
-            className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">확인</button>
+            className="text-[10px] px-2 py-0.5 bg-[#0C66E4] text-white rounded-full hover:bg-[#0055CC]">확인</button>
           <button onClick={() => { setAdding(false); setNewLabel('') }}
             className={`text-[10px] px-1.5 py-0.5 rounded-full ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600'}`}>취소</button>
         </div>
@@ -358,8 +358,8 @@ function L3TabsRow({ sectionId, subId, l3subId = null, getL3Tabs, addL3Tab, remo
           onClick={() => setAdding(true)}
           className={`flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full border border-dashed transition-colors
             ${dark
-              ? 'border-[#2A2E42] text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50'
-              : 'border-slate-200 text-slate-600 hover:text-indigo-500 hover:border-indigo-300'}`}
+              ? 'border-[#2A2E42] text-slate-500 hover:text-[#579DFF] hover:border-[#579DFF]/50'
+              : 'border-slate-200 text-slate-600 hover:text-[#579DFF] hover:border-[#85B8FF]'}`}
         >
           <Plus size={8}/> 하위탭
         </button>
@@ -391,7 +391,7 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
 
   return (
     <div className={`ml-10 mr-3 mb-1 px-3 py-2 rounded-lg
-      ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
+      ${dark ? 'bg-[#1D2125] border border-[#A1BDD914]' : 'bg-slate-50 border border-slate-100'}`}>
 
       {/* 헤더 */}
       <div className={`flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-widest
@@ -401,7 +401,7 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
 
       {/* L3 서서브 목록 — L4 탭은 항상 바로 노출 */}
       {l3subs.map(ls => (
-        <div key={ls.id} className={`rounded-lg mb-2 border ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+        <div key={ls.id} className={`rounded-lg mb-2 border ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`}>
           {/* 서서브 헤더 행 */}
           <div className="flex items-center gap-1.5 px-2 py-1.5 group/ls">
             {/* L3 아이콘 피커 */}
@@ -430,7 +430,7 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
 
           {/* L4 탭 영역 — 항상 노출 */}
           <div className={`mx-2 mb-2 px-2 py-1.5 rounded-lg
-            ${dark ? 'bg-[#0F1117] border border-[#1E2130]' : 'bg-white border border-slate-100'}`}>
+            ${dark ? 'bg-[#1D2125] border border-[#A1BDD914]' : 'bg-white border border-slate-100'}`}>
             <div className={`flex items-center gap-1 mb-1 text-[9px] font-bold uppercase tracking-widest
               ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               <Layers size={9} className="text-violet-400"/> 하위탭 (L4)
@@ -463,11 +463,11 @@ function L3SubsManager({ sectionId, subId, getL3Subs, addL3Sub, removeL3Sub, ren
             placeholder="서서브 이름"
             className={`text-[10px] px-2 py-0.5 rounded-lg border outline-none w-28
               ${dark
-                ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500'
-                : 'border-indigo-300 bg-white text-slate-800 placeholder:text-slate-600'}`}
+                ? 'border-[#579DFF] bg-transparent text-white placeholder:text-slate-500'
+                : 'border-[#85B8FF] bg-white text-slate-800 placeholder:text-slate-600'}`}
           />
           <button onClick={commitAdd}
-            className="text-[10px] px-2 py-0.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">확인</button>
+            className="text-[10px] px-2 py-0.5 bg-[#0C66E4] text-white rounded-lg hover:bg-[#0055CC]">확인</button>
           <button onClick={() => { setAdding(false); setNewLabel('') }}
             className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600'}`}>취소</button>
         </div>
@@ -528,7 +528,7 @@ function SubRow({
         <button
           onClick={() => onShowBuiltinSub(sectionId, sub.id)}
           className={`ml-auto flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg transition-colors
-            ${dark ? 'text-indigo-400 hover:bg-indigo-500/10' : 'text-indigo-600 hover:bg-indigo-50'}`}
+            ${dark ? 'text-[#579DFF] hover:bg-[#579DFF]/10' : 'text-[#0C66E4] hover:bg-[#E9F2FF]'}`}
         >
           <Eye size={10}/> 복원
         </button>
@@ -537,7 +537,7 @@ function SubRow({
   }
 
   return (
-    <div className={`rounded-lg transition-colors ${dark ? 'hover:bg-[#13151C]/60' : 'hover:bg-slate-50'}`}>
+    <div className={`rounded-lg transition-colors ${dark ? 'hover:bg-[#1D2125]/60' : 'hover:bg-slate-50'}`}>
       {/* 서브탭 헤더 행 */}
       <div className="flex items-center gap-2 px-3 py-2 group/sub">
         {/* L3 확장 토글 */}
@@ -571,25 +571,25 @@ function SubRow({
             <button
               onClick={() => setShowColorPicker(p => !p)}
               className={`w-4 h-4 rounded-full border-2 transition-colors
-                ${dark ? 'border-[#252836] hover:border-slate-500' : 'border-slate-200 hover:border-slate-400'}`}
-              style={{ backgroundColor: subColor ? SUB_COLOR_OPTIONS.find(c => c.id === subColor)?.hex || '#6366f1' : dark ? '#252836' : '#e2e8f0' }}
+                ${dark ? 'border-[#A1BDD914] hover:border-slate-500' : 'border-slate-200 hover:border-slate-400'}`}
+              style={{ backgroundColor: subColor ? SUB_COLOR_OPTIONS.find(c => c.id === subColor)?.hex || '#579DFF' : dark ? '#2C333A' : '#e2e8f0' }}
               title="색깔 설정"
             />
             {showColorPicker && (
               <div className={`absolute right-0 top-6 z-30 flex gap-1.5 p-2 rounded-lg border shadow-lg
-                ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
+                ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
                 <button
                   onClick={() => { setSubColor?.(sectionId, sub.id, null); setShowColorPicker(false) }}
                   className={`w-5 h-5 rounded-full border-2 transition-colors
-                    ${!subColor ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}
-                    ${dark ? 'border-[#252836] bg-[#252836]' : 'border-slate-200 bg-slate-200'}`}
+                    ${!subColor ? 'ring-2 ring-[#579DFF] ring-offset-1' : ''}
+                    ${dark ? 'border-[#A1BDD914] bg-[#2C333A]' : 'border-slate-200 bg-slate-200'}`}
                   title="없음"
                 />
                 {SUB_COLOR_OPTIONS.map(c => (
                   <button key={c.id}
                     onClick={() => { setSubColor?.(sectionId, sub.id, c.id); setShowColorPicker(false) }}
                     className={`w-5 h-5 rounded-full transition-colors
-                      ${subColor === c.id ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}`}
+                      ${subColor === c.id ? 'ring-2 ring-[#579DFF] ring-offset-1' : ''}`}
                     style={{ backgroundColor: c.hex }}
                     title={c.label}
                   />
@@ -604,9 +604,9 @@ function SubRow({
             title="데이터 소스 설정"
             className={`flex items-center gap-1 text-[9px] px-2 py-0.5 rounded border transition-colors
               ${showDS || hasCustomDS
-                ? dark ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400' : 'border-indigo-300 bg-indigo-50 text-indigo-600'
-                : dark ? 'border-[#252836] text-slate-500 hover:text-indigo-400 hover:border-indigo-500/40'
-                       : 'border-slate-200 text-slate-600 hover:text-indigo-500 hover:border-indigo-300'}`}
+                ? dark ? 'border-[#579DFF]/50 bg-[#579DFF]/10 text-[#579DFF]' : 'border-[#85B8FF] bg-[#E9F2FF] text-[#0C66E4]'
+                : dark ? 'border-[#A1BDD914] text-slate-500 hover:text-[#579DFF] hover:border-[#579DFF]/40'
+                       : 'border-slate-200 text-slate-600 hover:text-[#579DFF] hover:border-[#85B8FF]'}`}
           >
             <Database size={9}/> {hasCustomDS ? '소스 설정됨' : '소스'}
           </button>
@@ -615,14 +615,14 @@ function SubRow({
           <span className={`text-[9px] px-1.5 py-0.5 rounded-full
             ${l3SubsCount > 0
               ? dark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-              : dark ? 'bg-[#252836] text-slate-600' : 'bg-slate-100 text-slate-600'}`}>
+              : dark ? 'bg-[#2C333A] text-slate-600' : 'bg-slate-100 text-slate-600'}`}>
             L3 · {l3SubsCount}
           </span>
 
           {/* L4 탭 수 배지 (직접 탭) */}
           {l3Count > 0 && (
             <span className={`text-[9px] px-1.5 py-0.5 rounded-full
-              ${dark ? 'bg-indigo-500/15 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
+              ${dark ? 'bg-[#579DFF]/15 text-[#579DFF]' : 'bg-[#E9F2FF] text-[#579DFF]'}`}>
               L4 · {l3Count}
             </span>
           )}
@@ -680,7 +680,7 @@ function SubRow({
 
           {/* 기본 직접 하위탭 (L3 없이 직접 연결된 L4) */}
           <div className={`ml-10 mr-3 mb-2 px-3 py-2 rounded-lg
-            ${dark ? 'bg-[#13151C] border border-[#1E2130]' : 'bg-slate-50 border border-slate-100'}`}>
+            ${dark ? 'bg-[#1D2125] border border-[#A1BDD914]' : 'bg-slate-50 border border-slate-100'}`}>
             <div className={`flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-widest
               ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               <Layers size={10} className="text-violet-400"/> 기본 하위탭 (L4, 서서브 없을 때)
@@ -720,7 +720,7 @@ function AddSubRow({ onAdd, dark }) {
     <button
       onClick={() => setShow(true)}
       className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors mt-0.5
-        ${dark ? 'text-indigo-400 hover:bg-indigo-500/10' : 'text-indigo-500 hover:bg-indigo-50'}`}
+        ${dark ? 'text-[#579DFF] hover:bg-[#579DFF]/10' : 'text-[#579DFF] hover:bg-[#E9F2FF]'}`}
     >
       <Plus size={11}/> 하위탭 추가
     </button>
@@ -735,10 +735,10 @@ function AddSubRow({ onAdd, dark }) {
         onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') submit(); if (e.key === 'Escape') setShow(false) }}
         placeholder="탭 이름 입력..."
         className={`px-2.5 py-1.5 rounded-lg border text-xs outline-none w-40
-          ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-500' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-600'}`}
+          ${dark ? 'bg-[#1D2125] border-[#579DFF] text-white placeholder:text-slate-500' : 'bg-white border-[#0C66E4] text-slate-700 placeholder:text-slate-600'}`}
       />
       <button onClick={submit}
-        className="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">추가</button>
+        className="px-2.5 py-1.5 bg-[#0C66E4] text-white text-xs rounded-lg hover:bg-[#0055CC]">추가</button>
       <button onClick={() => setShow(false)}
         className={`px-2 py-1.5 text-xs rounded-lg ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}`}>취소</button>
     </div>
@@ -842,13 +842,13 @@ export default function TabSettings({
 
       {/* 범례 */}
       <div className={`flex flex-wrap items-center gap-4 px-4 py-2.5 rounded-xl text-[10px]
-        ${dark ? 'bg-[#1A1D27] border border-[#252836]' : 'bg-slate-50 border border-slate-100'}`}>
+        ${dark ? 'bg-[#22272B] border border-[#A1BDD914]' : 'bg-slate-50 border border-slate-100'}`}>
         <div className="flex items-center gap-1.5">
           <GripVertical size={10} className={dark ? 'text-slate-400' : 'text-slate-700'}/>
           <span className={dark ? 'text-slate-400' : 'text-slate-700'}>드래그로 L1 순서 변경 (사이드바 연동)</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <LayoutDashboard size={10} className="text-indigo-400"/>
+          <LayoutDashboard size={10} className="text-[#579DFF]"/>
           <span className={dark ? 'text-slate-400' : 'text-slate-700'}>L1 · 메인탭 (사이드바 섹션)</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -899,12 +899,12 @@ export default function TabSettings({
             onDragEnd={onDragEnd}
             className={`rounded-xl border overflow-hidden transition-all
               ${isDragging ? 'opacity-30 scale-[0.99]' : ''}
-              ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+              ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
 
             {/* ── L1 섹션 헤더 ── */}
             <div
               className={`flex items-center gap-3 px-4 py-3 border-b cursor-pointer group/sec
-                ${dark ? 'border-[#252836] bg-[#13151C] hover:bg-[#0F1117]' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
+                ${dark ? 'border-[#A1BDD914] bg-[#1D2125] hover:bg-[#1D2125]' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
               onClick={() => toggleSection(section.id)}
             >
               {/* 드래그 핸들 */}
@@ -921,7 +921,7 @@ export default function TabSettings({
               </span>
 
               <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0
-                ${dark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
+                ${dark ? 'bg-[#579DFF]/10 text-[#579DFF]' : 'bg-[#E9F2FF] text-[#579DFF]'}`}>
                 L1
               </span>
 
@@ -1020,7 +1020,7 @@ export default function TabSettings({
 
       {/* ── 메인탭 추가 버튼 ── */}
       <div className={`rounded-xl border border-dashed p-4
-        ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+        ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`}>
         {addingSection ? (
           <div className="flex items-center gap-2">
             <input
@@ -1030,10 +1030,10 @@ export default function TabSettings({
               onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') commitAddSection(); if (e.key === 'Escape') setAddingSection(false) }}
               placeholder="메인탭 이름 입력..."
               className={`flex-1 px-3 py-2 rounded-lg border text-sm outline-none
-                ${dark ? 'bg-[#13151C] border-indigo-500 text-white placeholder:text-slate-500' : 'bg-white border-indigo-400 text-slate-700 placeholder:text-slate-600'}`}
+                ${dark ? 'bg-[#1D2125] border-[#579DFF] text-white placeholder:text-slate-500' : 'bg-white border-[#0C66E4] text-slate-700 placeholder:text-slate-600'}`}
             />
             <button onClick={commitAddSection}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700">추가</button>
+              className="px-4 py-2 bg-[#0C66E4] text-white text-sm font-semibold rounded-lg hover:bg-[#0055CC]">추가</button>
             <button onClick={() => setAddingSection(false)}
               className={`px-3 py-2 text-sm rounded-lg ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}`}>취소</button>
           </div>
@@ -1041,7 +1041,7 @@ export default function TabSettings({
           <button
             onClick={() => setAddingSection(true)}
             className={`w-full flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors
-              ${dark ? 'text-slate-500 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}
+              ${dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
           >
             <Plus size={15}/> 메인탭 추가 (L1)
           </button>

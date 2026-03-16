@@ -1,7 +1,7 @@
 /* ── 위젯 타입별 미니 SVG 프리뷰 아이콘 ── */
 
 const C = {
-  active: '#6366f1',     // indigo-500
+  active: '#579DFF',     // indigo-500
   darkLine: '#94a3b8',   // slate-400
   lightLine: '#cbd5e1',  // slate-300
   darkFill: '#334155',   // slate-700

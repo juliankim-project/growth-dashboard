@@ -6,7 +6,7 @@ export default function KPICard({ label, value, sub, change, dark, icon: Icon, c
   const isZero = change === 0 || change == null
 
   const colorMap = {
-    indigo: 'bg-indigo-500/10 text-indigo-500',
+    indigo: 'bg-[#579DFF]/10 text-[#579DFF]',
     blue:   'bg-blue-500/10 text-blue-500',
     green:  'bg-emerald-500/10 text-emerald-500',
     orange: 'bg-orange-500/10 text-orange-500',
@@ -18,7 +18,7 @@ export default function KPICard({ label, value, sub, change, dark, icon: Icon, c
       rounded-xl p-5 flex flex-col gap-3 border transition-all duration-200
       hover:shadow-md hover:-translate-y-0.5
       ${dark
-        ? 'bg-[#1A1D27] border-[#252836]'
+        ? 'bg-[#22272B] border-[#A1BDD914]'
         : 'bg-white border-slate-200 shadow-sm'}
     `}>
       {/* 상단: 라벨 + 아이콘 */}

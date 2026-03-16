@@ -47,19 +47,19 @@ function ToolbarDropdown({ label, icon, items, dark }) {
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
           ${open
-            ? 'bg-indigo-600 text-white border-indigo-600'
-            : dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            ? 'bg-[#0C66E4] text-white border-[#0C66E4]'
+            : dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
         {icon} {label}
         <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className={`absolute right-0 top-[calc(100%+4px)] z-50 min-w-[140px] py-1 rounded-lg border shadow-lg
-          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200'}`}>
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
           {items.map(item => (
             <button key={item.label}
               onClick={() => { item.onClick(); setOpen(false) }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left
-                ${dark ? 'text-slate-300 hover:bg-[#252836] hover:text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}`}>
+                ${dark ? 'text-slate-300 hover:bg-[#2C333A] hover:text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'}`}>
               {item.icon}
               {item.label}
             </button>
@@ -153,7 +153,7 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
         <>
           {/* 드래그 핸들 */}
           <div className={`drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center px-2 py-0.5 rounded-full cursor-grab active:cursor-grabbing
-            ${dark ? 'bg-[#0F1117]/90 text-slate-400 hover:text-slate-200 border border-[#252836]' : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}>
+            ${dark ? 'bg-[#1D2125]/90 text-slate-400 hover:text-slate-200 border border-[#A1BDD914]' : 'bg-white/90 text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm'}`}>
             <GripVertical size={11} />
           </div>
           {/* 삭제 */}
@@ -166,7 +166,7 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
               <Copy size={9} /> 복사
             </button>
             <button onClick={() => onEdit(slot.id)}
-              className="flex items-center gap-1 px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded-lg hover:bg-indigo-700">
+              className="flex items-center gap-1 px-2 py-0.5 bg-[#0C66E4] text-white text-[10px] rounded-lg hover:bg-[#0055CC]">
               <Settings2 size={9} /> 편집
             </button>
           </div>
@@ -182,7 +182,7 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
         return (
           <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px] rounded-xl
             p-3 overflow-auto font-mono text-white/90 leading-relaxed pointer-events-none">
-            <p className="text-[9px] font-bold text-indigo-300 mb-1.5 uppercase tracking-wider">{slot.type}</p>
+            <p className="text-[9px] font-bold text-[#85B8FF] mb-1.5 uppercase tracking-wider">{slot.type}</p>
             <div className="space-y-0.5 text-[9px]">
               <p><span className="text-slate-400">table:</span> {widgetTable}</p>
               {cfg.metric && <p><span className="text-slate-400">metric:</span> {ml(cfg.metric)}</p>}
@@ -196,7 +196,7 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
               )}
               {cfg.filters && Object.entries(cfg.filters).filter(([k, v]) => k !== 'table' && Array.isArray(v) && v.length > 0).length > 0 && (
                 <>
-                  <p className="text-indigo-300 font-bold mt-1">filters:</p>
+                  <p className="text-[#85B8FF] font-bold mt-1">filters:</p>
                   {Object.entries(cfg.filters).filter(([k, v]) => k !== 'table' && Array.isArray(v) && v.length > 0).map(([k, v]) => (
                     <p key={k}><span className="text-slate-400">{k}:</span> {v.join(', ')}</p>
                   ))}
@@ -214,7 +214,7 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
    대시보드 템플릿 불러오기 모달
 ══════════════════════════════════════════ */
 const TPL_TYPE_COLORS = {
-  kpi:        { bg: 'bg-indigo-500', label: 'KPI' },
+  kpi:        { bg: 'bg-[#E9F2FF]0', label: 'KPI' },
   line:       { bg: 'bg-emerald-500', label: '라인' },
   bar:        { bg: 'bg-amber-500', label: '바' },
   pie:        { bg: 'bg-rose-500', label: '파이' },
@@ -261,13 +261,13 @@ function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], on
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         className={`rounded-2xl border w-full max-w-5xl max-h-[85vh] flex flex-col p-6
-          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-xl'}`}>
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div>
             <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>템플릿 불러오기</p>
             <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>선택한 템플릿으로 현재 탭의 위젯을 교체합니다</p>
           </div>
-          <button onClick={onClose} className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-400 hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#2C333A]' : 'text-slate-400 hover:bg-slate-100'}`}>
             <X size={16} />
           </button>
         </div>
@@ -279,9 +279,9 @@ function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], on
             <button key={t.id} onClick={() => { setTab(t.id); setConfirm(null) }}
               className={`flex-1 text-xs py-2 rounded-md font-semibold transition-colors
                 ${tab === t.id
-                  ? dark ? 'bg-[#1A1D27] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
+                  ? dark ? 'bg-[#22272B] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'
                   : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
-              {t.label} <span className={`ml-1 ${tab === t.id ? 'text-indigo-400' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
+              {t.label} <span className={`ml-1 ${tab === t.id ? 'text-[#579DFF]' : dark ? 'text-slate-600' : 'text-slate-400'}`}>({t.count})</span>
             </button>
           ))}
         </div>
@@ -295,8 +295,8 @@ function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], on
             </div>
           ) : templates.map(tpl => (
             <div key={tpl.id} className={`relative group p-4 rounded-xl border text-left transition-all self-start cursor-pointer
-              ${confirm?.id === tpl.id ? 'border-indigo-500 bg-indigo-500/10'
-                : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}
+              ${confirm?.id === tpl.id ? 'border-[#579DFF] bg-[#579DFF]/10'
+                : dark ? 'border-[#A1BDD914] hover:border-[#579DFF]/40' : 'border-slate-200 hover:border-[#85B8FF]'}`}
               onClick={() => setConfirm(tpl)}>
               {tab === 'custom' && onDeleteCustom && (
                 <button onClick={e => { e.stopPropagation(); onDeleteCustom(tpl.id); if (confirm?.id === tpl.id) setConfirm(null) }}
@@ -325,11 +325,11 @@ function TemplatePickerModal({ dark, onSelect, onClose, customTemplates = [], on
             </p>
             <div className="flex gap-2 ml-3 shrink-0">
               <button onClick={() => setConfirm(null)}
-                className={`text-xs px-3 py-1.5 rounded-lg border ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+                className={`text-xs px-3 py-1.5 rounded-lg border ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
                 취소
               </button>
               <button onClick={() => { onSelect(confirm); onClose() }}
-                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#0C66E4] hover:bg-[#0055CC] text-white font-semibold">
                 적용
               </button>
             </div>
@@ -366,13 +366,13 @@ function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         className={`rounded-2xl border w-full max-w-lg p-6
-          ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-xl'}`}>
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-xl'}`}>
         <div className="flex items-center justify-between mb-5">
           <div>
             <p className={`font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>커스텀 템플릿 저장</p>
             <p className={`text-xs mt-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>현재 대시보드 위젯 구성을 템플릿으로 저장합니다</p>
           </div>
-          <button onClick={onClose} className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#252836]' : 'text-slate-400 hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${dark ? 'text-slate-400 hover:bg-[#2C333A]' : 'text-slate-400 hover:bg-slate-100'}`}>
             <X size={16} />
           </button>
         </div>
@@ -384,8 +384,8 @@ function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
             onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); handleSave() } if (e.key === 'Escape') onClose() }}
             placeholder="예: OTA 야놀자 OVERVIEW"
             className={`w-full text-sm px-3 py-2.5 rounded-lg border outline-none transition-colors
-              ${dark ? 'bg-[#0D0F18] border-[#252836] text-white placeholder:text-slate-600 focus:border-indigo-500'
-                : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-400'}`} />
+              ${dark ? 'bg-[#0D0F18] border-[#A1BDD914] text-white placeholder:text-slate-600 focus:border-[#579DFF]'
+                : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-[#0C66E4]'}`} />
         </div>
 
         {/* 아이콘 선택 */}
@@ -396,8 +396,8 @@ function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
               <button key={ic} onClick={() => setIcon(ic)}
                 className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border transition-all
                   ${icon === ic
-                    ? 'border-indigo-500 bg-indigo-500/15 scale-110'
-                    : dark ? 'border-[#252836] hover:border-indigo-500/40' : 'border-slate-200 hover:border-indigo-300'}`}>
+                    ? 'border-[#579DFF] bg-[#E9F2FF]0/15 scale-110'
+                    : dark ? 'border-[#A1BDD914] hover:border-[#579DFF]/40' : 'border-slate-200 hover:border-[#85B8FF]'}`}>
                 {ic}
               </button>
             ))}
@@ -425,7 +425,7 @@ function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
         {/* 액션 */}
         <div className="flex justify-end gap-2">
           <button onClick={onClose}
-            className={`text-xs px-4 py-2 rounded-lg border ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+            className={`text-xs px-4 py-2 rounded-lg border ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
             취소
           </button>
           <button onClick={handleSave}
@@ -433,7 +433,7 @@ function SaveTemplateModal({ dark, dashboard, onSave, onClose }) {
             className={`flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg font-semibold transition-colors
               ${!name.trim() || slotCount === 0
                 ? 'bg-slate-500/50 text-slate-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                : 'bg-[#0C66E4] hover:bg-[#0055CC] text-white'}`}>
             <Save size={12} /> 저장
           </button>
         </div>
@@ -475,7 +475,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
   }
 
   return (
-    <div className={`flex items-stretch border-b shrink-0 ${dark ? 'border-[#252836]' : 'border-slate-200'}`}>
+    <div className={`flex items-stretch border-b shrink-0 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`}>
       <div className="flex items-center gap-0.5 px-5 pt-3 overflow-x-auto flex-1 min-w-0">
         {tabs.map((tab, tabIdx) => (
           <div key={tab.id} draggable onDragStart={e => onTabDragStart(e, tabIdx, tab.id)} onDragEnter={e => onTabDragEnter(e, tabIdx)}
@@ -486,15 +486,15 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
                 defaultValue={tab.label}
                 onBlur={commitRename}
                 onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); commitRename() } if (e.key === 'Escape') setRenamingId(null) }}
-                className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24 border-b-2 border-indigo-500 ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`} />
+                className={`text-xs px-3 py-2 rounded-t-lg outline-none w-24 border-b-2 border-[#579DFF] ${dark ? 'bg-transparent text-white' : 'bg-transparent text-slate-800'}`} />
             ) : (
               <button onClick={() => onSelect(tab.id)}
                 onDoubleClick={() => setRenamingId(tab.id)}
                 title="더블클릭으로 이름 변경"
                 className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
                   ${activeId === tab.id
-                    ? dark ? 'border-indigo-500 text-white bg-[#1A1D27]' : 'border-indigo-500 text-indigo-600 bg-white'
-                    : dark ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#1A1D27]/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                    ? dark ? 'border-[#579DFF] text-white bg-[#22272B]' : 'border-[#579DFF] text-[#0C66E4] bg-white'
+                    : dark ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#22272B]/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                 {tab.label}
               </button>
             )}
@@ -512,8 +512,8 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
               onKeyDown={e => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); commitAdd() } if (e.key === 'Escape') setAddingTab(false) }}
               placeholder="탭 이름"
               className={`text-xs px-2.5 py-1.5 rounded-lg border outline-none w-24
-                ${dark ? 'border-indigo-500 bg-transparent text-white placeholder:text-slate-500' : 'border-indigo-400 bg-transparent text-slate-800 placeholder:text-slate-400'}`} />
-            <button onClick={commitAdd} className="text-xs px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">확인</button>
+                ${dark ? 'border-[#579DFF] bg-transparent text-white placeholder:text-slate-500' : 'border-[#0C66E4] bg-transparent text-slate-800 placeholder:text-slate-400'}`} />
+            <button onClick={commitAdd} className="text-xs px-2.5 py-1.5 bg-[#0C66E4] text-white rounded-lg hover:bg-[#0055CC]">확인</button>
             <button onClick={() => setAddingTab(false)}
               className={`text-xs px-2 py-1.5 rounded-lg ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-500'}`}>취소</button>
           </div>
@@ -527,7 +527,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
       </div>
 
       {rightSlot && (
-        <div className={`flex items-center gap-2 px-4 shrink-0 border-l ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+        <div className={`flex items-center gap-2 px-4 shrink-0 border-l ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
           {rightSlot}
         </div>
       )}
@@ -719,14 +719,14 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
     <div className="flex flex-col gap-3">
       {slots.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 gap-5 rounded-2xl border-2 border-dashed
-          ${dark ? 'border-[#252836] text-slate-500' : 'border-slate-200 text-slate-400'}`}>
+          ${dark ? 'border-[#A1BDD914] text-slate-500' : 'border-slate-200 text-slate-400'}`}>
           <span className="text-5xl">📊</span>
           <div className="text-center">
             <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>아직 카드가 없습니다</p>
             <p className="text-xs mt-1.5">카드를 추가해 원하는 지표를 시각화해보세요</p>
           </div>
           <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 text-xs px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-semibold">
+            className="flex items-center gap-2 text-xs px-5 py-2.5 bg-[#0C66E4] text-white rounded-xl hover:bg-[#0055CC] font-semibold">
             <Plus size={13} /> 첫 번째 카드 추가
           </button>
         </div>
@@ -765,12 +765,12 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       {editMode && clipboard && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-[slideDown_0.2s_ease-out]">
           <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-lg backdrop-blur-sm
-            ${dark ? 'border-emerald-500/40 bg-[#1A1D27]/95 shadow-emerald-500/10' : 'border-emerald-300 bg-white/95 shadow-emerald-100'}`}>
+            ${dark ? 'border-emerald-500/40 bg-[#22272B]/95 shadow-emerald-500/10' : 'border-emerald-300 bg-white/95 shadow-emerald-100'}`}>
             <p className={`text-xs ${dark ? 'text-emerald-400' : 'text-emerald-700'}`}>
               📋 <span className="font-semibold">{clipboard.type.toUpperCase()}</span> 위젯이 복사되었습니다
             </p>
             <button onClick={() => setClipboard(null)}
-              className={`text-xs px-2.5 py-1 rounded-lg ${dark ? 'text-slate-400 hover:text-white hover:bg-[#252836]' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
+              className={`text-xs px-2.5 py-1 rounded-lg ${dark ? 'text-slate-400 hover:text-white hover:bg-[#2C333A]' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
               취소
             </button>
             <button onClick={handlePasteSlot}
@@ -785,8 +785,8 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       {editMode && slots.length > 0 && (
         <button onClick={() => setShowAdd(true)}
           className={`w-full h-20 rounded-xl border-2 border-dashed cursor-pointer flex items-center justify-center gap-2 transition-colors select-none
-            ${dark ? 'border-[#252836] text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5'
-              : 'border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50'}`}>
+            ${dark ? 'border-[#A1BDD914] text-slate-400 hover:border-[#579DFF]/50 hover:text-[#579DFF] hover:bg-[#E9F2FF]0/5'
+              : 'border-slate-200 text-slate-500 hover:border-[#85B8FF] hover:text-[#579DFF] hover:bg-[#E9F2FF]/50'}`}>
           <Plus size={16} />
           <span className="text-xs font-semibold">카드 추가</span>
         </button>
@@ -945,12 +945,12 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
             <>
               <button onClick={() => { setEditMode(false) }}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                  ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 취소
               </button>
               <button onClick={() => { handleSave(); setEditMode(false) }}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
-                  ${saved ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+                  ${saved ? 'bg-emerald-500 text-white' : 'bg-[#0C66E4] hover:bg-[#0055CC] text-white'}`}>
                 <Check size={12} /> {saved ? '저장됨' : '저장'}
               </button>
             </>
@@ -959,8 +959,8 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
               <button onClick={() => setShowSource(s => !s)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
                   ${showSource
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    ? 'bg-[#0C66E4] text-white border-[#0C66E4]'
+                    : dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Code2 size={12} /> 소스
               </button>
               <ToolbarDropdown label="카드 추가" icon={<Plus size={12} />} dark={dark}
@@ -999,7 +999,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
               />
               <button onClick={() => setEditMode(true)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
-                  ${dark ? 'border-[#252836] text-slate-400 hover:text-white hover:bg-[#1A1D27]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                  ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Settings2 size={12} /> 대시보드 편집
               </button>
             </>
@@ -1052,12 +1052,12 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
           className={`flex flex-col items-center justify-center flex-1 gap-5 w-full transition-colors group
             ${dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
           <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-colors
-            ${dark ? 'bg-[#1A1D27] group-hover:bg-indigo-600/20' : 'bg-slate-50 group-hover:bg-indigo-50'}`}>
-            <Plus size={32} className="text-indigo-400 group-hover:text-indigo-500" />
+            ${dark ? 'bg-[#22272B] group-hover:bg-[#0C66E4]/20' : 'bg-slate-50 group-hover:bg-[#E9F2FF]'}`}>
+            <Plus size={32} className="text-[#579DFF] group-hover:text-[#579DFF]" />
           </div>
           <div className="text-center">
             <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>탭이 없습니다</p>
-            <p className="text-xs mt-1.5 text-indigo-400 group-hover:text-indigo-300 font-medium">+ 여기를 클릭해서 첫 번째 탭을 만들어보세요</p>
+            <p className="text-xs mt-1.5 text-[#579DFF] group-hover:text-[#85B8FF] font-medium">+ 여기를 클릭해서 첫 번째 탭을 만들어보세요</p>
           </div>
         </button>
       )}

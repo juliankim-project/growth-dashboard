@@ -37,7 +37,7 @@ export default function GroupByPicker({ options = [], selected, onSelect, dark }
         type="button"
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs w-full text-left transition-colors
-          ${dark ? 'bg-[#0F1117] border-[#252836] text-slate-300 hover:border-violet-500/40'
+          ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-slate-300 hover:border-violet-500/40'
                  : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300'}`}
       >
         <span className="flex-1 truncate">{selLabel}</span>
@@ -47,7 +47,7 @@ export default function GroupByPicker({ options = [], selected, onSelect, dark }
       {/* 팝오버 */}
       {open && (
         <div className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border shadow-xl
-          ${dark ? 'bg-[#13151F] border-[#252836]' : 'bg-white border-slate-200'}`}>
+          ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
 
           {/* 검색 */}
           <div className="relative px-3 pt-3 pb-2">
@@ -58,7 +58,7 @@ export default function GroupByPicker({ options = [], selected, onSelect, dark }
               onChange={e => setQuery(e.target.value)}
               placeholder="프로퍼티 검색"
               className={`w-full pl-7 pr-3 py-1.5 rounded-lg border text-xs outline-none
-                ${dark ? 'bg-[#0F1117] border-[#252836] text-white placeholder:text-slate-500'
+                ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500'
                        : 'bg-white border-slate-200 text-slate-700 placeholder:text-slate-400'}`}
               autoFocus
             />
@@ -66,7 +66,7 @@ export default function GroupByPicker({ options = [], selected, onSelect, dark }
 
           {/* 아이템 리스트 */}
           <div className={`max-h-52 overflow-y-auto py-1 border-t
-            ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+            ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
             {filtered.length === 0 ? (
               <div className={`text-center py-6 text-xs ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
                 검색 결과 없음
@@ -81,7 +81,7 @@ export default function GroupByPicker({ options = [], selected, onSelect, dark }
                   className={`w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs transition-colors
                     ${on
                       ? dark ? 'bg-violet-500/5' : 'bg-violet-50/50'
-                      : dark ? 'hover:bg-[#1A1D27]' : 'hover:bg-slate-50'}`}
+                      : dark ? 'hover:bg-[#22272B]' : 'hover:bg-slate-50'}`}
                 >
                   {/* 라디오 */}
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors
@@ -104,14 +104,14 @@ export default function GroupByPicker({ options = [], selected, onSelect, dark }
 
           {/* 하단 액션 바 */}
           <div className={`flex items-center justify-end gap-2 px-3 py-2 border-t
-            ${dark ? 'border-[#252836]' : 'border-slate-100'}`}>
+            ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
             <button type="button" onClick={() => setOpen(false)}
               className={`text-[11px] px-3 py-1 rounded-md
                 ${dark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-700'}`}>
               취소
             </button>
             <button type="button" onClick={commit}
-              className="text-[11px] px-3 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium">
+              className="text-[11px] px-3 py-1 rounded-md bg-[#0C66E4] text-white hover:bg-[#0055CC] font-medium">
               완료
             </button>
           </div>

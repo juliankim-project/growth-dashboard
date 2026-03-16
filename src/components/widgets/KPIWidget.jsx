@@ -57,7 +57,7 @@ function KPIWidget({ data, config, dark, metrics: metricsProp }) {
     <div className={`
       rounded-xl px-4 py-3 border flex flex-col gap-1.5
       transition-all hover:shadow-md hover:-translate-y-0.5
-      ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}
     `}>
       <div className="flex items-center justify-between gap-2">
         <span className={`text-[10px] font-bold uppercase tracking-widest truncate ${dark ? 'text-slate-400' : 'text-slate-700'}`}>

@@ -66,7 +66,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
 
   return (
     <div className={`rounded-xl p-5 border h-full flex flex-col
-      ${dark ? 'bg-[#1A1D27] border-[#252836]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
         {title}
       </p>
@@ -81,7 +81,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
           <div className="flex gap-3 flex-wrap mb-4">
             {stageValues[0] > 0 && firstStage && (
               <div className={`rounded-lg border px-3 py-2 min-w-[100px]
-                ${dark ? 'bg-[#20232E] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+                ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 <p className={`text-[10px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {firstStage.label}
                 </p>
@@ -92,7 +92,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
             )}
             {stageValues[stageValues.length - 1] > 0 && lastStage && stages.length >= 2 && (
               <div className={`rounded-lg border px-3 py-2 min-w-[100px]
-                ${dark ? 'bg-[#20232E] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+                ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 <p className={`text-[10px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {lastStage.label}
                 </p>
@@ -103,7 +103,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
             )}
             {totalConv && (
               <div className={`rounded-lg border px-3 py-2 min-w-[100px]
-                ${dark ? 'bg-[#20232E] border-[#252836]' : 'bg-slate-50 border-slate-200'}`}>
+                ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 <p className={`text-[10px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   전체 전환율
                 </p>
