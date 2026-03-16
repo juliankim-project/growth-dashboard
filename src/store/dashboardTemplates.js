@@ -252,7 +252,7 @@ export function dashboardToTemplate(dashboard, name, icon = '📌') {
   const slots = dashboard?.slots || []
   const tables = [...new Set(slots.map(s => s.table).filter(Boolean))]
 
-  const RGL_COLS = 12, RGL_ROW_H = 80
+  const RGL_COLS = 24, RGL_ROW_H = 48
   const slotDefs = slots.map(s => {
     const w = s.layout?.w
     const h = s.layout?.h

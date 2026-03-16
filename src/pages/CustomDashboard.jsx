@@ -122,8 +122,25 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
 /* ══════════════════════════════════════════
    그리드 카드 (react-grid-layout용)
 ══════════════════════════════════════════ */
-const RGL_COLS = 12
-const RGL_ROW_H = 96
+const RGL_COLS = 24
+const RGL_ROW_H = 48
+
+/* 위젯 타입별 최소 / 기본 크기 (24칸 그리드 기준)
+   minW/minH = 이보다 작게 못 줄임, defW/defH = 새 위젯 추가 시 기본 크기 */
+const WIDGET_SIZES = {
+  kpi:        { minW: 4,  minH: 3,  defW: 6,  defH: 4  },   // 최소 ~17%, 기본 25%
+  line:       { minW: 6,  minH: 5,  defW: 12, defH: 6  },
+  bar:        { minW: 6,  minH: 5,  defW: 12, defH: 6  },
+  pie:        { minW: 5,  minH: 5,  defW: 12, defH: 6  },
+  table:      { minW: 8,  minH: 5,  defW: 12, defH: 6  },
+  funnel:     { minW: 6,  minH: 5,  defW: 12, defH: 6  },
+  comparison: { minW: 6,  minH: 5,  defW: 12, defH: 6  },
+  ranking:    { minW: 5,  minH: 5,  defW: 12, defH: 6  },
+  alert:      { minW: 6,  minH: 5,  defW: 12, defH: 6  },
+  timeline:   { minW: 6,  minH: 5,  defW: 12, defH: 6  },
+  kanban:     { minW: 8,  minH: 6,  defW: 12, defH: 8  },
+}
+const DEFAULT_SIZE = { minW: 4, minH: 3, defW: 12, defH: 6 }
 
 const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
@@ -557,14 +574,36 @@ function preProcessSlot(s) {
 }
 
 /* layout 없는 슬롯들에 행 기반 x/y 자동 계산 */
+/* 12칸→24칸 마이그레이션: 기존 layout의 값들을 2배로 확대 */
+function migrateLayout12to24(layout, type) {
+  if (!layout) return null
+  /* _m24 플래그로 이미 변환 완료 여부 확인 */
+  if (layout._m24) return layout
+  const sz = WIDGET_SIZES[type] || DEFAULT_SIZE
+  return {
+    x: layout.x * 2,
+    y: layout.y * 2,
+    w: layout.w * 2,
+    h: layout.h * 2,
+    minW: sz.minW,
+    minH: sz.minH,
+    _m24: true,
+  }
+}
+
 function migrateSlots(slots) {
   let x = 0, y = 0, rowMaxH = 0
   return slots.map(s => {
     s = preProcessSlot(s)
-    if (s.layout) return s
+    /* 기존 layout이 있으면 12→24칸 마이그레이션 */
+    if (s.layout) {
+      const migrated = migrateLayout12to24(s.layout, s.type)
+      return migrated !== s.layout ? { ...s, layout: migrated } : s
+    }
 
-    const w = Math.max(1, Math.round((s.widthPct || 33.33) / 100 * RGL_COLS))
-    const h = s.heightPx ? Math.max(1, Math.round(s.heightPx / RGL_ROW_H)) : (s.type === 'kpi' ? 2 : 3)
+    const sz = WIDGET_SIZES[s.type] || DEFAULT_SIZE
+    const w = Math.max(sz.minW, Math.round((s.widthPct || 33.33) / 100 * RGL_COLS))
+    const h = s.heightPx ? Math.max(sz.minH, Math.round(s.heightPx / RGL_ROW_H)) : sz.defH
 
     if (x + w > RGL_COLS) {
       x = 0
@@ -572,7 +611,7 @@ function migrateSlots(slots) {
       rowMaxH = 0
     }
 
-    const layout = { x, y, w, h, minW: 1, minH: 1 }
+    const layout = { x, y, w, h, minW: sz.minW, minH: sz.minH, _m24: true }
     x += w
     rowMaxH = Math.max(rowMaxH, h)
 
@@ -623,16 +662,19 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
 
   /* react-grid-layout 레이아웃 배열 */
   const layout = useMemo(() =>
-    slots.map(s => ({
-      i: s.id,
-      x: s.layout?.x ?? 0,
-      y: s.layout?.y ?? Infinity,
-      w: s.layout?.w ?? 4,
-      h: s.layout?.h ?? 3,
-      minW: s.layout?.minW ?? 1,
-      minH: s.layout?.minH ?? 1,
-      static: !editMode,
-    }))
+    slots.map(s => {
+      const sz = WIDGET_SIZES[s.type] || DEFAULT_SIZE
+      return {
+        i: s.id,
+        x: s.layout?.x ?? 0,
+        y: s.layout?.y ?? Infinity,
+        w: s.layout?.w ?? sz.defW,
+        h: s.layout?.h ?? sz.defH,
+        minW: sz.minW,
+        minH: sz.minH,
+        static: !editMode,
+      }
+    })
   , [slots, editMode])
 
   const handleLayoutChange = useCallback((newLayout) => {
@@ -646,9 +688,10 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
           const l = layoutMap.get(s.id)
           if (!l) return s
           /* layout + widthPct/heightPx 동기화 — 리사이즈 결과가 저장에 반영됨 */
+          const sz = WIDGET_SIZES[s.type] || DEFAULT_SIZE
           return {
             ...s,
-            layout: { x: l.x, y: l.y, w: l.w, h: l.h, minW: l.minW ?? 1, minH: l.minH ?? 1 },
+            layout: { x: l.x, y: l.y, w: l.w, h: l.h, minW: sz.minW, minH: sz.minH, _m24: true },
             widthPct: Math.round((l.w / RGL_COLS) * 100 * 100) / 100,
             heightPx: l.h * RGL_ROW_H,
           }
@@ -658,11 +701,11 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
   }, [editMode])
 
   const handleAddSlot = useCallback((_, widget) => {
+    const sz = WIDGET_SIZES[widget.type] || DEFAULT_SIZE
     const defaultLayout = {
       x: 0, y: Infinity,
-      w: widget.type === 'kpi' ? 3 : 6,
-      h: widget.type === 'kpi' ? 2 : 3,
-      minW: 1, minH: 1,
+      w: sz.defW, h: sz.defH,
+      minW: sz.minW, minH: sz.minH, _m24: true,
     }
     setDashboard(prev => {
       const n = normalizeDashboard(prev)
@@ -697,7 +740,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       ...clipboard,
       id: `w_${Date.now()}_paste`,
       config: { ...clipboard.config },
-      layout: { ...srcLayout, x: 0, y: 0, minW: srcLayout.minW ?? 1, minH: srcLayout.minH ?? 1 },
+      layout: { ...srcLayout, x: 0, y: Infinity, minW: (WIDGET_SIZES[clipboard.type] || DEFAULT_SIZE).minW, minH: (WIDGET_SIZES[clipboard.type] || DEFAULT_SIZE).minH, _m24: true },
     }
     setDashboard(prev => {
       const n = normalizeDashboard(prev)
@@ -738,7 +781,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               width={containerWidth}
               layouts={{ lg: layout }}
               breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
-              cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
+              cols={{ lg: 24, md: 20, sm: 12, xs: 8 }}
               rowHeight={RGL_ROW_H}
               isDraggable={editMode}
               isResizable={editMode}
