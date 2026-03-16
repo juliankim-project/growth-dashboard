@@ -55,19 +55,19 @@ function KPIWidget({ data, config, dark, metrics: metricsProp }) {
 
   return (
     <div className={`
-      rounded-xl px-5 py-4 border flex flex-col gap-1.5
+      rounded-xl px-3 py-2 border flex flex-col justify-center h-full overflow-hidden
       transition-all hover:shadow-md hover:-translate-y-0.5
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}
     `}>
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs font-bold uppercase tracking-widest truncate ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+      <div className="flex items-center justify-between gap-1.5 min-w-0">
+        <span className={`text-[10px] font-bold uppercase tracking-wider truncate ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           {title}
         </span>
-        <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs shrink-0 ${colorCls}`}>
+        <div className={`w-5 h-5 rounded flex items-center justify-center text-[10px] shrink-0 ${colorCls}`}>
           {ICON_MAP[metric] || '📊'}
         </div>
       </div>
-      <div className={`text-xl font-bold leading-tight ${dark ? 'text-white' : 'text-slate-800'}`}>
+      <div className={`text-base font-bold leading-tight truncate ${dark ? 'text-white' : 'text-slate-800'}`}>
         {display}
       </div>
     </div>

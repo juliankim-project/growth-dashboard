@@ -123,24 +123,25 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
    그리드 카드 (react-grid-layout용)
 ══════════════════════════════════════════ */
 const RGL_COLS = 24
-const RGL_ROW_H = 48
+const RGL_ROW_H = 32
 
-/* 위젯 타입별 최소 / 기본 크기 (24칸 그리드 기준)
-   minW/minH = 이보다 작게 못 줄임, defW/defH = 새 위젯 추가 시 기본 크기 */
+/* 위젯 타입별 최소 / 기본 크기 (24칸 그리드, 32px 행높이 기준)
+   minW/minH = 이보다 작게 못 줄임, defW/defH = 새 위젯 추가 시 기본 크기
+   32px 행높이 → minH 2 = 64px, minH 3 = 96px */
 const WIDGET_SIZES = {
-  kpi:        { minW: 4,  minH: 3,  defW: 6,  defH: 4  },   // 최소 ~17%, 기본 25%
-  line:       { minW: 6,  minH: 5,  defW: 12, defH: 6  },
-  bar:        { minW: 6,  minH: 5,  defW: 12, defH: 6  },
-  pie:        { minW: 5,  minH: 5,  defW: 12, defH: 6  },
-  table:      { minW: 8,  minH: 5,  defW: 12, defH: 6  },
-  funnel:     { minW: 6,  minH: 5,  defW: 12, defH: 6  },
-  comparison: { minW: 6,  minH: 5,  defW: 12, defH: 6  },
-  ranking:    { minW: 5,  minH: 5,  defW: 12, defH: 6  },
-  alert:      { minW: 6,  minH: 5,  defW: 12, defH: 6  },
-  timeline:   { minW: 6,  minH: 5,  defW: 12, defH: 6  },
-  kanban:     { minW: 8,  minH: 6,  defW: 12, defH: 8  },
+  kpi:        { minW: 3,  minH: 2,  defW: 6,  defH: 4  },   // 최소 ~12.5% 폭, 64px 높이
+  line:       { minW: 4,  minH: 4,  defW: 12, defH: 8  },
+  bar:        { minW: 4,  minH: 4,  defW: 12, defH: 8  },
+  pie:        { minW: 4,  minH: 4,  defW: 10, defH: 8  },
+  table:      { minW: 4,  minH: 3,  defW: 12, defH: 8  },
+  funnel:     { minW: 4,  minH: 4,  defW: 12, defH: 8  },
+  comparison: { minW: 4,  minH: 3,  defW: 12, defH: 8  },
+  ranking:    { minW: 3,  minH: 3,  defW: 10, defH: 8  },
+  alert:      { minW: 4,  minH: 3,  defW: 12, defH: 8  },
+  timeline:   { minW: 4,  minH: 4,  defW: 12, defH: 8  },
+  kanban:     { minW: 6,  minH: 5,  defW: 12, defH: 10 },
 }
-const DEFAULT_SIZE = { minW: 4, minH: 3, defW: 12, defH: 6 }
+const DEFAULT_SIZE = { minW: 3, minH: 2, defW: 12, defH: 8 }
 
 const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
@@ -788,7 +789,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               compactType="vertical"
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
-              margin={[14, 14]}
+              margin={[10, 10]}
             >
               {slots.map(slot => (
                 <div key={slot.id}>

@@ -30,11 +30,11 @@ function AlertWidget({ data, config, dark, metrics: metricsProp }) {
   }, [items])
 
   return (
-    <div className={`rounded-xl p-6 border h-full flex flex-col
+    <div className={`rounded-xl p-3 border h-full overflow-hidden flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       {/* 헤더 + 요약 */}
       <div className="flex items-center justify-between mb-4">
-        <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+        <p className={`text-xs font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
         <div className="flex gap-2">
           {statusCounts.danger > 0 && (
             <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-500">
