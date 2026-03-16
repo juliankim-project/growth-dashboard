@@ -1,11 +1,19 @@
 import "@supabase/functions-js/edge-runtime.d.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0"
 
 const MCP_BASE = "https://latestrue.plott.co.kr"
 const MCP_URL  = `${MCP_BASE}/mcp`
-const OAUTH_REGISTER = `${MCP_BASE}/oauth/register`
-const OAUTH_TOKEN    = `${MCP_BASE}/oauth/token`
+const OAUTH_REGISTER  = `${MCP_BASE}/oauth/register`
+const OAUTH_AUTHORIZE = `${MCP_BASE}/oauth/authorize`
+const OAUTH_TOKEN     = `${MCP_BASE}/oauth/token`
 
-/* ── 캐시: 동적 등록 + 토큰 ── */
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+const CALLBACK_URL = `${SUPABASE_URL}/functions/v1/mcp-proxy?action=callback`
+
+const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+/* ── 캐시 ── */
 let clientCreds: { client_id: string; client_secret: string } | null = null
 let accessToken: string | null = null
 let tokenExpiry = 0
@@ -13,51 +21,111 @@ let tokenExpiry = 0
 const CORS = {
   "Access-Control-Allow-Origin":  "*",
   "Access-Control-Allow-Headers": "authorization, content-type, x-client-info, apikey",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+}
+
+/* ── DB에서 토큰 저장/조회 ── */
+async function saveTokens(tokens: Record<string, unknown>) {
+  await db.from("mcp_tokens").upsert({
+    id: "plott",
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: Date.now() + ((tokens.expires_in as number ?? 3600) - 60) * 1000,
+    updated_at: new Date().toISOString(),
+  })
+}
+
+async function loadTokens() {
+  const { data } = await db.from("mcp_tokens").select("*").eq("id", "plott").maybeSingle()
+  return data
 }
 
 /* ── OAuth 동적 클라이언트 등록 ── */
 async function ensureClient() {
   if (clientCreds) return clientCreds
+
+  // DB에 저장된 client 확인
+  const { data } = await db.from("mcp_tokens").select("client_id, client_secret").eq("id", "plott").maybeSingle()
+  if (data?.client_id && data?.client_secret) {
+    clientCreds = { client_id: data.client_id, client_secret: data.client_secret }
+    return clientCreds
+  }
+
   const res = await fetch(OAUTH_REGISTER, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       client_name: "growth-dashboard-edge",
-      redirect_uris: ["https://gjykjvevjuzjyuuopsns.supabase.co/functions/v1/mcp-proxy/callback"],
-      grant_types: ["client_credentials"],
+      redirect_uris: [CALLBACK_URL],
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
       token_endpoint_auth_method: "client_secret_post",
+      scope: "mcp:tools",
     }),
   })
   if (!res.ok) {
     const txt = await res.text()
     throw new Error(`OAuth register failed: ${res.status} ${txt}`)
   }
-  clientCreds = await res.json() as { client_id: string; client_secret: string }
+  const result = await res.json()
+  clientCreds = { client_id: result.client_id, client_secret: result.client_secret }
+
+  // client 정보 DB 저장
+  await db.from("mcp_tokens").upsert({
+    id: "plott",
+    client_id: result.client_id,
+    client_secret: result.client_secret,
+  })
+
   return clientCreds!
 }
 
-/* ── OAuth 토큰 발급 ── */
-async function ensureToken() {
+/* ── PKCE 코드 생성 ── */
+async function generatePKCE() {
+  const buf = new Uint8Array(32)
+  crypto.getRandomValues(buf)
+  const verifier = btoa(String.fromCharCode(...buf))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
+  return { verifier, challenge }
+}
+
+/* ── OAuth 토큰 (refresh_token으로 갱신) ── */
+async function ensureToken(): Promise<string> {
   if (accessToken && Date.now() < tokenExpiry) return accessToken
+
+  const stored = await loadTokens()
+  if (!stored?.refresh_token) {
+    throw new Error("NOT_AUTHENTICATED")
+  }
+
   const { client_id, client_secret } = await ensureClient()
   const res = await fetch(OAUTH_TOKEN, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "client_credentials",
+      grant_type: "refresh_token",
+      refresh_token: stored.refresh_token,
       client_id,
       client_secret,
-      scope: "mcp:tools",
     }),
   })
   if (!res.ok) {
     const txt = await res.text()
-    throw new Error(`OAuth token failed: ${res.status} ${txt}`)
+    // refresh_token 만료 시 재인증 필요
+    throw new Error(`NOT_AUTHENTICATED: ${txt}`)
   }
-  const data = await res.json() as { access_token: string; expires_in?: number }
+  const data = await res.json()
   accessToken = data.access_token
   tokenExpiry = Date.now() + ((data.expires_in ?? 3600) - 60) * 1000
+
+  // 새 refresh_token이 있으면 저장
+  if (data.refresh_token) {
+    await saveTokens(data)
+  }
+
   return accessToken!
 }
 
@@ -86,12 +154,111 @@ async function callMCP(tool: string, args: Record<string, unknown>) {
 
 /* ── Edge Function 핸들러 ── */
 Deno.serve(async (req) => {
+  const url = new URL(req.url)
+  const action = url.searchParams.get("action")
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS })
   }
 
+  /* ── 1) OAuth 인증 시작: GET ?action=auth ── */
+  if (action === "auth") {
+    try {
+      const { client_id } = await ensureClient()
+      const { verifier, challenge } = await generatePKCE()
+
+      // verifier를 DB에 임시 저장
+      await db.from("mcp_tokens").upsert({
+        id: "plott",
+        code_verifier: verifier,
+        client_id: clientCreds!.client_id,
+        client_secret: clientCreds!.client_secret,
+      })
+
+      const authUrl = new URL(OAUTH_AUTHORIZE)
+      authUrl.searchParams.set("response_type", "code")
+      authUrl.searchParams.set("client_id", client_id)
+      authUrl.searchParams.set("redirect_uri", CALLBACK_URL)
+      authUrl.searchParams.set("scope", "mcp:tools")
+      authUrl.searchParams.set("code_challenge", challenge)
+      authUrl.searchParams.set("code_challenge_method", "S256")
+
+      return new Response(null, {
+        status: 302,
+        headers: { Location: authUrl.toString() },
+      })
+    } catch (e) {
+      return new Response(`Auth start error: ${e}`, { status: 500 })
+    }
+  }
+
+  /* ── 2) OAuth 콜백: GET ?action=callback&code=... ── */
+  if (action === "callback") {
+    const code = url.searchParams.get("code")
+    if (!code) {
+      const err = url.searchParams.get("error") || "no code"
+      return new Response(`OAuth callback error: ${err}`, { status: 400 })
+    }
+
+    try {
+      const stored = await loadTokens()
+      if (!stored?.code_verifier || !stored?.client_id || !stored?.client_secret) {
+        return new Response("Missing PKCE verifier or client creds", { status: 400 })
+      }
+
+      const res = await fetch(OAUTH_TOKEN, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: CALLBACK_URL,
+          client_id: stored.client_id,
+          client_secret: stored.client_secret,
+          code_verifier: stored.code_verifier,
+        }),
+      })
+
+      if (!res.ok) {
+        const txt = await res.text()
+        return new Response(`Token exchange failed: ${res.status} ${txt}`, { status: 502 })
+      }
+
+      const tokens = await res.json()
+      await saveTokens(tokens)
+
+      // 인증 성공 메모리 캐시 업데이트
+      accessToken = tokens.access_token
+      tokenExpiry = Date.now() + ((tokens.expires_in ?? 3600) - 60) * 1000
+
+      return new Response(`
+        <html><body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;">
+          <div style="text-align:center;">
+            <h1>✅ MCP 인증 완료!</h1>
+            <p>이 창을 닫고 대시보드에서 질문해 보세요.</p>
+          </div>
+        </body></html>
+      `, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } })
+    } catch (e) {
+      return new Response(`Callback error: ${e}`, { status: 500 })
+    }
+  }
+
+  /* ── 3) 인증 상태 확인: POST { action: "status" } ── */
+  /* ── 4) MCP 도구 호출: POST { tool, args } ── */
   try {
-    const { tool, args } = await req.json() as { tool: string; args: Record<string, unknown> }
+    const body = await req.json()
+
+    if (body.action === "status") {
+      const stored = await loadTokens()
+      const authenticated = !!stored?.refresh_token
+      return new Response(
+        JSON.stringify({ authenticated }),
+        { headers: { ...CORS, "Content-Type": "application/json" } },
+      )
+    }
+
+    const { tool, args } = body as { tool: string; args: Record<string, unknown> }
     if (!tool) {
       return new Response(
         JSON.stringify({ error: "Missing 'tool' field" }),
@@ -108,6 +275,16 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error("mcp-proxy error:", msg)
+
+    // 인증 안 됐으면 auth URL 안내
+    if (msg.includes("NOT_AUTHENTICATED")) {
+      const authUrl = `${SUPABASE_URL}/functions/v1/mcp-proxy?action=auth`
+      return new Response(
+        JSON.stringify({ error: "NOT_AUTHENTICATED", authUrl }),
+        { status: 401, headers: { ...CORS, "Content-Type": "application/json" } },
+      )
+    }
+
     return new Response(
       JSON.stringify({ error: msg }),
       { status: 502, headers: { ...CORS, "Content-Type": "application/json" } },

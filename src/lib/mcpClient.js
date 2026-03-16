@@ -6,6 +6,13 @@
 const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mcp-proxy`
 const ANON_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+export class MCPAuthRequiredError extends Error {
+  constructor(authUrl) {
+    super('MCP 인증이 필요합니다')
+    this.authUrl = authUrl
+  }
+}
+
 async function call(tool, args = {}) {
   const res = await fetch(PROXY_URL, {
     method: 'POST',
@@ -16,10 +23,30 @@ async function call(tool, args = {}) {
     },
     body: JSON.stringify({ tool, args }),
   })
+
+  if (res.status === 401) {
+    const data = await res.json()
+    throw new MCPAuthRequiredError(data.authUrl)
+  }
+
   if (!res.ok) {
     const txt = await res.text()
     throw new Error(`MCP proxy error ${res.status}: ${txt}`)
   }
+  return res.json()
+}
+
+/** 인증 상태 확인 */
+export async function mcpCheckAuth() {
+  const res = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${ANON_KEY}`,
+      'apikey':        ANON_KEY,
+    },
+    body: JSON.stringify({ action: 'status' }),
+  })
   return res.json()
 }
 
