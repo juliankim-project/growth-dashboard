@@ -52,7 +52,10 @@ export async function mcpCheckAuth() {
 
 /** 자연어 질문 */
 export function mcpAsk(question) {
-  return call('ask', { question })
+  return call('ask', {
+    question,
+    use_case: 'agent_server_reasoning',
+  })
 }
 
 /** SQL 쿼리 */
