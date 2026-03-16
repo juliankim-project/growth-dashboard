@@ -129,25 +129,80 @@ async function ensureToken(): Promise<string> {
   return accessToken!
 }
 
+/* ── MCP 세션 관리 ── */
+let mcpSessionId: string | null = null
+
+async function mcpFetch(body: Record<string, unknown>, token: string) {
+  const headers: Record<string, string> = {
+    "Content-Type":  "application/json",
+    "Accept":        "application/json, text/event-stream",
+    "Authorization": `Bearer ${token}`,
+  }
+  if (mcpSessionId) {
+    headers["Mcp-Session-Id"] = mcpSessionId
+  }
+
+  const res = await fetch(MCP_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  // 세션 ID 캡처
+  const sid = res.headers.get("Mcp-Session-Id")
+  if (sid) mcpSessionId = sid
+
+  return res
+}
+
+async function ensureSession(token: string) {
+  if (mcpSessionId) return
+
+  const res = await mcpFetch({
+    jsonrpc: "2.0",
+    id: crypto.randomUUID(),
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-03-26",
+      capabilities: {},
+      clientInfo: { name: "growth-dashboard", version: "1.0.0" },
+    },
+  }, token)
+
+  if (!res.ok) {
+    const txt = await res.text()
+    throw new Error(`MCP initialize failed: ${res.status} ${txt}`)
+  }
+
+  // 세션 ID는 mcpFetch에서 자동 캡처됨
+  await res.json() // consume body
+
+  // initialized 알림 전송
+  await mcpFetch({
+    jsonrpc: "2.0",
+    method: "notifications/initialized",
+  }, token)
+}
+
 /* ── MCP 호출 ── */
 async function callMCP(tool: string, args: Record<string, unknown>) {
   const token = await ensureToken()
-  const res = await fetch(MCP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Accept":        "application/json, text/event-stream",
-      "Authorization": `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: crypto.randomUUID(),
-      method: "tools/call",
-      params: { name: tool, arguments: args },
-    }),
-  })
+  await ensureSession(token)
+
+  const res = await mcpFetch({
+    jsonrpc: "2.0",
+    id: crypto.randomUUID(),
+    method: "tools/call",
+    params: { name: tool, arguments: args },
+  }, token)
+
   if (!res.ok) {
     const txt = await res.text()
+    // 세션 만료 시 재시도
+    if (res.status === 400 && txt.includes("Session")) {
+      mcpSessionId = null
+      return callMCP(tool, args)
+    }
     throw new Error(`MCP call failed: ${res.status} ${txt}`)
   }
   return await res.json()
