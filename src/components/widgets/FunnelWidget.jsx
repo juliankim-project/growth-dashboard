@@ -65,14 +65,14 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
   const lastStage = stages[stages.length - 1]
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col
+    <div className={`rounded-xl p-6 border h-full flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
+      <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
         {title}
       </p>
 
       {stages.length === 0 ? (
-        <div className={`text-center py-10 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-center py-10 text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           퍼널 단계가 설정되지 않았습니다
         </div>
       ) : (
@@ -82,7 +82,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
             {stageValues[0] > 0 && firstStage && (
               <div className={`rounded-lg border px-3 py-2 min-w-[100px]
                 ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
-                <p className={`text-[10px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {firstStage.label}
                 </p>
                 <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
@@ -93,7 +93,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
             {stageValues[stageValues.length - 1] > 0 && lastStage && stages.length >= 2 && (
               <div className={`rounded-lg border px-3 py-2 min-w-[100px]
                 ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
-                <p className={`text-[10px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {lastStage.label}
                 </p>
                 <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
@@ -104,7 +104,7 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
             {totalConv && (
               <div className={`rounded-lg border px-3 py-2 min-w-[100px]
                 ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
-                <p className={`text-[10px] mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs mb-0.5 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                   전체 전환율
                 </p>
                 <p className={`text-sm font-bold ${parseFloat(totalConv) >= 5 ? 'text-emerald-500' : 'text-amber-500'}`}>

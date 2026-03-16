@@ -45,7 +45,7 @@ function ToolbarDropdown({ label, icon, items, dark }) {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+        className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg border transition-colors
           ${open
             ? 'bg-[#0C66E4] text-white border-[#0C66E4]'
             : dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -123,7 +123,7 @@ const renderWidget = (type, data, cfg, dark, metrics, onConfigUpdate, dateColumn
    그리드 카드 (react-grid-layout용)
 ══════════════════════════════════════════ */
 const RGL_COLS = 12
-const RGL_ROW_H = 80
+const RGL_ROW_H = 96
 
 const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCopy, onSlotUpdate, dataMap, defaultTable, filterByDate, dateRange, columnConfig, dark, showSource }) {
   const widgetTable = slot.table || slot.config?._table || defaultTable
@@ -182,8 +182,8 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
         return (
           <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px] rounded-xl
             p-3 overflow-auto font-mono text-white/90 leading-relaxed pointer-events-none">
-            <p className="text-[9px] font-bold text-[#85B8FF] mb-1.5 uppercase tracking-wider">{slot.type}</p>
-            <div className="space-y-0.5 text-[9px]">
+            <p className="text-[11px] font-bold text-[#85B8FF] mb-1.5 uppercase tracking-wider">{slot.type}</p>
+            <div className="space-y-0.5 text-[11px]">
               <p><span className="text-slate-400">table:</span> {widgetTable}</p>
               {cfg.metric && <p><span className="text-slate-400">metric:</span> {ml(cfg.metric)}</p>}
               {cfg.metrics?.length > 0 && <p><span className="text-slate-400">metrics:</span> {cfg.metrics.map(ml).join(', ')}</p>}
@@ -476,7 +476,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
 
   return (
     <div className={`flex items-stretch border-b shrink-0 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`}>
-      <div className="flex items-center gap-0.5 px-5 pt-3 overflow-x-auto flex-1 min-w-0">
+      <div className="flex items-center gap-0.5 px-6 pt-4 overflow-x-auto flex-1 min-w-0">
         {tabs.map((tab, tabIdx) => (
           <div key={tab.id} draggable onDragStart={e => onTabDragStart(e, tabIdx, tab.id)} onDragEnter={e => onTabDragEnter(e, tabIdx)}
             onDragOver={onTabDragOver} onDragEnd={onTabDragEnd}
@@ -491,7 +491,7 @@ function L3TabBar({ tabs, activeId, onSelect, onAdd, onRemove, onRename, onReord
               <button onClick={() => onSelect(tab.id)}
                 onDoubleClick={() => setRenamingId(tab.id)}
                 title="더블클릭으로 이름 변경"
-                className={`text-xs px-4 py-2.5 rounded-t-lg border-b-2 font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
+                className={`text-sm px-5 py-3 rounded-t-lg border-b-2 font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing
                   ${activeId === tab.id
                     ? dark ? 'border-[#579DFF] text-white bg-[#22272B]' : 'border-[#579DFF] text-[#0C66E4] bg-white'
                     : dark ? 'border-transparent text-slate-400 hover:text-white hover:bg-[#22272B]/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
@@ -720,10 +720,10 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       {slots.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 gap-5 rounded-2xl border-2 border-dashed
           ${dark ? 'border-[#A1BDD914] text-slate-500' : 'border-slate-200 text-slate-400'}`}>
-          <span className="text-5xl">📊</span>
+          <span className="text-6xl">📊</span>
           <div className="text-center">
-            <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>아직 카드가 없습니다</p>
-            <p className="text-xs mt-1.5">카드를 추가해 원하는 지표를 시각화해보세요</p>
+            <p className={`text-base font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>아직 카드가 없습니다</p>
+            <p className="text-sm mt-1.5">카드를 추가해 원하는 지표를 시각화해보세요</p>
           </div>
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 text-xs px-5 py-2.5 bg-[#0C66E4] text-white rounded-xl hover:bg-[#0055CC] font-semibold">
@@ -745,7 +745,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
               compactType="vertical"
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
-              margin={[12, 12]}
+              margin={[14, 14]}
             >
               {slots.map(slot => (
                 <div key={slot.id}>
@@ -784,7 +784,7 @@ function DashboardGrid({ tabId, dashboard, setDashboard, dataMap, defaultTable, 
       {/* 카드 추가 버튼 (그리드 하단) */}
       {editMode && slots.length > 0 && (
         <button onClick={() => setShowAdd(true)}
-          className={`w-full h-20 rounded-xl border-2 border-dashed cursor-pointer flex items-center justify-center gap-2 transition-colors select-none
+          className={`w-full h-24 rounded-xl border-2 border-dashed cursor-pointer flex items-center justify-center gap-2 transition-colors select-none
             ${dark ? 'border-[#A1BDD914] text-slate-400 hover:border-[#579DFF]/50 hover:text-[#579DFF] hover:bg-[#E9F2FF]0/5'
               : 'border-slate-200 text-slate-500 hover:border-[#85B8FF] hover:text-[#579DFF] hover:bg-[#E9F2FF]/50'}`}>
           <Plus size={16} />
@@ -944,12 +944,12 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
           editMode ? (
             <>
               <button onClick={() => { setEditMode(false) }}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors
+                className={`text-sm px-4 py-2 rounded-lg border transition-colors
                   ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 취소
               </button>
               <button onClick={() => { handleSave(); setEditMode(false) }}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors
+                className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg font-semibold transition-colors
                   ${saved ? 'bg-emerald-500 text-white' : 'bg-[#0C66E4] hover:bg-[#0055CC] text-white'}`}>
                 <Check size={12} /> {saved ? '저장됨' : '저장'}
               </button>
@@ -957,7 +957,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
           ) : (
             <>
               <button onClick={() => setShowSource(s => !s)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg border transition-colors
                   ${showSource
                     ? 'bg-[#0C66E4] text-white border-[#0C66E4]'
                     : dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
@@ -998,7 +998,7 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
                 ]}
               />
               <button onClick={() => setEditMode(true)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
+                className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg border transition-colors
                   ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:bg-[#22272B]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                 <Settings2 size={12} /> 대시보드 편집
               </button>
@@ -1051,13 +1051,13 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
         <button onClick={() => tabBarAddRef.current?.()}
           className={`flex flex-col items-center justify-center flex-1 gap-5 w-full transition-colors group
             ${dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
-          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-colors
+          <div className={`w-24 h-24 rounded-2xl flex items-center justify-center transition-colors
             ${dark ? 'bg-[#22272B] group-hover:bg-[#0C66E4]/20' : 'bg-slate-50 group-hover:bg-[#E9F2FF]'}`}>
             <Plus size={32} className="text-[#579DFF] group-hover:text-[#579DFF]" />
           </div>
           <div className="text-center">
-            <p className={`text-sm font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>탭이 없습니다</p>
-            <p className="text-xs mt-1.5 text-[#579DFF] group-hover:text-[#85B8FF] font-medium">+ 여기를 클릭해서 첫 번째 탭을 만들어보세요</p>
+            <p className={`text-base font-semibold ${dark ? 'text-slate-300' : 'text-slate-600'}`}>탭이 없습니다</p>
+            <p className="text-sm mt-1.5 text-[#579DFF] group-hover:text-[#85B8FF] font-medium">+ 여기를 클릭해서 첫 번째 탭을 만들어보세요</p>
           </div>
         </button>
       )}

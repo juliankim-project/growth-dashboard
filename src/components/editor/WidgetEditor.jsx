@@ -36,7 +36,7 @@ function SortableMetricItem({ id, label, isComputed, dark, onRemove }) {
           ${dark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-300 hover:text-slate-500'}`}>
         <GripVertical size={12} />
       </button>
-      <span className={`flex-1 text-[10px] font-medium truncate
+      <span className={`flex-1 text-xs font-medium truncate
         ${isComputed
           ? (dark ? 'text-violet-400' : 'text-violet-600')
           : (dark ? 'text-slate-300' : 'text-slate-700')}`}>
@@ -105,11 +105,11 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
   }
 
   const S = {
-    sel: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
+    sel: `px-3 py-2 rounded-lg border text-sm outline-none w-full
       ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white' : 'bg-white border-slate-200 text-slate-700'}`,
-    inp: `px-2.5 py-1.5 rounded-lg border text-xs outline-none w-full
+    inp: `px-3 py-2 rounded-lg border text-sm outline-none w-full
       ${dark ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`,
-    lab: `text-[10px] font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
+    lab: `text-xs font-bold uppercase tracking-wide ${dark ? 'text-slate-400' : 'text-slate-700'}`,
   }
 
   /* ── 선택된 메트릭 칩 렌더러 ── */
@@ -121,7 +121,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
         {arr.map(id => {
           const m = dynMetrics.find(x => x.id === id)
           return (
-            <span key={id} className={`text-[10px] px-2 py-0.5 rounded-md
+            <span key={id} className={`text-xs px-2 py-0.5 rounded-md
               ${m?._computed
                 ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
                 : 'bg-[#579DFF]/10 text-[#579DFF] border border-[#579DFF]/20'}`}>
@@ -141,7 +141,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
         {/* 헤더 */}
         <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0
           ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
-          <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+          <p className={`text-base font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
             {isNew ? '카드 추가' : '위젯 편집'}
           </p>
           <button onClick={onClose} className={`p-2 rounded-xl ${dark ? 'text-slate-400 hover:bg-[#2C333A] hover:text-white' : 'text-slate-400 hover:bg-slate-100'}`}>
@@ -150,7 +150,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
         </div>
 
         {/* 바디 */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 min-h-0">
 
           {/* ─── 위젯 유형: SVG 카드 그리드 ─── */}
           <div>
@@ -224,7 +224,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                             const next = isRight ? cur.filter(x => x !== mid) : [...cur, mid]
                             upd('rightMetrics', next)
                           }}
-                          className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors cursor-pointer
+                          className={`text-xs px-2 py-0.5 rounded-md border transition-colors cursor-pointer
                             ${isRight
                               ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
                               : 'bg-[#579DFF]/10 text-[#579DFF] border-[#579DFF]/20 hover:bg-[#579DFF]/20'}`}>
@@ -287,7 +287,7 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                 </div>
               ))}
               <button onClick={() => upd('stages', [...(config.stages||[]), {id:`s${Date.now()}`, label:'', metric: dynMetrics[0]?.id || ''}])}
-                className={`text-[10px] px-2 py-1 rounded-lg border border-dashed mt-1
+                className={`text-xs px-2 py-1 rounded-lg border border-dashed mt-1
                   ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-[#579DFF]' : 'border-slate-200 text-slate-500'}`}>
                 + 단계 추가
               </button>
@@ -392,18 +392,18 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                     return (
                       <div key={mid}
                         className={`rounded-lg border p-3 mb-2 ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-200 bg-slate-50'}`}>
-                        <p className={`text-[10px] font-semibold mb-2 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <p className={`text-xs font-semibold mb-2 ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
                           {m?.label || mid}
                         </p>
                         <div className="flex gap-2">
                           <div className="flex-1">
-                            <p className={`text-[9px] mb-1 ${dark ? 'text-emerald-400' : 'text-emerald-600'}`}>양호 기준</p>
+                            <p className={`text-[10px] mb-1 ${dark ? 'text-emerald-400' : 'text-emerald-600'}`}>양호 기준</p>
                             <input type="number" className={S.inp}
                               value={th.good ?? ''} placeholder="예: 1000000"
                               onChange={e => updTh('good', e.target.value === '' ? undefined : Number(e.target.value))} />
                           </div>
                           <div className="flex-1">
-                            <p className={`text-[9px] mb-1 ${dark ? 'text-amber-400' : 'text-amber-600'}`}>주의 기준</p>
+                            <p className={`text-[10px] mb-1 ${dark ? 'text-amber-400' : 'text-amber-600'}`}>주의 기준</p>
                             <input type="number" className={S.inp}
                               value={th.warning ?? ''} placeholder="예: 500000"
                               onChange={e => updTh('warning', e.target.value === '' ? undefined : Number(e.target.value))} />
@@ -414,12 +414,12 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
                           <input type="checkbox" className="accent-[#579DFF] rounded"
                             checked={!!th.inverse}
                             onChange={e => updTh('inverse', e.target.checked)} />
-                          <span className="text-[10px]">낮을수록 양호 (비용, CPC 등)</span>
+                          <span className="text-xs">낮을수록 양호 (비용, CPC 등)</span>
                         </label>
                       </div>
                     )
                   })}
-                  <p className={`text-[9px] mt-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <p className={`text-[10px] mt-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
                     기본: 값 ≥ 양호 → 양호, ≥ 주의 → 주의, 미만 → 위험 · inverse 시 반대
                   </p>
                 </div>
@@ -455,13 +455,13 @@ export default function WidgetEditor({ slotId, widget, dark, data = [], dataMap,
         <div className={`flex items-center justify-between px-5 py-4 border-t shrink-0
           ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
           <button onClick={onClose}
-            className={`text-xs px-4 py-2 rounded-xl border transition-colors
+            className={`text-sm px-4 py-2.5 rounded-xl border transition-colors
               ${dark ? 'border-[#A1BDD914] text-slate-400 hover:text-white hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
             취소
           </button>
           <button onClick={handleSave}
-            className="flex items-center gap-1.5 text-xs px-5 py-2 bg-[#0C66E4] text-white rounded-xl hover:bg-[#0055CC] font-semibold">
-            {isNew ? <><Plus size={12} /> 카드 추가</> : <><Check size={12} /> 저장</>}
+            className="flex items-center gap-1.5 text-sm px-5 py-2.5 bg-[#0C66E4] text-white rounded-xl hover:bg-[#0055CC] font-semibold">
+            {isNew ? <><Plus size={14} /> 카드 추가</> : <><Check size={14} /> 저장</>}
           </button>
         </div>
       </div>

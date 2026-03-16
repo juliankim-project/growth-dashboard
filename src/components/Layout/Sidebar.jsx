@@ -330,26 +330,26 @@ export default function Sidebar({
   const logoUrl     = config.logoUrl || null
 
   return (
-    <aside className={`flex flex-col w-[220px] min-h-screen shrink-0 border-r transition-colors duration-200
+    <aside className={`flex flex-col w-[264px] min-h-screen shrink-0 border-r transition-colors duration-200
       ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
 
       {/* 로고 */}
-      <div className={`flex items-center gap-2.5 px-5 py-5 border-b ${t.border}`}>
+      <div className={`flex items-center gap-2.5 px-6 py-6 border-b ${t.border}`}>
         {logoUrl ? (
-          <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-lg object-cover shrink-0"/>
+          <img src={logoUrl} alt="logo" className="w-10 h-10 rounded-lg object-cover shrink-0"/>
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-[#0C66E4] flex items-center justify-center shrink-0">
-            <BarChart2 size={16} className="text-white"/>
+          <div className="w-10 h-10 rounded-lg bg-[#0C66E4] flex items-center justify-center shrink-0">
+            <BarChart2 size={20} className="text-white"/>
           </div>
         )}
-        <span className={`font-bold text-[15px] truncate ${dark ? 'text-white' : 'text-slate-800'}`}>
+        <span className={`font-bold text-[18px] truncate ${dark ? 'text-white' : 'text-slate-800'}`}>
           {projectName}
         </span>
       </div>
 
       {/* 네비 */}
-      <nav className="flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto">
-        <p className={`px-3 pb-2 text-[9px] font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
+        <p className={`px-3 pb-2 text-[11px] font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           ≡ 드래그로 순서 변경
         </p>
 
@@ -400,12 +400,12 @@ export default function Sidebar({
               {/* 섹션 헤더 */}
               <button
                 onClick={() => { if (!isEditingSection) toggleSection(sec) }}
-                className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg text-xs transition-all duration-150 text-left group/sec
+                className={`w-full flex items-center gap-2 px-3 py-3 rounded-lg text-sm transition-all duration-150 text-left group/sec
                   ${isActive ? dark ? 'text-white' : 'text-slate-800' : `${t.text} ${t.hover}`}`}
               >
-                <GripVertical size={12}
+                <GripVertical size={14}
                   className={`shrink-0 cursor-grab active:cursor-grabbing ${dark ? 'text-slate-600 group-hover/sec:text-slate-400' : 'text-slate-600 group-hover/sec:text-slate-700'}`}/>
-                <Icon name={secIcon} size={14} className={isActive ? 'text-[#579DFF]' : 'opacity-80'}/>
+                <Icon name={secIcon} size={17} className={isActive ? 'text-[#579DFF]' : 'opacity-80'}/>
 
                 {isEditingSection ? (
                   <InlineInput
@@ -426,20 +426,20 @@ export default function Sidebar({
                         ${dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
                       title="이름 변경"
                     >
-                      <Pencil size={9}/>
+                      <Pencil size={11}/>
                     </button>
                   </>
                 )}
 
                 {!isEditingSection && (
-                  <ChevronDown size={12}
+                  <ChevronDown size={14}
                     className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${dark ? 'text-slate-400' : 'text-slate-700'}`}/>
                 )}
               </button>
 
               {/* 서브메뉴 */}
               {isOpen && (
-                <div className="pl-4 pr-1 pb-1.5 flex flex-col gap-0.5">
+                <div className="pl-5 pr-1 pb-1.5 flex flex-col gap-0.5">
                   {orderedSubs.map((sub, subIdx) => {
                     const subLabel    = getSubLabel?.(sec.id, sub.id) || sub.label
                     const subIcon     = config.subIcons?.[`${sec.id}.${sub.id}`] || sub.icon
@@ -465,15 +465,15 @@ export default function Sidebar({
                       >
                         <button
                           onClick={() => { if (!isEditingSub) handleSubClick(sec.id, sub.id) }}
-                          className={`w-full flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-all duration-150 text-left group/sub
+                          className={`w-full flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg text-sm transition-all duration-150 text-left group/sub
                             ${subActive ? 'bg-[#0C66E4] text-white'
                               : l3subActive ? dark ? 'bg-[#579DFF]/15 text-[#85B8FF]' : 'bg-[#E9F2FF] text-[#0055CC]'
                               : `${t.text} ${t.hover}`}`}
                         >
-                          <GripVertical size={10}
+                          <GripVertical size={12}
                             className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/sub:opacity-100 transition-opacity
                               ${subActive ? 'text-white/50' : dark ? 'text-slate-400' : 'text-slate-700'}`}/>
-                          <Icon name={subIcon} size={12} className={anyActive ? (subActive ? 'text-white' : 'text-[#579DFF]') : 'opacity-60'}/>
+                          <Icon name={subIcon} size={14} className={anyActive ? (subActive ? 'text-white' : 'text-[#579DFF]') : 'opacity-60'}/>
 
                           {isEditingSub ? (
                             <InlineInput
@@ -500,13 +500,13 @@ export default function Sidebar({
                                   ${subActive ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
                                 title="이름 변경"
                               >
-                                <Pencil size={8}/>
+                                <Pencil size={10}/>
                               </button>
                             </>
                           )}
 
                           {!isEditingSub && hasL3Subs && (
-                            <ChevronDown size={10}
+                            <ChevronDown size={12}
                               className={`shrink-0 transition-transform duration-200 ${l3IsOpen ? '' : '-rotate-90'}
                                 ${anyActive ? (subActive ? 'text-white/70' : 'text-[#579DFF]') : dark ? 'text-slate-400' : 'text-slate-700'}`}
                             />
@@ -515,7 +515,7 @@ export default function Sidebar({
 
                         {/* L3 서서브 목록 */}
                         {hasL3Subs && l3IsOpen && (
-                          <div className="pl-6 pr-1 pb-0.5 flex flex-col gap-0.5">
+                          <div className="pl-7 pr-1 pb-0.5 flex flex-col gap-0.5">
                             {l3subs.map((ls, l3Idx) => {
                               const l3Active    = isActive && nav.sub === sub.id && nav.l3sub === ls.id
                               const isL3Dragging = l3DragId === ls.id
@@ -534,15 +534,15 @@ export default function Sidebar({
                                 >
                                   <button
                                     onClick={() => { if (!isEditingL3) goTo(sec.id, sub.id, ls.id) }}
-                                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] transition-all duration-150 text-left group/l3
+                                    className={`w-full flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs transition-all duration-150 text-left group/l3
                                       ${l3Active ? 'bg-[#0C66E4] text-white' : `${t.text} ${t.hover}`}`}
                                   >
-                                    <GripVertical size={9}
+                                    <GripVertical size={11}
                                       className={`shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover/l3:opacity-100 transition-opacity
                                         ${l3Active ? 'text-white/50' : dark ? 'text-slate-400' : 'text-slate-700'}`}/>
                                     {l3Icon
-                                      ? <Icon name={l3Icon} size={10} className={l3Active ? 'text-white' : 'opacity-60'}/>
-                                      : <span className={`text-[8px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-400' : 'text-slate-700'}`}>◆</span>
+                                      ? <Icon name={l3Icon} size={12} className={l3Active ? 'text-white' : 'opacity-60'}/>
+                                      : <span className={`text-[10px] shrink-0 ${l3Active ? 'text-white/60' : dark ? 'text-slate-400' : 'text-slate-700'}`}>◆</span>
                                     }
 
                                     {isEditingL3 ? (
@@ -563,7 +563,7 @@ export default function Sidebar({
                                             ${l3Active ? 'text-white/50 hover:text-white' : dark ? 'text-slate-500 hover:text-[#579DFF]' : 'text-slate-600 hover:text-[#0C66E4]'}`}
                                           title="이름 변경"
                                         >
-                                          <Pencil size={8}/>
+                                          <Pencil size={10}/>
                                         </button>
                                       </>
                                     )}
@@ -584,12 +584,12 @@ export default function Sidebar({
       </nav>
 
       {/* 다크모드 토글 + 버전 */}
-      <div className={`px-2 pb-4 border-t pt-3 ${t.border}`}>
+      <div className={`px-3 pb-5 border-t pt-4 ${t.border}`}>
         <button onClick={toggleDark}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition-all ${t.text} ${t.hover}`}>
-          {dark ? <Sun size={14} className="text-yellow-400"/> : <Moon size={14} className="text-[#579DFF]"/>}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${t.text} ${t.hover}`}>
+          {dark ? <Sun size={16} className="text-yellow-400"/> : <Moon size={16} className="text-[#579DFF]"/>}
           <span className="font-medium">{dark ? 'Light Mode' : 'Dark Mode'}</span>
-          <span className={`ml-auto text-[10px] ${dark ? 'text-slate-600' : 'text-slate-400'}`}>Ver {APP_VERSION}</span>
+          <span className={`ml-auto text-xs ${dark ? 'text-slate-600' : 'text-slate-400'}`}>Ver {APP_VERSION}</span>
         </button>
       </div>
     </aside>

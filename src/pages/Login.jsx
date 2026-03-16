@@ -31,7 +31,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
     }
   }
 
-  const inp = `w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors
+  const inp = `w-full px-5 py-3.5 rounded-xl border text-base outline-none transition-colors
     ${dark
       ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500 focus:border-[#579DFF]'
       : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-600 focus:border-[#0C66E4]'}`
@@ -42,19 +42,19 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
 
         {/* 로고 */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#0C66E4] flex items-center justify-center mb-3 shadow-lg shadow-[#0C66E4]/30">
-            <BarChart2 size={24} className="text-white" />
+          <div className="w-14 h-14 rounded-2xl bg-[#0C66E4] flex items-center justify-center mb-3 shadow-lg shadow-[#0C66E4]/30">
+            <BarChart2 size={28} className="text-white" />
           </div>
-          <h1 className={`text-xl font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+          <h1 className={`text-2xl font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
             Growth Dashboard
           </h1>
-          <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+          <p className={`text-sm mt-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             내부 구성원만 접근 가능합니다
           </p>
         </div>
 
         {/* 카드 */}
-        <div className={`rounded-2xl border p-6 shadow-xl ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
+        <div className={`rounded-2xl border p-7 shadow-xl ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
 
           {sent ? (
             /* ── 전송 완료 상태 ── */
@@ -63,10 +63,10 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
                 <CheckCircle2 size={24} className="text-emerald-500" />
               </div>
               <div>
-                <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>
+                <p className={`text-base font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>
                   이메일을 확인해주세요
                 </p>
-                <p className={`text-xs mt-1.5 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                <p className={`text-sm mt-1.5 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   <span className="font-medium text-[#579DFF]">{email}</span>으로<br/>
                   로그인 링크를 보냈어요.<br/>
                   링크를 클릭하면 바로 접속됩니다.
@@ -74,7 +74,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
               </div>
               <button
                 onClick={() => { setSent(false); setEmail('') }}
-                className={`text-xs mt-2 ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'} transition-colors`}
+                className={`text-sm mt-2 ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'} transition-colors`}
               >
                 다른 이메일로 시도
               </button>
@@ -83,30 +83,30 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
             /* ── 이메일 입력 폼 ── */
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <p className={`text-sm font-semibold mb-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
+                <p className={`text-base font-semibold mb-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
                   로그인
                 </p>
-                <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                <p className={`text-sm ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
                   이메일 주소를 입력하면 로그인 링크를 보내드려요
                 </p>
               </div>
 
               {/* 접근 권한 없음 에러 (외부에서 전달) */}
               {accessError && (
-                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                   🚫 {accessError}
                 </div>
               )}
 
               {/* 일반 에러 */}
               {error && (
-                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                   {error}
                 </div>
               )}
 
               <div className="relative">
-                <Mail size={15} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${dark ? 'text-slate-500' : 'text-slate-700'}`} />
+                <Mail size={18} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${dark ? 'text-slate-500' : 'text-slate-700'}`} />
                 <input
                   type="email"
                   value={email}
@@ -121,14 +121,14 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
               <button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#0C66E4] text-white text-sm font-semibold rounded-xl hover:bg-[#0055CC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-[#0C66E4] text-white text-base font-semibold rounded-xl hover:bg-[#0055CC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
                   ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   : (
                     <>
                       로그인 링크 보내기
-                      <ArrowRight size={15} />
+                      <ArrowRight size={18} />
                     </>
                   )
                 }
@@ -137,7 +137,7 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
           )}
         </div>
 
-        <p className={`text-center text-xs mt-4 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+        <p className={`text-center text-sm mt-4 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           접근 권한이 없다면 관리자에게 문의하세요
         </p>
       </div>

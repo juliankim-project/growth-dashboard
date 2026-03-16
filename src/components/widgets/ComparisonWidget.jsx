@@ -41,12 +41,12 @@ function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn
   }, [data, metrics, metricsProp, compareMode, dateRange, dateColumn])
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col
+    <div className={`rounded-xl p-6 border h-full flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
 
       {rows.length === 0 ? (
-        <div className={`text-center py-10 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-center py-10 text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           지표가 설정되지 않았습니다
         </div>
       ) : (
@@ -60,7 +60,7 @@ function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn
                   ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 {/* 지표명 */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider truncate
+                  <p className={`text-xs font-semibold uppercase tracking-wider truncate
                     ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {row.label}
                   </p>
@@ -70,7 +70,7 @@ function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn
                 </div>
                 {/* 이전 값 */}
                 <div className="text-right shrink-0">
-                  <p className={`text-[9px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>이전</p>
+                  <p className={`text-[11px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>이전</p>
                   <p className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {fmtMetric(row.id, row.prevVal, metricsProp)}
                   </p>

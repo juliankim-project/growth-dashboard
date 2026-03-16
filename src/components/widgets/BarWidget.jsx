@@ -32,8 +32,8 @@ function BarWidget({ data, config, dark, metrics: metricsProp }) {
   const fmtYAxis = v => fmtAxis(v, metric, metricsProp)
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+    <div className={`rounded-xl p-6 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top:5, right:10, left:5, bottom:0 }}>

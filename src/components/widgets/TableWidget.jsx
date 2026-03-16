@@ -16,13 +16,13 @@ function TableWidget({ data, config, dark, metrics: metricsProp }) {
 
   const toggle = key => setSort(s => s.key === key ? { key, dir: -s.dir } : { key, dir: -1 })
 
-  const th = `px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide cursor-pointer select-none ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}`
+  const th = `px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide cursor-pointer select-none ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'}`
   const td = `px-3 py-2.5 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`
 
   return (
     <div className={`rounded-xl border h-full flex flex-col overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <div className={`px-4 py-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
-        <p className={`text-xs font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <div className={`px-5 py-4 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
+        <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       </div>
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs">
@@ -52,7 +52,7 @@ function TableWidget({ data, config, dark, metrics: metricsProp }) {
                   return (
                     <td key={mid} className={td}>
                       {isRoas
-                        ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${(row[mid] || 0) >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                        ? <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${(row[mid] || 0) >= 2 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'}`}>
                             {fmtMetric(mid, row[mid] || 0, metricsProp)}
                           </span>
                         : fmtMetric(mid, row[mid] || 0, metricsProp)

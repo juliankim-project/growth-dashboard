@@ -33,25 +33,25 @@ export default class ErrorBoundary extends Component {
     const label = this.props.label || '컴포넌트'
 
     return (
-      <div className={`flex flex-col items-center justify-center gap-3 p-6 rounded-xl border text-center min-h-[120px]
+      <div className={`flex flex-col items-center justify-center gap-3 p-8 rounded-xl border text-center min-h-[120px]
         ${dark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
-        <AlertTriangle size={24} className="text-red-400" />
+        <AlertTriangle size={28} className="text-red-400" />
         <div>
-          <p className={`text-xs font-semibold ${dark ? 'text-red-400' : 'text-red-600'}`}>
+          <p className={`text-sm font-semibold ${dark ? 'text-red-400' : 'text-red-600'}`}>
             {label} 렌더링 오류
           </p>
-          <p className={`text-[10px] mt-1 max-w-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+          <p className={`text-xs mt-1 max-w-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             {this.state.error?.message || '알 수 없는 오류가 발생했습니다'}
           </p>
         </div>
         <button
           onClick={this.handleReset}
-          className={`flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-lg border transition-colors
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors
             ${dark
               ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
               : 'border-red-200 text-red-500 hover:bg-red-100'}`}
         >
-          <RefreshCw size={10} /> 다시 시도
+          <RefreshCw size={12} /> 다시 시도
         </button>
       </div>
     )

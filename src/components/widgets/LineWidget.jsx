@@ -12,7 +12,7 @@ function Tip({ active, payload, label, dark, metricsProp, isDual, rightSet }) {
           <span style={{ color: p.color }}>●</span>
           <span className={dark ? 'text-slate-400' : 'text-slate-700'}>
             {p.name}
-            {isDual && <span className="ml-1 text-[10px] opacity-60">({rightSet?.has(p.dataKey) ? '우' : '좌'})</span>}
+            {isDual && <span className="ml-1 text-xs opacity-60">({rightSet?.has(p.dataKey) ? '우' : '좌'})</span>}
           </span>
           <span className="font-bold">{typeof p.value === 'number' ? fmtMetric(p.dataKey, p.value, metricsProp) : p.value}</span>
         </div>
@@ -43,8 +43,8 @@ function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const fmtRight = v => fmtAxis(v, rightMetrics[0], metricsProp)
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+    <div className={`rounded-xl p-6 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top:5, right: isDual ? 10 : 10, left:5, bottom:0 }}>

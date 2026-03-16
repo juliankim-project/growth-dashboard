@@ -62,12 +62,12 @@ function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }
   }, [data, metrics, metricsProp, dateColumn])
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col
+    <div className={`rounded-xl p-6 border h-full flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
 
       {rows.length === 0 ? (
-        <div className={`text-center py-10 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-center py-10 text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           지표가 설정되지 않았습니다
         </div>
       ) : (
@@ -81,7 +81,7 @@ function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }
                   ${dark ? 'bg-[#2C333A] border-[#A1BDD914]' : 'bg-slate-50 border-slate-200'}`}>
                 {/* 지표명 + 총합 */}
                 <div className="min-w-0 flex-shrink-0" style={{ width: '30%' }}>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider truncate
+                  <p className={`text-xs font-semibold uppercase tracking-wider truncate
                     ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {row.label}
                   </p>
@@ -94,7 +94,7 @@ function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }
                   <Sparkline points={row.points} color={row.color} />
                 </div>
                 {/* 전일 대비 */}
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold shrink-0
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold shrink-0
                   ${isUp ? 'bg-emerald-500/10 text-emerald-500'
                     : isDown ? 'bg-red-500/10 text-red-500'
                     : dark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>

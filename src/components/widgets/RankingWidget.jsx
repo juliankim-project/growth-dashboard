@@ -16,12 +16,12 @@ function RankingWidget({ data, config, dark, metrics: metricsProp }) {
   const maxVal = ranked.length > 0 ? Math.max(...ranked.map(r => Math.abs(r[metric] || 0)), 1) : 1
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col
+    <div className={`rounded-xl p-6 border h-full flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <p className={`text-sm font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
 
       {ranked.length === 0 ? (
-        <div className={`text-center py-10 text-xs ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-center py-10 text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
           데이터가 없습니다
         </div>
       ) : (
@@ -34,23 +34,23 @@ function RankingWidget({ data, config, dark, metrics: metricsProp }) {
             return (
               <div key={row.name || i} className="flex items-center gap-2">
                 {/* 순위 */}
-                <span className={`w-5 text-right text-[10px] font-bold shrink-0
+                <span className={`w-6 text-right text-xs font-bold shrink-0
                   ${i < 3 ? 'text-amber-500' : dark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {i + 1}
                 </span>
                 {/* 이름 + 프로그레스 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className={`text-[10px] font-medium truncate
+                    <span className={`text-xs font-medium truncate
                       ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
                       {row.name}
                     </span>
-                    <span className={`text-[10px] font-bold ml-2 shrink-0
+                    <span className={`text-xs font-bold ml-2 shrink-0
                       ${dark ? 'text-white' : 'text-slate-700'}`}>
                       {fmtMetric(metric, val, metricsProp)}
                     </span>
                   </div>
-                  <div className={`h-1.5 rounded-full overflow-hidden
+                  <div className={`h-2 rounded-full overflow-hidden
                     ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
                     <div className="h-full rounded-full transition-all"
                       style={{ width: `${pct}%`, backgroundColor: color }} />

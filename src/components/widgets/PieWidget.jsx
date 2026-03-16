@@ -16,8 +16,8 @@ function PieWidget({ data, config, dark, metrics: metricsProp }) {
   const meta = metricsProp?.find(x => x.id === metric)
 
   return (
-    <div className={`rounded-xl p-5 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-2 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+    <div className={`rounded-xl p-6 border h-full flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <p className={`text-sm font-semibold mb-2 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

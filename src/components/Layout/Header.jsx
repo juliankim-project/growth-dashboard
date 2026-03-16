@@ -55,7 +55,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
       {/* ── 트리거 버튼 ── */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-xs font-medium transition-all
           ${open
             ? dark
               ? 'bg-[#22272B] border-[#579DFF]/60 text-white'
@@ -65,13 +65,13 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
               : 'bg-white border-slate-200 text-slate-600 hover:border-[#579DFF] shadow-sm'
           }`}
       >
-        <CalendarDays size={13} className={dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'} />
+        <CalendarDays size={16} className={dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'} />
         <span className="font-semibold">{displayLabel}</span>
-        <span className={`hidden sm:inline text-[11px] ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+        <span className={`hidden sm:inline text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           {fmtMD(dateRange.start)} – {fmtMD(dateRange.end)}
         </span>
         <ChevronDown
-          size={12}
+          size={14}
           className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}
             ${dark ? 'text-slate-400' : 'text-slate-700'}`}
         />
@@ -80,7 +80,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
       {/* ── 드롭다운 ── */}
       {open && (
         <div className={`
-          absolute right-0 top-[calc(100%+8px)] z-[100] w-80 rounded-xl border shadow-2xl overflow-hidden
+          absolute right-0 top-[calc(100%+8px)] z-[100] w-96 rounded-xl border shadow-2xl overflow-hidden
           ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}
         `}>
           {/* 프리셋 버튼 — 그룹별 */}
@@ -94,13 +94,13 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
               if (items.length === 0) return null
               return (
                 <div key={g.key} className="flex items-center gap-1.5">
-                  <span className={`text-[9px] font-bold w-5 shrink-0 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{g.label}</span>
+                  <span className={`text-[11px] font-bold w-5 shrink-0 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{g.label}</span>
                   <div className="flex flex-wrap gap-1.5">
                     {items.map(p => (
                       <button
                         key={p.id}
                         onClick={() => { setPreset(p.id); setOpen(false) }}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors
                           ${dateRange.preset === p.id
                             ? 'bg-[#0C66E4] text-white shadow-sm'
                             : dark
@@ -121,12 +121,12 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
 
           {/* 직접 날짜 설정 */}
           <div className="p-3 flex flex-col gap-2.5">
-            <p className={`text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+            <p className={`text-xs font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               직접 설정
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>시작일</p>
+                <p className={`text-xs mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>시작일</p>
                 <input
                   type="date"
                   value={customStart}
@@ -136,7 +136,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
                 />
               </div>
               <div>
-                <p className={`text-[10px] mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>종료일</p>
+                <p className={`text-xs mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>종료일</p>
                 <input
                   type="date"
                   value={customEnd}
@@ -151,7 +151,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
             <button
               onClick={applyCustom}
               disabled={!customStart || !customEnd || customStart > customEnd}
-              className="w-full px-3 py-2 bg-[#0C66E4] text-white text-xs font-semibold rounded-lg
+              className="w-full px-4 py-2.5 bg-[#0C66E4] text-white text-xs font-semibold rounded-lg
                 hover:bg-[#0055CC] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {customStart && customEnd && customStart <= customEnd
@@ -162,7 +162,7 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
 
           {/* 선택된 기간 요약 */}
           {dateRange.preset === 'custom' && (
-            <div className={`px-3 pb-3 text-[10px] ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+            <div className={`px-3 pb-3 text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
               현재: {fmtFull(dateRange.start)} ~ {fmtFull(dateRange.end)}
             </div>
           )}
@@ -200,9 +200,9 @@ function UserMenu({ user, onSignOut, dark }) {
         className="flex items-center gap-2 rounded-full focus:outline-none"
       >
         {avatar
-          ? <img src={avatar} alt={name} className="w-8 h-8 rounded-full object-cover ring-2 ring-[#579DFF]/30" />
+          ? <img src={avatar} alt={name} className="w-9 h-9 rounded-full object-cover ring-2 ring-[#579DFF]/30" />
           : (
-            <div className="w-8 h-8 rounded-full bg-[#0C66E4] flex items-center justify-center text-white text-sm font-bold ring-2 ring-[#579DFF]/30">
+            <div className="w-9 h-9 rounded-full bg-[#0C66E4] flex items-center justify-center text-white text-sm font-bold ring-2 ring-[#579DFF]/30">
               {initial}
             </div>
           )
@@ -211,19 +211,19 @@ function UserMenu({ user, onSignOut, dark }) {
 
       {open && (
         <div className={`
-          absolute right-0 top-[calc(100%+8px)] z-[100] w-56 rounded-xl border shadow-2xl overflow-hidden
+          absolute right-0 top-[calc(100%+8px)] z-[100] w-64 rounded-xl border shadow-2xl overflow-hidden
           ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}
         `}>
           {/* 유저 정보 */}
           <div className={`px-4 py-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
             <div className="flex items-center gap-2.5">
               {avatar
-                ? <img src={avatar} alt={name} className="w-8 h-8 rounded-full object-cover" />
-                : <div className="w-8 h-8 rounded-full bg-[#0C66E4] flex items-center justify-center text-white text-sm font-bold">{initial}</div>
+                ? <img src={avatar} alt={name} className="w-9 h-9 rounded-full object-cover" />
+                : <div className="w-9 h-9 rounded-full bg-[#0C66E4] flex items-center justify-center text-white text-sm font-bold">{initial}</div>
               }
               <div className="min-w-0">
-                <p className={`text-xs font-semibold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{name}</p>
-                <p className={`text-[10px] truncate ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{email}</p>
+                <p className={`text-sm font-semibold truncate ${dark ? 'text-white' : 'text-slate-800'}`}>{name}</p>
+                <p className={`text-xs truncate ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{email}</p>
               </div>
             </div>
           </div>
@@ -237,7 +237,7 @@ function UserMenu({ user, onSignOut, dark }) {
                   ? 'text-slate-400 hover:bg-red-500/10 hover:text-red-400'
                   : 'text-slate-600 hover:bg-red-50 hover:text-red-500'}`}
             >
-              <LogOut size={13} />
+              <LogOut size={15} />
               로그아웃
             </button>
           </div>
@@ -276,23 +276,23 @@ export default function Header({ nav, dark, config, getL3Subs, dateRange, setPre
 
   const title = l3subLabel || subLabel || sectionLabel
 
-  const slash = <span className={`text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>/</span>
+  const slash = <span className={`text-sm ${dark ? 'text-slate-400' : 'text-slate-700'}`}>/</span>
 
   return (
     <header className={`
-      flex items-center justify-between px-7 py-4 border-b shrink-0 transition-colors duration-200
+      flex items-center justify-between px-8 py-5 border-b shrink-0 transition-colors duration-200
       ${dark ? 'bg-[#1D2125] border-[#A1BDD914]' : 'bg-[#F7F8F9] border-[#DFE1E6]'}
     `}>
       {/* 좌측: 타이틀 + 브레드크럼 */}
       <div>
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-medium ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+          <span className={`text-sm font-medium ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
             {sectionLabel}
           </span>
           {subLabel && (
             <>
               {slash}
-              <span className={`text-xs font-medium ${l3subLabel ? (dark ? 'text-slate-400' : 'text-slate-700') : (dark ? 'text-[#579DFF]' : 'text-[#0C66E4]')}`}>
+              <span className={`text-sm font-medium ${l3subLabel ? (dark ? 'text-slate-400' : 'text-slate-700') : (dark ? 'text-[#579DFF]' : 'text-[#0C66E4]')}`}>
                 {subLabel}
               </span>
             </>
@@ -300,16 +300,16 @@ export default function Header({ nav, dark, config, getL3Subs, dateRange, setPre
           {l3subLabel && (
             <>
               {slash}
-              <span className={`text-xs font-semibold ${dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'}`}>
+              <span className={`text-sm font-semibold ${dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'}`}>
                 {l3subLabel}
               </span>
             </>
           )}
         </div>
-        <h1 className={`text-xl font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>
+        <h1 className={`text-2xl font-bold mt-0.5 ${dark ? 'text-white' : 'text-slate-800'}`}>
           {title}
         </h1>
-        <p className={`text-xs mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{today}</p>
+        <p className={`text-sm mt-0.5 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>{today}</p>
       </div>
 
       {/* 우측: 날짜 필터 + 서치 + 알림 + 아바타 */}
@@ -326,22 +326,22 @@ export default function Header({ nav, dark, config, getL3Subs, dateRange, setPre
         )}
 
         <div className={`
-          flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+          flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm
           ${dark ? 'bg-[#22272B] text-slate-400 border border-[#A1BDD914]' : 'bg-white text-slate-600 border border-slate-200'}
         `}>
-          <Search size={13} />
-          <span className="text-xs hidden sm:block">Search...</span>
+          <Search size={16} />
+          <span className="text-sm hidden sm:block">Search...</span>
         </div>
 
-        <button className={`relative p-2 rounded-lg ${dark ? 'hover:bg-[#22272B] text-slate-400' : 'hover:bg-slate-100 text-slate-700'}`}>
-          <Bell size={17} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
+        <button className={`relative p-2.5 rounded-lg ${dark ? 'hover:bg-[#22272B] text-slate-400' : 'hover:bg-slate-100 text-slate-700'}`}>
+          <Bell size={20} />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
         </button>
 
         {user
           ? <UserMenu user={user} onSignOut={onSignOut} dark={dark} />
           : (
-            <div className="w-8 h-8 rounded-full bg-[#0C66E4] flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-9 h-9 rounded-full bg-[#0C66E4] flex items-center justify-center text-white text-sm font-bold">
               G
             </div>
           )
