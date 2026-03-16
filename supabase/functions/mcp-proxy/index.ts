@@ -175,13 +175,39 @@ async function ensureSession(token: string) {
   }
 
   // 세션 ID는 mcpFetch에서 자동 캡처됨
-  await res.json() // consume body
+  await parseSSEResponse(res) // consume body
 
   // initialized 알림 전송
   await mcpFetch({
     jsonrpc: "2.0",
     method: "notifications/initialized",
   }, token)
+}
+
+/* ── SSE 응답 파싱 ── */
+async function parseSSEResponse(res: Response) {
+  const text = await res.text()
+  const contentType = res.headers.get("content-type") || ""
+
+  // JSON 응답이면 그대로 파싱
+  if (contentType.includes("application/json")) {
+    return JSON.parse(text)
+  }
+
+  // SSE 응답이면 data: 라인에서 JSON 추출
+  const lines = text.split("\n")
+  let lastData = null
+  for (const line of lines) {
+    if (line.startsWith("data: ")) {
+      const dataStr = line.slice(6).trim()
+      if (dataStr) {
+        try { lastData = JSON.parse(dataStr) } catch { /* skip */ }
+      }
+    }
+  }
+
+  if (lastData) return lastData
+  throw new Error(`Could not parse MCP response: ${text.substring(0, 200)}`)
 }
 
 /* ── MCP 호출 ── */
@@ -205,7 +231,8 @@ async function callMCP(tool: string, args: Record<string, unknown>) {
     }
     throw new Error(`MCP call failed: ${res.status} ${txt}`)
   }
-  return await res.json()
+
+  return await parseSSEResponse(res)
 }
 
 /* ── Edge Function 핸들러 ── */
