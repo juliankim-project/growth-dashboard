@@ -175,11 +175,17 @@ Deno.serve(async (req) => {
         client_secret: clientCreds!.client_secret,
       })
 
+      const state = crypto.randomUUID()
+
+      // state를 DB에 저장 (CSRF 방지)
+      await db.from("mcp_tokens").update({ oauth_state: state }).eq("id", "plott")
+
       const authUrl = new URL(OAUTH_AUTHORIZE)
       authUrl.searchParams.set("response_type", "code")
       authUrl.searchParams.set("client_id", client_id)
       authUrl.searchParams.set("redirect_uri", CALLBACK_URL)
       authUrl.searchParams.set("scope", "mcp:tools")
+      authUrl.searchParams.set("state", state)
       authUrl.searchParams.set("code_challenge", challenge)
       authUrl.searchParams.set("code_challenge_method", "S256")
 
