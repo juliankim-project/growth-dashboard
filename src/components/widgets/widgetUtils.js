@@ -78,6 +78,7 @@ export function calcMetric(data, metricId, mList) {
     switch (metricId) {
       case 'roas':     return cost > 0        ? rev         / cost   : 0
       case 'ctr':      return impr > 0        ? (clicks     / impr)  * 100 : 0
+      case 'cpc':      return clicks > 0      ? cost        / clicks : 0
       case 'cpm':      return impr > 0        ? (cost       / impr)  * 1000 : 0
       case 'cpa_view': return viewContent > 0 ? cost        / viewContent : 0
       case 'cac':      return signup > 0      ? cost        / signup : 0
@@ -129,6 +130,7 @@ function calcDerived(row, metrics, mList) {
   const cv = row.conv   ?? row.purchases   ?? 0
   if (metrics.includes('roas'))     row.roas     = c  > 0  ? rv / c        : 0
   if (metrics.includes('ctr'))      row.ctr      = im > 0  ? (cl / im) * 100  : 0
+  if (metrics.includes('cpc'))      row.cpc      = cl > 0  ? c  / cl      : 0
   if (metrics.includes('cpm'))      row.cpm      = im > 0  ? (c  / im) * 1000 : 0
   if (metrics.includes('cpa_view')) row.cpa_view = vc > 0  ? c  / vc      : 0
   if (metrics.includes('cac'))      row.cac      = sg > 0  ? c  / sg      : 0

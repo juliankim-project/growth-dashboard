@@ -45,8 +45,9 @@ export function getTableDisplayName(tableName, columnConfig) {
 const MARKETING_DERIVED = [
   { id: 'roas',     label: 'ROAS',       field: null, fmt: 'roas',     derived: true, group: 'rate' },
   { id: 'ctr',      label: 'CTR',        field: null, fmt: 'pct',      derived: true, group: 'rate' },
+  { id: 'cpc',      label: 'CPC',        field: null, fmt: 'currency', derived: true, group: 'rate' },
   { id: 'cpm',      label: 'CPM',        field: null, fmt: 'currency', derived: true, group: 'rate' },
-  { id: 'cpa_view', label: 'CPA(조회)',  field: null, fmt: 'currency', derived: true, group: 'rate' },
+  { id: 'cpa_view', label: 'CPA',        field: null, fmt: 'currency', derived: true, group: 'rate' },
   { id: 'cac',      label: 'CAC',        field: null, fmt: 'currency', derived: true, group: 'rate' },
   { id: 'cps',      label: 'CPS',        field: null, fmt: 'currency', derived: true, group: 'rate' },
   { id: 'cvr_c',    label: 'CVR-C',      field: null, fmt: 'pct',      derived: true, group: 'rate' },
