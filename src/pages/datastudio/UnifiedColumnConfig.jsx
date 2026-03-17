@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useColumnConfig } from '../../store/useColumnConfig'
 import { TABLES, buildTableMetrics, buildTableGroupBy, getColumnLabel, getTableDisplayName } from '../../store/columnUtils'
-import { Table2, GripVertical, Pencil, Plus, X, RotateCcw } from 'lucide-react'
+import { fetchDateRange } from '../../lib/supabase'
+import { Table2, GripVertical, Pencil, Plus, X, RotateCcw, Calendar, Database } from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
 import {
   DndContext, closestCenter,
@@ -301,6 +302,28 @@ export default function UnifiedColumnConfig({ dark }) {
 
   const tCfg = columnConfig[selTable]
 
+  /* ─── 데이터 기간 조회 ─── */
+  const [dateRangeInfo, setDateRangeInfo] = useState({})
+  const [dateRangeLoading, setDateRangeLoading] = useState(false)
+
+  useEffect(() => {
+    const dateCol = tCfg?.dateColumn
+    if (!dateCol || dateRangeInfo[selTable]) return
+
+    let cancelled = false
+    setDateRangeLoading(true)
+    fetchDateRange(selTable, dateCol).then(result => {
+      if (cancelled) return
+      if (result) {
+        setDateRangeInfo(prev => ({ ...prev, [selTable]: result }))
+      }
+      setDateRangeLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [selTable, tCfg?.dateColumn])
+
+  const currentDateRange = dateRangeInfo[selTable]
+
   /* ─── 컬럼 목록 (카테고리별 그룹핑) ─── */
   const categorizedColumns = useMemo(() => {
     if (!tCfg?.columns) return { metrics: [], dimensions: [], hidden: [] }
@@ -394,7 +417,7 @@ export default function UnifiedColumnConfig({ dark }) {
           {/* ─── 기본 정보 ─── */}
           <div className={`rounded-xl border p-4 ${card}`}>
             <p className={`text-xs font-bold mb-3 ${dark ? 'text-white' : 'text-slate-800'}`}>기본 정보</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <p className={`text-[10px] mb-1 ${sub}`}>표시명</p>
                 <p className={`text-sm ${dark ? 'text-white' : 'text-slate-800'}`}>
@@ -406,6 +429,34 @@ export default function UnifiedColumnConfig({ dark }) {
                 <p className={`text-sm font-mono ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
                   {tCfg.dateColumn || '—'}
                 </p>
+              </div>
+              <div>
+                <p className={`text-[10px] mb-1 flex items-center gap-1 ${sub}`}>
+                  <Calendar size={10} />데이터 기간
+                </p>
+                {dateRangeLoading ? (
+                  <p className={`text-sm ${sub}`}>조회 중...</p>
+                ) : currentDateRange ? (
+                  <p className={`text-sm ${dark ? 'text-white' : 'text-slate-800'}`}>
+                    {currentDateRange.minDate} ~ {currentDateRange.maxDate}
+                  </p>
+                ) : (
+                  <p className={`text-sm ${sub}`}>—</p>
+                )}
+              </div>
+              <div>
+                <p className={`text-[10px] mb-1 flex items-center gap-1 ${sub}`}>
+                  <Database size={10} />총 데이터 수
+                </p>
+                {dateRangeLoading ? (
+                  <p className={`text-sm ${sub}`}>조회 중...</p>
+                ) : currentDateRange ? (
+                  <p className={`text-sm ${dark ? 'text-white' : 'text-slate-800'}`}>
+                    {currentDateRange.totalRows?.toLocaleString()}행
+                  </p>
+                ) : (
+                  <p className={`text-sm ${sub}`}>—</p>
+                )}
               </div>
             </div>
           </div>

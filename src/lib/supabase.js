@@ -59,6 +59,44 @@ export async function fetchAll(tableName, columns = '*') {
  * - dateColumn, startDate, endDate가 모두 있으면 WHERE 절 추가
  * - 없으면 fetchAll 폴백
  */
+/**
+ * 테이블의 날짜 컬럼 기준 최소/최대 날짜 + 총 행 수 조회
+ */
+export async function fetchDateRange(tableName, dateColumn) {
+  if (!supabase || !dateColumn) return null
+  try {
+    // 최소 날짜
+    const { data: minData, error: minErr } = await supabase
+      .from(tableName)
+      .select(dateColumn)
+      .order(dateColumn, { ascending: true })
+      .limit(1)
+    if (minErr) throw minErr
+
+    // 최대 날짜
+    const { data: maxData, error: maxErr } = await supabase
+      .from(tableName)
+      .select(dateColumn)
+      .order(dateColumn, { ascending: false })
+      .limit(1)
+    if (maxErr) throw maxErr
+
+    // 총 행 수
+    const { count, error: countErr } = await supabase
+      .from(tableName)
+      .select('*', { count: 'exact', head: true })
+    if (countErr) throw countErr
+
+    const minDate = minData?.[0]?.[dateColumn] || null
+    const maxDate = maxData?.[0]?.[dateColumn] || null
+
+    return { minDate, maxDate, totalRows: count }
+  } catch (e) {
+    console.error(`[fetchDateRange] ${tableName}:`, e)
+    return null
+  }
+}
+
 export async function fetchByDateRange(tableName, dateColumn, startDate, endDate, columns = '*') {
   if (!supabase) {
     console.warn('[fetchByDateRange] supabase 클라이언트가 초기화되지 않았습니다.')
