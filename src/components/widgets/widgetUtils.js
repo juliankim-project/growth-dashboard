@@ -72,7 +72,7 @@ export function calcMetric(data, metricId, mList) {
     const rev         = sumField(data, 'revenue')
     const impr        = sumField(data, 'impressions')
     const clicks      = sumField(data, 'clicks')
-    const viewContent = sumField(data, '상품상세페이지_조회_app_web') || sumField(data, 'view_content')
+    const viewContent = sumField(data, 'view_content')
     const signup      = sumField(data, 'signups')
     const conv        = sumField(data, 'purchases')
     switch (metricId) {
@@ -125,7 +125,7 @@ function calcDerived(row, metrics, mList) {
   const rv = row.revenue ?? 0
   const im = row.impr   ?? row.impressions ?? 0
   const cl = row.clicks  ?? 0
-  const vc = row['상품상세페이지_조회_app_web'] ?? row.view_content ?? 0
+  const vc = row.view_content ?? 0
   const sg = row.signup ?? row.signups     ?? 0
   const cv = row.conv   ?? row.purchases   ?? 0
   if (metrics.includes('roas'))     row.roas     = c  > 0  ? rv / c        : 0

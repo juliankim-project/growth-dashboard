@@ -21,6 +21,26 @@ export const supabase = isMissingEnv
  */
 const MAX_ROWS = 100_000
 
+/* DB 컬럼명 → 코드 내부 표준명 매핑 (한글/특수문자 컬럼 정규화) */
+const COL_ALIASES = {
+  '상품상세페이지_조회_app_web': 'view_content',
+}
+
+function normalizeRows(rows) {
+  if (!rows?.length) return rows
+  const aliases = Object.entries(COL_ALIASES)
+  if (aliases.length === 0) return rows
+  return rows.map(row => {
+    const copy = { ...row }
+    for (const [dbCol, stdCol] of aliases) {
+      if (dbCol in copy && !(stdCol in copy)) {
+        copy[stdCol] = copy[dbCol]
+      }
+    }
+    return copy
+  })
+}
+
 export async function fetchAll(tableName, columns = '*') {
   if (!supabase) {
     console.warn('[fetchAll] supabase 클라이언트가 초기화되지 않았습니다. 환경변수를 확인하세요.')
@@ -51,7 +71,7 @@ export async function fetchAll(tableName, columns = '*') {
     from += PAGE
   }
 
-  return all
+  return normalizeRows(all)
 }
 
 /**
@@ -132,5 +152,5 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
     from += PAGE
   }
 
-  return all
+  return normalizeRows(all)
 }
