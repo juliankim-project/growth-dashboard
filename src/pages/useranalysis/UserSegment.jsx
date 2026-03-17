@@ -1,35 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../lib/supabase'
+import { fetchProductData } from './fetchData'
 import { Crown, Users, Star, UserPlus, RefreshCw, Search, Filter } from 'lucide-react'
-
-/* ─── 데이터 fetch ─── */
-async function fetchProductData(dateRange) {
-  if (!supabase) return []
-  const cols = 'guest_id,user_id,branch_name,area,channel_group,reservation_date,check_in_date,nights,peoples,payment_amount,room_type2'
-  let q = supabase.from('product_revenue_raw').select(cols)
-  if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-  if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-  const PAGE = 5000
-  let from = 0, all = []
-  while (true) {
-    const { data, error } = await q.range(from, from + PAGE - 1)
-    if (error) throw error
-    if (!data?.length) break
-    all.push(...data)
-    if (data.length < PAGE) break
-    from += PAGE
-    q = supabase.from('product_revenue_raw').select(cols)
-    if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-    if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-  }
-  return all
-}
 
 /* ─── RFM 세그먼트 분류 ─── */
 function calcSegments(data) {
   const guestMap = {}
   data.forEach(r => {
     const g = r.guest_id
+    if (!g) return // guest_id가 없는 행은 제외
     if (!guestMap[g]) guestMap[g] = {
       guest_id: g, user_id: r.user_id,
       count: 0, revenue: 0, nights: 0,
@@ -89,10 +67,12 @@ function calcPurchaseCycle(data) {
   const guestDates = {}
   data.forEach(r => {
     const g = r.guest_id
+    if (!g) return // guest_id가 없는 행은 제외
     if (!guestDates[g]) guestDates[g] = []
     guestDates[g].push(r.reservation_date)
   })
 
+  // 재구매 간격 계산 (고유 날짜 기준)
   const intervals = []
   Object.values(guestDates).forEach(dates => {
     if (dates.length < 2) return
@@ -104,11 +84,13 @@ function calcPurchaseCycle(data) {
   })
 
   const avg = intervals.length > 0 ? intervals.reduce((s, v) => s + v, 0) / intervals.length : 0
-  const median = intervals.length > 0 ? intervals.sort((a, b) => a - b)[Math.floor(intervals.length / 2)] : 0
+  const sorted = intervals.length > 0 ? [...intervals].sort((a, b) => a - b) : []
+  const median = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0
 
+  // 전환율은 실제 예약 건수(row count) 기준 — calcSegments와 동일
   const countMap = {}
   Object.values(guestDates).forEach(dates => {
-    const n = new Set(dates).size
+    const n = dates.length // row count 기준 (unique date X)
     countMap[n] = (countMap[n] || 0) + 1
   })
   const total = Object.values(countMap).reduce((s, v) => s + v, 0)

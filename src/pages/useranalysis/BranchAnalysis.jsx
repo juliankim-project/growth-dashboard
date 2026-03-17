@@ -1,29 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../lib/supabase'
+import { fetchProductData } from './fetchData'
 import { Building2, Users, MapPin, ArrowRightLeft, RefreshCw, TrendingUp, ChevronDown, CalendarDays, Filter } from 'lucide-react'
-
-/* ─── 데이터 fetch ─── */
-async function fetchProductData(dateRange) {
-  if (!supabase) return []
-  const cols = 'guest_id,user_id,branch_name,area,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,room_type_name,room_type2,brand_name,lead_time'
-  let q = supabase.from('product_revenue_raw').select(cols)
-  if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-  if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-  const PAGE = 5000
-  let from = 0, all = []
-  while (true) {
-    const { data, error } = await q.range(from, from + PAGE - 1)
-    if (error) throw error
-    if (!data?.length) break
-    all.push(...data)
-    if (data.length < PAGE) break
-    from += PAGE
-    q = supabase.from('product_revenue_raw').select(cols)
-    if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-    if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-  }
-  return all
-}
 
 /* ─── 지점별 집계 ─── */
 function calcBranchStats(data) {
@@ -31,7 +8,7 @@ function calcBranchStats(data) {
   data.forEach(r => {
     const b = r.branch_name || '(알 수 없음)'
     if (!map[b]) map[b] = { branch: b, area: r.area || '', guests: new Set(), revenue: 0, count: 0, nights: 0, peoples: 0 }
-    map[b].guests.add(r.guest_id)
+    if (r.guest_id) map[b].guests.add(r.guest_id)
     map[b].revenue += Number(r.payment_amount) || 0
     map[b].count += 1
     map[b].nights += Number(r.nights) || 0
@@ -48,7 +25,7 @@ function calcAreaStats(data) {
   data.forEach(r => {
     const a = r.area || '(알 수 없음)'
     if (!map[a]) map[a] = { area: a, guests: new Set(), revenue: 0, count: 0 }
-    map[a].guests.add(r.guest_id)
+    if (r.guest_id) map[a].guests.add(r.guest_id)
     map[a].revenue += Number(r.payment_amount) || 0
     map[a].count += 1
   })
@@ -62,6 +39,7 @@ function calcCrossPurchase(data) {
   const guestAreas = {}
   data.forEach(r => {
     const g = r.guest_id
+    if (!g) return // guest_id가 없는 행은 제외
     const a = r.area || '(알 수 없음)'
     if (!guestAreas[g]) guestAreas[g] = new Set()
     guestAreas[g].add(a)
@@ -89,6 +67,7 @@ function calcCrossPurchase(data) {
 function calcRevisitRate(data) {
   const branchGuests = {}
   data.forEach(r => {
+    if (!r.guest_id) return // guest_id가 없는 행은 제외
     const b = r.branch_name || '(알 수 없음)'
     if (!branchGuests[b]) branchGuests[b] = {}
     branchGuests[b][r.guest_id] = (branchGuests[b][r.guest_id] || 0) + 1

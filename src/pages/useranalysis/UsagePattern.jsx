@@ -1,29 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../lib/supabase'
+import { fetchProductData } from './fetchData'
 import { RefreshCw, Calendar, Clock, Home, Bed, Filter } from 'lucide-react'
-
-/* ─── 데이터 fetch ─── */
-async function fetchProductData(dateRange) {
-  if (!supabase) return []
-  const cols = 'guest_id,branch_name,area,reservation_date,check_in_date,nights,peoples,payment_amount,room_type2,room_type_name,lead_time,channel_group'
-  let q = supabase.from('product_revenue_raw').select(cols)
-  if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-  if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-  const PAGE = 5000
-  let from = 0, all = []
-  while (true) {
-    const { data, error } = await q.range(from, from + PAGE - 1)
-    if (error) throw error
-    if (!data?.length) break
-    all.push(...data)
-    if (data.length < PAGE) break
-    from += PAGE
-    q = supabase.from('product_revenue_raw').select(cols)
-    if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-    if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-  }
-  return all
-}
 
 const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토']
 
