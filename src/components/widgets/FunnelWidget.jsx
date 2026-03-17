@@ -65,9 +65,9 @@ function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
   const lastStage = stages[stages.length - 1]
 
   return (
-    <div className={`rounded-xl p-3 border h-full overflow-hidden flex flex-col
+    <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>
+      <p className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-slate-700'}`}>
         {title}
       </p>
 

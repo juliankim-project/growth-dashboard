@@ -22,7 +22,7 @@ function TableWidget({ data, config, dark, metrics: metricsProp }) {
   return (
     <div className={`rounded-xl border h-full flex flex-col overflow-hidden ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
       <div className={`px-3 py-2 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
-        <p className={`text-xs font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+        <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       </div>
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs">

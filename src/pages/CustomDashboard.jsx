@@ -129,7 +129,7 @@ const RGL_ROW_H = 32
    minW/minH = 이보다 작게 못 줄임, defW/defH = 새 위젯 추가 시 기본 크기
    32px 행높이 → minH 2 = 64px, minH 3 = 96px */
 const WIDGET_SIZES = {
-  kpi:        { minW: 3,  minH: 2,  defW: 6,  defH: 4  },   // 최소 ~12.5% 폭, 64px 높이
+  kpi:        { minW: 3,  minH: 2,  defW: 4,  defH: 3  },   // 최소 ~12.5% 폭, 더 컴팩트한 기본 크기
   line:       { minW: 4,  minH: 4,  defW: 12, defH: 8  },
   bar:        { minW: 4,  minH: 4,  defW: 12, defH: 8  },
   pie:        { minW: 4,  minH: 4,  defW: 10, defH: 8  },

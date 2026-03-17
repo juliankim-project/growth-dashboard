@@ -43,8 +43,8 @@ function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const fmtRight = v => fmtAxis(v, rightMetrics[0], metricsProp)
 
   return (
-    <div className={`rounded-xl p-3 border h-full overflow-hidden flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+    <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
+      <p className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top:5, right: isDual ? 10 : 10, left:5, bottom:0 }}>

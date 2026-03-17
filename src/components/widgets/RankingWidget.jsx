@@ -16,9 +16,9 @@ function RankingWidget({ data, config, dark, metrics: metricsProp }) {
   const maxVal = ranked.length > 0 ? Math.max(...ranked.map(r => Math.abs(r[metric] || 0)), 1) : 1
 
   return (
-    <div className={`rounded-xl p-3 border h-full overflow-hidden flex flex-col
+    <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-xs font-semibold mb-4 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <p className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
 
       {ranked.length === 0 ? (
         <div className={`text-center py-10 text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
