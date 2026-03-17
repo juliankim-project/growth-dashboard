@@ -99,6 +99,46 @@ export const DASHBOARD_TEMPLATES = [
       { type: 'timeline',   widthPct: 100, heightPx: 300 },
     ],
   },
+  /* ── 마케팅 Total 대시보드 ── */
+  {
+    id: 'marketing_total',
+    name: '마케팅 Total',
+    desc: 'KPI 6개 + 채널별/캠페인별 성과 종합 분석',
+    icon: '📣',
+    defaultTable: 'marketing_data',
+    slotDefs: [
+      /* Row 1 — 핵심 KPI ×6 */
+      { type: 'kpi', widthPct: 16.66, preset: { metric: 'spend', label: '광고비' } },
+      { type: 'kpi', widthPct: 16.66, preset: { metric: 'revenue', label: '매출' } },
+      { type: 'kpi', widthPct: 16.66, preset: { metric: 'roas', label: 'ROAS' } },
+      { type: 'kpi', widthPct: 16.66, preset: { metric: 'cpc', label: 'CPC' } },
+      { type: 'kpi', widthPct: 16.66, preset: { metric: 'cpa_view', label: 'CPA' } },
+      { type: 'kpi', widthPct: 16.66, preset: { metric: 'ctr', label: 'CTR' } },
+      /* Row 2 — 일별 트렌드 + 채널별 광고비 파이 */
+      { type: 'line', widthPct: 66.66, heightPx: 320,
+        preset: { metrics: ['spend', 'revenue', 'roas'], title: '일별 광고비/매출/ROAS 트렌드' } },
+      { type: 'pie', widthPct: 33.33, heightPx: 320,
+        preset: { metric: 'spend', groupBy: 'channel', title: '채널별 광고비 비율' } },
+      /* Row 3 — 채널별 ROAS 바 + 캠페인별 매출 랭킹 */
+      { type: 'bar', widthPct: 50, heightPx: 300,
+        preset: { metric: 'roas', groupBy: 'channel', title: '채널별 ROAS' } },
+      { type: 'ranking', widthPct: 50, heightPx: 300,
+        preset: { metric: 'revenue', groupBy: 'campaign', topN: 10, sortDir: 'desc', title: '캠페인별 매출 TOP10' } },
+      /* Row 4 — 기간 비교 + 전환 퍼널 */
+      { type: 'comparison', widthPct: 50, heightPx: 320,
+        preset: { metrics: ['spend', 'revenue', 'purchases'], compareMode: 'period', title: '기간 비교 분석' } },
+      { type: 'funnel', widthPct: 50, heightPx: 320,
+        preset: { stages: [
+          { id: 's1', label: '노출', metric: 'impressions' },
+          { id: 's2', label: '클릭', metric: 'clicks' },
+          { id: 's3', label: '상세조회', metric: 'view_content' },
+          { id: 's4', label: '구매', metric: 'purchases' },
+        ], title: '마케팅 전환 퍼널' } },
+      /* Row 5 — 채널×캠페인 상세 테이블 */
+      { type: 'table', widthPct: 100, heightPx: 360,
+        preset: { metrics: ['spend', 'impressions', 'clicks', 'cpc', 'ctr', 'view_content', 'purchases', 'revenue', 'roas', 'cpa_view'], groupBy: 'channel', title: '채널별 성과 상세' } },
+    ],
+  },
   /* ── OTA 채널별 OVERVIEW ── */
   {
     id: 'ota_overview',

@@ -910,6 +910,21 @@ export default function CustomDashboard({ dark, filterByDate, dateRange, tabsCon
 
   const defaultTable = subDataSource?.table || 'marketing_data'
 
+  /* ── 마케팅 Total: 빈 대시보드일 때 마케팅 템플릿 자동 적용 ── */
+  useEffect(() => {
+    if (!activeTab || !columnConfig) return
+    const norm = normalizeDashboard(dashboard)
+    if (norm.slots?.length > 0) return  // 이미 위젯이 있으면 스킵
+    if (defaultTable !== 'marketing_data') return  // 마케팅 테이블일 때만
+    const tpl = DASHBOARD_TEMPLATES.find(t => t.id === 'marketing_total')
+    if (!tpl) return
+    const newDash = generateDashboard(tpl, defaultTable, columnConfig)
+    if (newDash.slots?.length > 0) {
+      setDashboard(newDash)
+      tabsConfig?.saveDashboard(newDash, activeTab.id)
+    }
+  }, [activeTab?.id, columnConfig, defaultTable])
+
   /* 실제 사용 테이블만 fetch — 편집모드에서만 전체 테이블 로드 */
   const neededTables = useMemo(() => {
     const norm = normalizeDashboard(dashboard)
