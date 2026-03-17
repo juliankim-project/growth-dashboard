@@ -125,9 +125,12 @@ export function buildTableMetrics(tableName, columnConfig) {
   /* 3) 마케팅 테이블 → 파생지표 (ROAS, CTR 등) 자동 포함 */
   if (tableName === 'marketing_data') {
     MARKETING_DERIVED.forEach(dm => {
-      if (!metrics.find(x => x.id === dm.id)) {
-        metrics.push({ ...dm })
+      /* 원시 컬럼과 ID 충돌 시 원시 제거 후 파생으로 교체 */
+      const existIdx = metrics.findIndex(x => x.id === dm.id)
+      if (existIdx !== -1) {
+        metrics.splice(existIdx, 1)
       }
+      metrics.push({ ...dm })
     })
   }
 
