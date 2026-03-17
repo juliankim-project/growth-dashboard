@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Crown, Users, Star, UserPlus, RefreshCw, Search } from 'lucide-react'
+import { Crown, Users, Star, UserPlus, RefreshCw, Search, Filter } from 'lucide-react'
 
 /* ─── 데이터 fetch ─── */
 async function fetchProductData(dateRange) {
@@ -106,7 +106,6 @@ function calcPurchaseCycle(data) {
   const avg = intervals.length > 0 ? intervals.reduce((s, v) => s + v, 0) / intervals.length : 0
   const median = intervals.length > 0 ? intervals.sort((a, b) => a - b)[Math.floor(intervals.length / 2)] : 0
 
-  // 전환율: 1회→2회, 2회→3회
   const countMap = {}
   Object.values(guestDates).forEach(dates => {
     const n = new Set(dates).size
@@ -131,6 +130,14 @@ const fmtKRW = v => v == null ? '—' : Math.round(v).toLocaleString() + '원'
 const fmtNum = v => v == null ? '—' : Math.round(v).toLocaleString()
 const fmtPct = v => v == null ? '—' : v.toFixed(1) + '%'
 
+const SEGMENT_LIST = ['VIP', '충성', '일반', '신규']
+const SEGMENT_COLORS = {
+  VIP: { active: 'bg-purple-500 text-white', inactive: 'text-purple-500' },
+  '충성': { active: 'bg-amber-500 text-white', inactive: 'text-amber-500' },
+  '일반': { active: 'bg-blue-500 text-white', inactive: 'text-blue-500' },
+  '신규': { active: 'bg-emerald-500 text-white', inactive: 'text-emerald-500' },
+}
+
 export default function UserSegment({ dark, dateRange }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
@@ -138,6 +145,9 @@ export default function UserSegment({ dark, dateRange }) {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('revenue')
   const [sortDir, setSortDir] = useState('desc')
+  const [selectedArea, setSelectedArea] = useState('')
+  const [selectedBranch, setSelectedBranch] = useState('')
+  const [selectedSegments, setSelectedSegments] = useState(new Set()) // empty = all
 
   useEffect(() => {
     setLoading(true)
@@ -146,13 +156,37 @@ export default function UserSegment({ dark, dateRange }) {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [dateRange?.start, dateRange?.end])
 
-  const guests = useMemo(() => calcSegments(data), [data])
+  // 권역/지점 목록
+  const areaList = useMemo(() => [...new Set(data.map(r => r.area).filter(Boolean))].sort(), [data])
+  const branchList = useMemo(() => {
+    const filtered = selectedArea ? data.filter(r => r.area === selectedArea) : data
+    return [...new Set(filtered.map(r => r.branch_name).filter(Boolean))].sort()
+  }, [data, selectedArea])
+
+  // 권역 변경시 지점 초기화
+  useEffect(() => { setSelectedBranch('') }, [selectedArea])
+
+  // 필터된 데이터
+  const filteredData = useMemo(() => {
+    let d = data
+    if (selectedArea) d = d.filter(r => r.area === selectedArea)
+    if (selectedBranch) d = d.filter(r => r.branch_name === selectedBranch)
+    return d
+  }, [data, selectedArea, selectedBranch])
+
+  const guests = useMemo(() => calcSegments(filteredData), [filteredData])
   const summary = useMemo(() => calcSegmentSummary(guests), [guests])
-  const cycle = useMemo(() => calcPurchaseCycle(data), [data])
+  const cycle = useMemo(() => calcPurchaseCycle(filteredData), [filteredData])
   const totalRevenue = useMemo(() => guests.reduce((s, g) => s + g.revenue, 0), [guests])
 
+  // 세그먼트 필터 적용된 게스트
+  const segmentFilteredGuests = useMemo(() => {
+    if (selectedSegments.size === 0) return guests
+    return guests.filter(g => selectedSegments.has(g.segment))
+  }, [guests, selectedSegments])
+
   const sortedGuests = useMemo(() => {
-    let list = [...guests]
+    let list = [...segmentFilteredGuests]
     if (search) {
       const s = search.toLowerCase()
       list = list.filter(g =>
@@ -162,11 +196,22 @@ export default function UserSegment({ dark, dateRange }) {
     }
     list.sort((a, b) => sortDir === 'desc' ? b[sortBy] - a[sortBy] : a[sortBy] - b[sortBy])
     return list.slice(0, 100)
-  }, [guests, search, sortBy, sortDir])
+  }, [segmentFilteredGuests, search, sortBy, sortDir])
+
+  const toggleSegment = (seg) => {
+    setSelectedSegments(prev => {
+      const next = new Set(prev)
+      if (next.has(seg)) next.delete(seg)
+      else next.add(seg)
+      return next
+    })
+  }
 
   const t = dark
-    ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500' }
-    : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400' }
+    ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500',
+        input: 'bg-[#2C333A] border-[#A1BDD914] text-white', inputFocus: 'focus:border-blue-500' }
+    : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400',
+        input: 'bg-white border-slate-200 text-slate-800', inputFocus: 'focus:border-blue-500' }
 
   if (loading) return (
     <div className={`flex items-center justify-center h-96 ${t.text}`}>
@@ -181,6 +226,80 @@ export default function UserSegment({ dark, dateRange }) {
       <div>
         <h1 className={`text-xl font-bold ${t.text}`}>👤 유저 세그먼트</h1>
         <p className={`text-sm mt-1 ${t.sub}`}>RFM 기반 유저 등급 분류, Top 구매자 랭킹, 구매 주기 분석</p>
+      </div>
+
+      {/* 필터 바 */}
+      <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter size={14} className={t.muted} />
+            <span className={`text-xs font-semibold ${t.sub}`}>필터</span>
+          </div>
+          {/* 권역 */}
+          <div className="flex items-center gap-2">
+            <label className={`text-xs ${t.sub}`}>권역</label>
+            <select
+              value={selectedArea}
+              onChange={e => setSelectedArea(e.target.value)}
+              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
+            >
+              <option value="">전체 권역</option>
+              {areaList.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          {/* 지점 */}
+          <div className="flex items-center gap-2">
+            <label className={`text-xs ${t.sub}`}>지점</label>
+            <select
+              value={selectedBranch}
+              onChange={e => setSelectedBranch(e.target.value)}
+              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
+            >
+              <option value="">전체 지점</option>
+              {branchList.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </div>
+          {/* 세그먼트 토글 */}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className={`text-xs ${t.sub} mr-1`}>등급</span>
+            {SEGMENT_LIST.map(seg => {
+              const isActive = selectedSegments.size === 0 || selectedSegments.has(seg)
+              const colors = SEGMENT_COLORS[seg]
+              return (
+                <button
+                  key={seg}
+                  onClick={() => toggleSegment(seg)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border
+                    ${isActive
+                      ? `${colors.active} border-transparent`
+                      : dark
+                        ? `bg-[#2C333A] ${colors.inactive} border-[#A1BDD914] opacity-50`
+                        : `bg-white ${colors.inactive} border-slate-200 opacity-50`
+                    }`}
+                >
+                  {seg}
+                </button>
+              )
+            })}
+            {selectedSegments.size > 0 && (
+              <button
+                onClick={() => setSelectedSegments(new Set())}
+                className={`text-xs px-2 py-1 rounded-lg ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+              >
+                전체
+              </button>
+            )}
+          </div>
+          {/* 필터 초기화 */}
+          {(selectedArea || selectedBranch) && (
+            <button
+              onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
+              className={`text-xs px-2 py-1 rounded-lg ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+            >
+              필터 초기화
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 세그먼트 요약 카드 */}
@@ -224,7 +343,14 @@ export default function UserSegment({ dark, dateRange }) {
       {/* Top 구매자 랭킹 */}
       <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
         <div className={`px-4 py-3 border-b ${t.border} flex items-center justify-between`}>
-          <h2 className={`text-sm font-semibold ${t.text}`}>🏆 Top 구매자 랭킹</h2>
+          <h2 className={`text-sm font-semibold ${t.text}`}>
+            🏆 Top 구매자 랭킹
+            {selectedSegments.size > 0 && (
+              <span className={`ml-2 text-xs font-normal ${t.muted}`}>
+                ({[...selectedSegments].join(', ')})
+              </span>
+            )}
+          </h2>
           <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
             <Search size={14} className={t.muted} />
             <input

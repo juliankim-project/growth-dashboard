@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { RefreshCw, Calendar, Clock, Home, Bed } from 'lucide-react'
+import { RefreshCw, Calendar, Clock, Home, Bed, Filter } from 'lucide-react'
 
 /* ─── 데이터 fetch ─── */
 async function fetchProductData(dateRange) {
@@ -29,7 +29,6 @@ const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토']
 
 /* ─── 체크인 요일 히트맵 ─── */
 function calcCheckinHeatmap(data) {
-  // 지점별 × 요일별
   const branches = [...new Set(data.map(r => r.branch_name).filter(Boolean))].sort()
   const map = {}
   branches.forEach(b => { map[b] = Array(7).fill(0) })
@@ -45,7 +44,6 @@ function calcCheckinHeatmap(data) {
 
 /* ─── 예약일 기준 체크인 시점 분석 ─── */
 function calcReservationToCheckin(data) {
-  // 예약일 기준으로 언제 체크인이 많은지 (요일 × 시간대)
   const byDay = Array(7).fill(0)
   const byMonth = Array(12).fill(0)
 
@@ -124,6 +122,8 @@ export default function UsagePattern({ dark, dateRange }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedArea, setSelectedArea] = useState('')
+  const [selectedBranch, setSelectedBranch] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -132,30 +132,50 @@ export default function UsagePattern({ dark, dateRange }) {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [dateRange?.start, dateRange?.end])
 
-  const heatmap = useMemo(() => calcCheckinHeatmap(data), [data])
-  const resvPattern = useMemo(() => calcReservationToCheckin(data), [data])
-  const nightsDist = useMemo(() => calcNightsDistribution(data), [data])
-  const leadtimeDist = useMemo(() => calcLeadtimeDistribution(data), [data])
-  const roomTypes = useMemo(() => calcRoomTypePreference(data), [data])
-  const areaDays = useMemo(() => calcAreaDayPattern(data), [data])
+  // 권역/지점 목록
+  const areaList = useMemo(() => [...new Set(data.map(r => r.area).filter(Boolean))].sort(), [data])
+  const branchList = useMemo(() => {
+    const filtered = selectedArea ? data.filter(r => r.area === selectedArea) : data
+    return [...new Set(filtered.map(r => r.branch_name).filter(Boolean))].sort()
+  }, [data, selectedArea])
 
-  const totalCount = data.length
+  // 권역 변경시 지점 초기화
+  useEffect(() => { setSelectedBranch('') }, [selectedArea])
+
+  // 필터된 데이터
+  const filteredData = useMemo(() => {
+    let d = data
+    if (selectedArea) d = d.filter(r => r.area === selectedArea)
+    if (selectedBranch) d = d.filter(r => r.branch_name === selectedBranch)
+    return d
+  }, [data, selectedArea, selectedBranch])
+
+  const heatmap = useMemo(() => calcCheckinHeatmap(filteredData), [filteredData])
+  const resvPattern = useMemo(() => calcReservationToCheckin(filteredData), [filteredData])
+  const nightsDist = useMemo(() => calcNightsDistribution(filteredData), [filteredData])
+  const leadtimeDist = useMemo(() => calcLeadtimeDistribution(filteredData), [filteredData])
+  const roomTypes = useMemo(() => calcRoomTypePreference(filteredData), [filteredData])
+  const areaDays = useMemo(() => calcAreaDayPattern(filteredData), [filteredData])
+
+  const totalCount = filteredData.length
   const avgNights = useMemo(() => {
-    const sum = data.reduce((s, r) => s + (Number(r.nights) || 0), 0)
+    const sum = filteredData.reduce((s, r) => s + (Number(r.nights) || 0), 0)
     return totalCount > 0 ? sum / totalCount : 0
-  }, [data, totalCount])
+  }, [filteredData, totalCount])
   const avgLeadTime = useMemo(() => {
-    const valid = data.filter(r => r.lead_time != null && r.lead_time >= 0)
+    const valid = filteredData.filter(r => r.lead_time != null && r.lead_time >= 0)
     return valid.length > 0 ? valid.reduce((s, r) => s + Number(r.lead_time), 0) / valid.length : 0
-  }, [data])
+  }, [filteredData])
   const avgPeoples = useMemo(() => {
-    const sum = data.reduce((s, r) => s + (Number(r.peoples) || 0), 0)
+    const sum = filteredData.reduce((s, r) => s + (Number(r.peoples) || 0), 0)
     return totalCount > 0 ? sum / totalCount : 0
-  }, [data, totalCount])
+  }, [filteredData, totalCount])
 
   const t = dark
-    ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500' }
-    : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400' }
+    ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500',
+        input: 'bg-[#2C333A] border-[#A1BDD914] text-white', inputFocus: 'focus:border-blue-500' }
+    : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400',
+        input: 'bg-white border-slate-200 text-slate-800', inputFocus: 'focus:border-blue-500' }
 
   if (loading) return (
     <div className={`flex items-center justify-center h-96 ${t.text}`}>
@@ -170,6 +190,49 @@ export default function UsagePattern({ dark, dateRange }) {
       <div>
         <h1 className={`text-xl font-bold ${t.text}`}>📊 이용 패턴 분석</h1>
         <p className={`text-sm mt-1 ${t.sub}`}>체크인 요일, 숙박일수, 예약 리드타임, 객실 선호도 분석</p>
+      </div>
+
+      {/* 필터 바 */}
+      <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter size={14} className={t.muted} />
+            <span className={`text-xs font-semibold ${t.sub}`}>필터</span>
+          </div>
+          {/* 권역 */}
+          <div className="flex items-center gap-2">
+            <label className={`text-xs ${t.sub}`}>권역</label>
+            <select
+              value={selectedArea}
+              onChange={e => setSelectedArea(e.target.value)}
+              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
+            >
+              <option value="">전체 권역</option>
+              {areaList.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          {/* 지점 */}
+          <div className="flex items-center gap-2">
+            <label className={`text-xs ${t.sub}`}>지점</label>
+            <select
+              value={selectedBranch}
+              onChange={e => setSelectedBranch(e.target.value)}
+              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
+            >
+              <option value="">전체 지점</option>
+              {branchList.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </div>
+          {/* 필터 초기화 */}
+          {(selectedArea || selectedBranch) && (
+            <button
+              onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
+              className={`text-xs px-2 py-1 rounded-lg ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+            >
+              필터 초기화
+            </button>
+          )}
+        </div>
       </div>
 
       {/* KPI 요약 */}
@@ -193,7 +256,10 @@ export default function UsagePattern({ dark, dateRange }) {
       {/* 체크인 요일 히트맵 (지점별) */}
       <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
         <div className={`px-4 py-3 border-b ${t.border}`}>
-          <h2 className={`text-sm font-semibold ${t.text}`}>📅 지점별 체크인 요일 히트맵</h2>
+          <h2 className={`text-sm font-semibold ${t.text}`}>
+            📅 지점별 체크인 요일 히트맵
+            {selectedArea && <span className={`ml-2 text-xs font-normal ${t.muted}`}>({selectedArea})</span>}
+          </h2>
         </div>
         <div className="overflow-x-auto p-4">
           <table className="text-xs">

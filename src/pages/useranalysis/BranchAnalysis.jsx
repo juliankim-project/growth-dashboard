@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Building2, Users, MapPin, ArrowRightLeft, RefreshCw, TrendingUp, ChevronDown } from 'lucide-react'
+import { Building2, Users, MapPin, ArrowRightLeft, RefreshCw, TrendingUp, ChevronDown, CalendarDays, Filter } from 'lucide-react'
 
 /* ─── 데이터 fetch ─── */
 async function fetchProductData(dateRange) {
@@ -59,7 +59,6 @@ function calcAreaStats(data) {
 
 /* ─── 크로스구매 히트맵 데이터 ─── */
 function calcCrossPurchase(data) {
-  // guest_id별 이용 권역 수집
   const guestAreas = {}
   data.forEach(r => {
     const g = r.guest_id
@@ -68,7 +67,6 @@ function calcCrossPurchase(data) {
     guestAreas[g].add(a)
   })
 
-  // 2개 이상 권역 이용 게스트만 필터
   const areas = [...new Set(data.map(r => r.area || '(알 수 없음)'))].sort()
   const matrix = {}
   areas.forEach(a => { matrix[a] = {}; areas.forEach(b => { matrix[a][b] = 0 }) })
@@ -102,10 +100,60 @@ function calcRevisitRate(data) {
   }).sort((a, b) => b.rate - a.rate)
 }
 
+/* ─── 예약 페이스 (Booking Pace) ─── */
+function calcBookingPace(data, targetMonth) {
+  if (!targetMonth) return []
+  // targetMonth format: "2025-03"
+  const [year, month] = targetMonth.split('-').map(Number)
+  const monthStart = new Date(year, month - 1, 1)
+  const monthEnd = new Date(year, month, 0) // last day of month
+
+  // Filter reservations with check_in_date in target month
+  const filtered = data.filter(r => {
+    if (!r.check_in_date) return false
+    const ci = new Date(r.check_in_date)
+    return ci >= monthStart && ci <= monthEnd
+  })
+
+  // Group by lead_time buckets
+  const buckets = [
+    { label: '0-3일 전', min: 0, max: 3, count: 0, revenue: 0 },
+    { label: '4-7일 전', min: 4, max: 7, count: 0, revenue: 0 },
+    { label: '8-14일 전', min: 8, max: 14, count: 0, revenue: 0 },
+    { label: '15-30일 전', min: 15, max: 30, count: 0, revenue: 0 },
+    { label: '31일+ 전', min: 31, max: Infinity, count: 0, revenue: 0 },
+  ]
+
+  filtered.forEach(r => {
+    const lt = Number(r.lead_time)
+    if (isNaN(lt) || lt < 0) return
+    const bucket = buckets.find(b => lt >= b.min && lt <= b.max)
+    if (bucket) {
+      bucket.count += 1
+      bucket.revenue += Number(r.payment_amount) || 0
+    }
+  })
+
+  const totalCount = filtered.length
+  return { buckets, totalCount, totalReservations: filtered.length }
+}
+
 /* ─── 포맷 ─── */
 const fmtKRW = v => v == null ? '—' : Math.round(v).toLocaleString() + '원'
 const fmtNum = v => v == null ? '—' : Math.round(v).toLocaleString()
 const fmtPct = v => v == null ? '—' : v.toFixed(1) + '%'
+
+/* ─── 월 목록 생성 ─── */
+function getAvailableMonths(data) {
+  const months = new Set()
+  data.forEach(r => {
+    if (r.check_in_date) {
+      const d = r.check_in_date.substring(0, 7)
+      months.add(d)
+    }
+  })
+  return [...months].sort().reverse()
+}
 
 /* ─── 컴포넌트 ─── */
 export default function BranchAnalysis({ dark, dateRange }) {
@@ -113,6 +161,8 @@ export default function BranchAnalysis({ dark, dateRange }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('branch') // branch | area
+  const [selectedArea, setSelectedArea] = useState('') // '' = 전체
+  const [paceMonth, setPaceMonth] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -121,18 +171,43 @@ export default function BranchAnalysis({ dark, dateRange }) {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [dateRange?.start, dateRange?.end])
 
-  const branchStats = useMemo(() => calcBranchStats(data), [data])
-  const areaStats = useMemo(() => calcAreaStats(data), [data])
-  const crossPurchase = useMemo(() => calcCrossPurchase(data), [data])
-  const revisitRates = useMemo(() => calcRevisitRate(data), [data])
+  // 권역 목록
+  const areaList = useMemo(() => {
+    const areas = [...new Set(data.map(r => r.area).filter(Boolean))].sort()
+    return areas
+  }, [data])
 
-  const totalRevenue = useMemo(() => data.reduce((s, r) => s + (Number(r.payment_amount) || 0), 0), [data])
-  const totalGuests = useMemo(() => new Set(data.map(r => r.guest_id)).size, [data])
-  const totalReservations = data.length
+  // 월 목록
+  const availableMonths = useMemo(() => getAvailableMonths(data), [data])
+
+  // 기본 페이스 월 설정
+  useEffect(() => {
+    if (availableMonths.length > 0 && !paceMonth) {
+      setPaceMonth(availableMonths[0])
+    }
+  }, [availableMonths])
+
+  // 필터된 데이터
+  const filteredData = useMemo(() => {
+    if (!selectedArea) return data
+    return data.filter(r => r.area === selectedArea)
+  }, [data, selectedArea])
+
+  const branchStats = useMemo(() => calcBranchStats(filteredData), [filteredData])
+  const areaStats = useMemo(() => calcAreaStats(filteredData), [filteredData])
+  const crossPurchase = useMemo(() => calcCrossPurchase(filteredData), [filteredData])
+  const revisitRates = useMemo(() => calcRevisitRate(filteredData), [filteredData])
+  const bookingPace = useMemo(() => calcBookingPace(filteredData, paceMonth), [filteredData, paceMonth])
+
+  const totalRevenue = useMemo(() => filteredData.reduce((s, r) => s + (Number(r.payment_amount) || 0), 0), [filteredData])
+  const totalGuests = useMemo(() => new Set(filteredData.map(r => r.guest_id)).size, [filteredData])
+  const totalReservations = filteredData.length
 
   const t = dark
-    ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500' }
-    : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400' }
+    ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500',
+        input: 'bg-[#2C333A] border-[#A1BDD914] text-white', inputFocus: 'focus:border-blue-500' }
+    : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400',
+        input: 'bg-white border-slate-200 text-slate-800', inputFocus: 'focus:border-blue-500' }
 
   if (loading) return (
     <div className={`flex items-center justify-center h-96 ${t.text}`}>
@@ -147,6 +222,37 @@ export default function BranchAnalysis({ dark, dateRange }) {
       <div>
         <h1 className={`text-xl font-bold ${t.text}`}>🏠 지점별 분석</h1>
         <p className={`text-sm mt-1 ${t.sub}`}>권역/지점별 이용 현황, 크로스구매, 재방문율 분석</p>
+      </div>
+
+      {/* 필터 바 */}
+      <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter size={14} className={t.muted} />
+            <span className={`text-xs font-semibold ${t.sub}`}>필터</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className={`text-xs ${t.sub}`}>권역</label>
+            <select
+              value={selectedArea}
+              onChange={e => setSelectedArea(e.target.value)}
+              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
+            >
+              <option value="">전체 권역</option>
+              {areaList.map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+          {selectedArea && (
+            <button
+              onClick={() => setSelectedArea('')}
+              className={`text-xs px-2 py-1 rounded-lg ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+            >
+              필터 초기화
+            </button>
+          )}
+        </div>
       </div>
 
       {/* KPI 요약 */}
@@ -186,6 +292,7 @@ export default function BranchAnalysis({ dark, dateRange }) {
         <div className={`px-4 py-3 border-b ${t.border}`}>
           <h2 className={`text-sm font-semibold ${t.text}`}>
             {viewMode === 'branch' ? '🏢 지점별 이용 현황' : '📍 권역별 이용 현황'}
+            {selectedArea && <span className={`ml-2 text-xs font-normal ${t.muted}`}>({selectedArea})</span>}
           </h2>
         </div>
         <div className="overflow-x-auto">
@@ -228,6 +335,90 @@ export default function BranchAnalysis({ dark, dateRange }) {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* 예약 페이스 (Booking Pace) */}
+      <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+        <div className={`px-4 py-3 border-b ${t.border} flex items-center justify-between flex-wrap gap-2`}>
+          <div>
+            <h2 className={`text-sm font-semibold ${t.text}`}>📈 예약 페이스 (Booking Pace)</h2>
+            <p className={`text-xs mt-0.5 ${t.muted}`}>선택한 체크인 월의 예약이 얼마 전에 이루어졌는지 분석</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <CalendarDays size={14} className={t.muted} />
+            <select
+              value={paceMonth}
+              onChange={e => setPaceMonth(e.target.value)}
+              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
+            >
+              {availableMonths.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="p-4">
+          {bookingPace.totalCount > 0 ? (
+            <>
+              <div className={`text-xs mb-3 ${t.muted}`}>
+                {paceMonth} 체크인 예약 총 {fmtNum(bookingPace.totalCount)}건
+                {selectedArea && ` (${selectedArea})`}
+              </div>
+              <div className="space-y-3">
+                {bookingPace.buckets.map((bucket, i) => {
+                  const maxCount = Math.max(...bookingPace.buckets.map(b => b.count))
+                  const pct = maxCount > 0 ? bucket.count / maxCount * 100 : 0
+                  const sharePct = bookingPace.totalCount > 0 ? bucket.count / bookingPace.totalCount * 100 : 0
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className={`text-xs font-medium w-20 ${t.text}`}>{bucket.label}</span>
+                      <div className="flex-1 h-6 rounded-full overflow-hidden bg-slate-200/20 relative">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-400 transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                        {bucket.count > 0 && (
+                          <span className="absolute inset-y-0 flex items-center ml-2 text-[10px] font-bold text-white drop-shadow">
+                            {bucket.count}건
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold w-12 text-right ${t.text}`}>{fmtPct(sharePct)}</span>
+                      <span className={`text-xs w-24 text-right ${t.muted}`}>{fmtKRW(bucket.revenue)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* 페이스 요약 테이블 */}
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
+                      {['리드타임', '예약건', '비중', '매출', '건당 매출'].map(h => (
+                        <th key={h} className={`px-3 py-2 text-left font-semibold ${t.sub}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookingPace.buckets.map((bucket, i) => (
+                      <tr key={i} className={`border-t ${t.border}`}>
+                        <td className={`px-3 py-2 font-medium ${t.text}`}>{bucket.label}</td>
+                        <td className={`px-3 py-2 ${t.text}`}>{fmtNum(bucket.count)}건</td>
+                        <td className={`px-3 py-2 ${t.text}`}>{fmtPct(bookingPace.totalCount > 0 ? bucket.count / bookingPace.totalCount * 100 : 0)}</td>
+                        <td className={`px-3 py-2 font-medium ${t.text}`}>{fmtKRW(bucket.revenue)}</td>
+                        <td className={`px-3 py-2 ${t.text}`}>{fmtKRW(bucket.count > 0 ? bucket.revenue / bucket.count : 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p className={`text-sm ${t.muted}`}>
+              {paceMonth ? `${paceMonth}에 해당하는 체크인 예약 데이터가 없습니다.` : '월을 선택해주세요.'}
+            </p>
+          )}
         </div>
       </div>
 
