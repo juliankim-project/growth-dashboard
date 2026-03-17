@@ -20,6 +20,9 @@ const CustomDashboard = lazy(() => import('./pages/CustomDashboard'))
 const ComingSoon = lazy(() => import('./pages/ComingSoon'))
 const AskQuestion = lazy(() => import('./pages/ailab/AskQuestion'))
 const QueryHistory = lazy(() => import('./pages/ailab/QueryHistory'))
+const BranchAnalysis = lazy(() => import('./pages/useranalysis/BranchAnalysis'))
+const UserSegment = lazy(() => import('./pages/useranalysis/UserSegment'))
+const UsagePattern = lazy(() => import('./pages/useranalysis/UsagePattern'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -34,6 +37,9 @@ const FIXED_MAP = {
   'settings.team': SettingsTeam,
   'ailab.ask': AskQuestion,
   'ailab.history': QueryHistory,
+  'useranalysis.branch': BranchAnalysis,
+  'useranalysis.segment': UserSegment,
+  'useranalysis.pattern': UsagePattern,
 }
 
 import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
@@ -163,7 +169,7 @@ function Dashboard({ dark, setDark, user, signOut }) {
   } else if (FIXED_MAP[key]) {
     /* DataStudio · Settings 고정 UI */
     const Comp = FIXED_MAP[key]
-    PageContent = <Comp dark={dark} nav={nav} filterByDate={filterByDate} />
+    PageContent = <Comp dark={dark} nav={nav} filterByDate={filterByDate} dateRange={dateRange} />
   } else {
     /* Overview · Marketing · Product · 커스텀 서브탭 → 모두 CustomDashboard */
     const subDataSource = cfg.getSubDataSource(nav.section, nav.sub)
