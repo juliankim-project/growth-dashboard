@@ -23,8 +23,8 @@ export async function fetchProductData(dateRange) {
     return applyExclusion(_dataCache)
   }
 
-  const PAGE = 10000
-  const CONCURRENT = 6
+  const PAGE = 5000 // 타임아웃 방지
+  const CONCURRENT = 3
 
   // 총 건수 + 제외 유저 동시 조회
   let countQuery = supabase

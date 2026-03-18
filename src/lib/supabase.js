@@ -47,9 +47,10 @@ export async function fetchAll(tableName, columns = '*') {
     return []
   }
 
-  const PAGE = 10000
+  const PAGE = 5000 // 타임아웃 방지 — 작은 청크
+  const CONCURRENT = 3
 
-  // 총 건수 조회 → 병렬 fetch
+  // 총 건수 조회
   const { count, error: countErr } = await supabase
     .from(tableName)
     .select('*', { count: 'exact', head: true })
@@ -58,7 +59,6 @@ export async function fetchAll(tableName, columns = '*') {
   if (!count || count === 0) return []
 
   const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
-  const CONCURRENT = 5
   const all = new Array(totalPages)
 
   for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
@@ -79,7 +79,7 @@ export async function fetchAll(tableName, columns = '*') {
     await Promise.all(promises)
   }
 
-  return normalizeRows(all)
+  return normalizeRows(all.flat())
 }
 
 /**
@@ -134,9 +134,9 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
     return fetchAll(tableName, columns)
   }
 
-  const PAGE = 10000
+  const PAGE = 5000 // 타임아웃 방지
 
-  // 1단계: 총 건수 먼저 조회 → 병렬 fetch 계획
+  // 1단계: 총 건수 조회
   const { count, error: countErr } = await supabase
     .from(tableName)
     .select('*', { count: 'exact', head: true })
@@ -146,9 +146,9 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
   if (countErr) throw countErr
   if (!count || count === 0) return []
 
-  // 2단계: 병렬 fetch (한 번에 최대 5개 청크)
+  // 2단계: 병렬 fetch (동시 3개 — 타임아웃 방지)
   const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
-  const CONCURRENT = 5
+  const CONCURRENT = 3
   const all = new Array(totalPages)
 
   for (let batch = 0; batch < totalPages; batch += CONCURRENT) {

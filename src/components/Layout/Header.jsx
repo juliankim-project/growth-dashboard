@@ -217,37 +217,31 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
           style={{ width: 640 }}>
 
           <div className="flex">
-            {/* ── 좌측: 프리셋 패널 ── */}
-            <div className={`w-[130px] shrink-0 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} p-2 flex flex-col`}>
-              {/* 월별 */}
-              <p className={`text-[9px] font-bold uppercase tracking-wider px-2 pt-1 pb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>월별</p>
-              <div className="flex flex-wrap gap-1 px-1 mb-1">
-                {monthButtons.map((mb, i) => (
-                  <button key={i}
-                    onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors
-                      ${dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
-                    {mb.label}
-                  </button>
-                ))}
-              </div>
-              <div className={`border-t my-1 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`} />
-              {/* 프리셋 */}
-              <p className={`text-[9px] font-bold uppercase tracking-wider px-2 pt-1 pb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>프리셋</p>
+            {/* ── 좌측: 프리셋 사이드바 ── */}
+            <div className={`w-[100px] shrink-0 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} py-1.5 px-1 flex flex-col gap-0.5 overflow-y-auto`} style={{ maxHeight: 340 }}>
+              {monthButtons.map((mb, i) => (
+                <button key={i}
+                  onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
+                  className={`text-left px-2 py-1 rounded text-[11px] font-medium transition-colors
+                    ${dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-500 hover:bg-white hover:text-slate-800'}`}>
+                  {mb.label}
+                </button>
+              ))}
+              <div className={`border-t my-0.5 mx-1 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`} />
               {DATE_PRESETS.map(p => (
                 <button key={p.id}
                   onClick={() => { setPreset(p.id); setOpen(false) }}
                   className={`text-left px-2 py-1 rounded text-[11px] font-medium transition-colors
                     ${dateRange.preset === p.id
                       ? 'bg-blue-600 text-white'
-                      : dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
+                      : dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-500 hover:bg-white hover:text-slate-800'}`}>
                   {p.label}
                 </button>
               ))}
             </div>
 
             {/* ── 우측: 날짜 인풋 + 듀얼 캘린더 + 적용 ── */}
-            <div className="flex-1 p-3 flex flex-col gap-2.5">
+            <div className="flex-1 p-2.5 flex flex-col gap-2">
               {/* 시작일~종료일 인풋 */}
               <div className="flex items-center gap-2">
                 <div className="flex-1" onClick={() => setSelectingStart(true)}>
