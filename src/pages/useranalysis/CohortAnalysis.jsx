@@ -149,7 +149,7 @@ export default function CohortAnalysis({ dark, dateRange }) {
           <div className={`px-5 py-3.5 border-b ${t.border} flex items-center justify-between`}>
             <div>
               <h2 className={`text-sm font-bold ${t.text}`}>코호트 리텐션 테이블</h2>
-              <p className={`text-[11px] mt-0.5 ${t.muted}`}>첫 구매 월 기준 · M0 = 첫 구매 월</p>
+              <p className={`text-xs mt-0.5 ${t.muted}`}>첫 구매 월 기준 · M0 = 첫 구매 월</p>
             </div>
             <div className={`flex items-center rounded-lg p-0.5 ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
               {['retention', 'revenue'].map(m => (
@@ -183,7 +183,7 @@ export default function CohortAnalysis({ dark, dateRange }) {
                     <tr key={cm} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]/50' : 'hover:bg-slate-50'} transition-colors`}>
                       <td className={`px-4 py-2 font-mono font-medium whitespace-nowrap sticky left-0 z-10 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>
                         {cm}
-                        <span className={`ml-1.5 text-[10px] font-normal ${t.muted}`}>{fmtNum(cohort.size)}명</span>
+                        <span className={`ml-1.5 text-xs font-normal ${t.muted}`}>{fmtNum(cohort.size)}명</span>
                       </td>
                       <td className={`px-3 py-2 text-center font-bold ${t.sub}`}>{fmtNum(cohort.size)}</td>
                       {Array.from({ length: cohortData.maxOffset + 1 }, (_, i) => {
@@ -231,11 +231,11 @@ export default function CohortAnalysis({ dark, dateRange }) {
           {/* 색상 범례 */}
           {showPct && (
             <div className={`px-5 py-2.5 border-t ${t.border} flex items-center gap-3`}>
-              <span className={`text-[11px] ${t.muted}`}>범례:</span>
+              <span className={`text-xs ${t.muted}`}>범례:</span>
               {[5, 15, 30, 50].map(v => (
                 <div key={v} className="flex items-center gap-1">
                   <div className="w-4 h-3 rounded-sm" style={{ backgroundColor: `rgba(52,211,153,${v / 100 * 0.9})` }} />
-                  <span className={`text-[10px] ${t.muted}`}>{v}%</span>
+                  <span className={`text-xs ${t.muted}`}>{v}%</span>
                 </div>
               ))}
             </div>

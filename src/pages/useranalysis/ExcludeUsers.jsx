@@ -161,27 +161,27 @@ export default function ExcludeUsers({ dark }) {
     <div className={`min-h-screen ${t.bg}`}>
       {/* ── Sticky 헤더 ── */}
       <div className={`sticky top-0 z-20 ${dark ? 'bg-[#1D2125]/95' : 'bg-slate-50/95'} backdrop-blur-sm border-b ${t.border}`}>
-        <div className="px-4 pt-3 pb-2.5">
+        <div className="px-6 pt-4 pb-2.5">
           <div className="flex items-center gap-2">
-            <Shield size={16} className="text-red-400" />
-            <h1 className={`text-base font-bold ${t.text}`}>유저 제외 관리</h1>
-            <span className={`text-[11px] px-2 py-0.5 rounded-full ml-2 ${dark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-500'}`}>
+            <Shield size={18} className="text-red-400" />
+            <h1 className={`text-lg font-bold ${t.text}`}>유저 제외 관리</h1>
+            <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${dark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-500'}`}>
               {fmtNum(excludeList.length)}명 제외 중
             </span>
           </div>
-          <p className={`text-[11px] mt-0.5 ${t.muted}`}>
+          <p className={`text-xs mt-0.5 ${t.muted}`}>
             내부 임직원 등 분석 대상에서 제외할 유저를 관리합니다. guestId 기준으로 유저분석 전체에 적용됩니다.
           </p>
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-6 space-y-3">
+      <div className="px-6 pt-5 pb-8 space-y-5">
         {/* ── CSV 업로드 ── */}
-        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
+        <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${t.text}`}>📤 CSV 업로드</h3>
+            <h3 className={`text-sm font-semibold ${t.text}`}>📤 CSV 업로드</h3>
             <button onClick={downloadSample}
-              className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               <Download size={10} /> 샘플 CSV
             </button>
           </div>
@@ -201,7 +201,7 @@ export default function ExcludeUsers({ dark }) {
               <Upload size={20} className={`mx-auto mb-1.5 ${dragOver ? 'text-blue-400' : t.muted}`} />
             )}
             <p className={`text-xs ${t.sub}`}>CSV/TSV 파일을 드래그하거나 클릭하여 업로드</p>
-            <p className={`text-[10px] mt-0.5 ${t.muted}`}>필수 컬럼: guestId · 선택: userId, email</p>
+            <p className={`text-xs mt-0.5 ${t.muted}`}>필수 컬럼: guestId · 선택: userId, email</p>
             <input ref={fileRef} type="file" accept=".csv,.tsv" className="hidden"
               onChange={(e) => handleFile(e.target.files[0])} />
           </div>
@@ -215,22 +215,22 @@ export default function ExcludeUsers({ dark }) {
         </div>
 
         {/* ── 제외 목록 ── */}
-        <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-          <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
+        <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+          <div className={`px-5 py-3 border-b ${t.border} flex items-center justify-between`}>
             <div className="flex items-center gap-2">
-              <Users size={13} className={t.muted} />
-              <h3 className={`text-xs font-semibold ${t.text}`}>제외 유저 목록</h3>
-              <span className={`text-[10px] ${t.muted}`}>{fmtNum(filtered.length)}명</span>
+              <Users size={16} className={t.muted} />
+              <h3 className={`text-sm font-semibold ${t.text}`}>제외 유저 목록</h3>
+              <span className={`text-xs ${t.muted}`}>{fmtNum(filtered.length)}명</span>
             </div>
             <div className="flex items-center gap-2">
               <div className={`flex items-center gap-1 rounded px-2 py-0.5 ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
-                <Search size={11} className={t.muted} />
+                <Search size={14} className={t.muted} />
                 <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="검색..." className={`bg-transparent outline-none text-[11px] w-24 ${t.text}`} />
+                  placeholder="검색..." className={`bg-transparent outline-none text-sm w-24 ${t.text}`} />
               </div>
               {excludeList.length > 0 && (
                 <button onClick={clearAll}
-                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20">
+                  className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20">
                   <Trash2 size={10} /> 전체 초기화
                 </button>
               )}
@@ -244,24 +244,24 @@ export default function ExcludeUsers({ dark }) {
             </div>
           ) : filtered.length > 0 ? (
             <div className="overflow-x-auto" style={{ maxHeight: 400 }}>
-              <table className="w-full text-[11px]">
+              <table className="w-full text-xs">
                 <thead className={`sticky top-0 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'}`}>
                   <tr>
                     {['Guest ID', 'User ID', 'Email', '등록일', ''].map(h => (
-                      <th key={h} className={`px-2 py-1.5 text-left font-semibold ${t.sub}`}>{h}</th>
+                      <th key={h} className={`px-4 py-2.5 text-left font-semibold ${t.sub}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.slice(0, 200).map((item) => (
                     <tr key={item.id} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
-                      <td className={`px-2 py-1.5 font-mono font-medium ${t.text}`}>{item.guest_id}</td>
-                      <td className={`px-2 py-1.5 font-mono ${t.muted}`}>{item.user_id || '—'}</td>
-                      <td className={`px-2 py-1.5 ${t.muted}`}>{item.email || '—'}</td>
-                      <td className={`px-2 py-1.5 ${t.muted}`}>
+                      <td className={`px-4 py-2.5 font-mono font-medium ${t.text}`}>{item.guest_id}</td>
+                      <td className={`px-4 py-2.5 font-mono ${t.muted}`}>{item.user_id || '—'}</td>
+                      <td className={`px-4 py-2.5 ${t.muted}`}>{item.email || '—'}</td>
+                      <td className={`px-4 py-2.5 ${t.muted}`}>
                         {item.created_at ? new Date(item.created_at).toLocaleDateString('ko-KR') : '—'}
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-4 py-2.5">
                         <button onClick={() => removeItem(item.id)}
                           className="text-red-400 hover:text-red-300 p-0.5">
                           <Trash2 size={11} />
@@ -276,15 +276,15 @@ export default function ExcludeUsers({ dark }) {
             <div className={`p-6 text-center ${t.muted}`}>
               <Shield size={24} className="mx-auto mb-2 opacity-30" />
               <p className="text-xs">제외된 유저가 없습니다</p>
-              <p className="text-[10px] mt-0.5">CSV 파일을 업로드하여 내부 임직원을 추가하세요</p>
+              <p className="text-xs mt-0.5">CSV 파일을 업로드하여 내부 임직원을 추가하세요</p>
             </div>
           )}
         </div>
 
         {/* ── 안내 ── */}
-        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-          <h3 className={`text-xs font-semibold mb-1.5 ${t.text}`}>ℹ️ 적용 범위</h3>
-          <ul className={`text-[11px] space-y-0.5 ${t.muted}`}>
+        <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+          <h3 className={`text-sm font-semibold mb-1.5 ${t.text}`}>ℹ️ 적용 범위</h3>
+          <ul className={`text-sm space-y-0.5 ${t.muted}`}>
             <li>• 지점별 분석, 유저 세그먼트, 이용 패턴 등 유저분석 전체에 적용</li>
             <li>• guestId 기준으로 해당 유저의 모든 예약 데이터가 분석에서 제외됩니다</li>
             <li>• <strong className={t.sub}>DB에 저장</strong>되어 모든 사용자에게 동일하게 적용됩니다</li>

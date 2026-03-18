@@ -189,24 +189,24 @@ export default function UserSegment({ dark, dateRange }) {
     <div className={`min-h-screen ${t.bg}`}>
       {/* ── Sticky 필터 + 헤더 ── */}
       <div className={`sticky top-0 z-20 ${dark ? 'bg-[#1D2125]/95' : 'bg-slate-50/95'} backdrop-blur-sm border-b ${t.border}`}>
-        <div className="px-4 pt-3 pb-1.5">
-          <h1 className={`text-base font-bold ${t.text}`}>👤 유저 세그먼트</h1>
+        <div className="px-6 pt-4 pb-2">
+          <h1 className={`text-lg font-bold ${t.text}`}>👤 유저 세그먼트</h1>
         </div>
-        <div className="px-4 pb-2.5 flex items-center gap-2.5 flex-wrap">
-          <Filter size={13} className={t.muted} />
+        <div className="px-6 pb-3 flex items-center gap-3 flex-wrap">
+          <Filter size={16} className={t.muted} />
           <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
-            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}>
             <option value="">전체 권역</option>
             {areaList.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
-            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}>
             <option value="">전체 지점</option>
             {branchList.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
           {(selectedArea || selectedBranch) && (
             <button onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
-              className={`text-[11px] px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+              className={`text-sm px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
               초기화
             </button>
           )}
@@ -216,7 +216,7 @@ export default function UserSegment({ dark, dateRange }) {
               const c = SEGMENT_COLORS[seg]
               return (
                 <button key={seg} onClick={() => toggleSegment(seg)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border
+                  className={`px-2 py-0.5 rounded text-sm font-semibold transition-all border
                     ${isActive ? `${c.active} border-transparent` : dark ? `bg-[#2C333A] ${c.inactive} border-[#A1BDD914] opacity-40` : `bg-white ${c.inactive} border-slate-200 opacity-40`}`}>
                   {seg}
                 </button>
@@ -224,7 +224,7 @@ export default function UserSegment({ dark, dateRange }) {
             })}
             {selectedSegments.size > 0 && (
               <button onClick={() => setSelectedSegments(new Set())}
-                className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                className={`text-xs px-1.5 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
                 전체
               </button>
             )}
@@ -232,37 +232,37 @@ export default function UserSegment({ dark, dateRange }) {
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-6 space-y-3">
+      <div className="px-6 pt-5 pb-8 space-y-5">
         {/* ── 세그먼트 요약 카드 ── */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-3">
           {summary.map((seg, i) => {
             const revPct = totalRevenue > 0 ? seg.revenue / totalRevenue * 100 : 0
             return (
-              <div key={i} className={`rounded-lg p-2.5 border ${t.card} ${t.border}`}>
+              <div key={i} className={`rounded-xl p-4 border ${t.card} ${t.border}`}>
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-sm">{seg.icon}</span>
-                  <span className={`text-xs font-bold ${t.text}`}>{seg.segment}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ml-auto ${dark ? 'bg-slate-700' : 'bg-slate-100'} ${t.sub}`}>
+                  <span className="text-base">{seg.icon}</span>
+                  <span className={`text-sm font-bold ${t.text}`}>{seg.segment}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ml-auto ${dark ? 'bg-slate-700' : 'bg-slate-100'} ${t.sub}`}>
                     {seg.count}명
                   </span>
                 </div>
-                <div className={`text-sm font-bold ${t.text}`}>{fmtKRW(seg.revenue)}</div>
+                <div className={`text-base font-bold ${t.text}`}>{fmtKRW(seg.revenue)}</div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <div className="flex-1 h-1.5 rounded-full bg-slate-200/20 overflow-hidden">
                     <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${revPct}%` }} />
                   </div>
-                  <span className={`text-[10px] font-medium ${t.muted}`}>{fmtPct(revPct)}</span>
+                  <span className={`text-xs font-medium ${t.muted}`}>{fmtPct(revPct)}</span>
                 </div>
-                <div className={`text-[10px] mt-0.5 ${t.muted}`}>평균 {seg.avgCount.toFixed(1)}회 · {fmtKRW(seg.avgRevenue)}/인</div>
+                <div className={`text-xs mt-0.5 ${t.muted}`}>평균 {seg.avgCount.toFixed(1)}회 · {fmtKRW(seg.avgRevenue)}/인</div>
               </div>
             )
           })}
         </div>
 
         {/* ── 구매 주기 분석 ── */}
-        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-          <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>🔄 구매 주기 분석</h2>
-          <div className="grid grid-cols-5 gap-2">
+        <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+          <h2 className={`text-sm font-semibold mb-2 ${t.text}`}>🔄 구매 주기 분석</h2>
+          <div className="grid grid-cols-5 gap-3">
             {[
               { label: '평균 재구매', value: cycle.avgDays + '일', highlight: cycle.avgDays < 60 },
               { label: '중앙값', value: cycle.medianDays + '일', highlight: false },
@@ -271,28 +271,28 @@ export default function UserSegment({ dark, dateRange }) {
               { label: '2→3회 전환', value: fmtPct(cycle.convRate2to3), highlight: cycle.convRate2to3 > 30 },
             ].map((item, i) => (
               <div key={i} className="text-center">
-                <div className={`text-[10px] ${t.muted}`}>{item.label}</div>
-                <div className={`text-base font-bold ${item.highlight ? 'text-blue-400' : t.text}`}>{item.value}</div>
+                <div className={`text-xs ${t.muted}`}>{item.label}</div>
+                <div className={`text-xl font-bold ${item.highlight ? 'text-blue-400' : t.text}`}>{item.value}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── Top 구매자 랭킹 ── */}
-        <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-          <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
-            <h2 className={`text-xs font-semibold ${t.text}`}>
+        <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+          <div className={`px-5 py-3 border-b ${t.border} flex items-center justify-between`}>
+            <h2 className={`text-sm font-semibold ${t.text}`}>
               🏆 Top 구매자
               {selectedSegments.size > 0 && <span className={`ml-1.5 font-normal ${t.muted}`}>({[...selectedSegments].join(', ')})</span>}
             </h2>
-            <div className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
-              <Search size={12} className={t.muted} />
+            <div className={`flex items-center gap-1.5 rounded px-2 py-1 text-sm ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
+              <Search size={14} className={t.muted} />
               <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="ID 검색..." className={`bg-transparent outline-none text-[11px] w-20 ${t.text}`} />
+                placeholder="ID 검색..." className={`bg-transparent outline-none text-sm w-24 ${t.text}`} />
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
+            <table className="w-full text-xs">
               <thead>
                 <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
                   {[
@@ -308,7 +308,7 @@ export default function UserSegment({ dark, dateRange }) {
                   ].map(col => (
                     <th key={col.key}
                       onClick={() => { if (col.key !== 'rank') { setSortBy(col.key); setSortDir(d => d === 'desc' ? 'asc' : 'desc') } }}
-                      className={`px-2 py-1.5 text-left font-semibold cursor-pointer select-none ${col.w} ${t.sub} ${sortBy === col.key ? 'text-blue-500' : ''}`}>
+                      className={`px-4 py-2.5 text-left font-semibold cursor-pointer select-none ${col.w} ${t.sub} ${sortBy === col.key ? 'text-blue-500' : ''}`}>
                       {col.label}{sortBy === col.key ? (sortDir === 'desc' ? '↓' : '↑') : ''}
                     </th>
                   ))}
@@ -319,15 +319,15 @@ export default function UserSegment({ dark, dateRange }) {
                   const segColor = g.segment === 'VIP' ? 'text-purple-500' : g.segment === '충성' ? 'text-amber-500' : g.segment === '일반' ? 'text-blue-500' : 'text-emerald-500'
                   return (
                     <tr key={g.guest_id} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
-                      <td className={`px-2 py-1.5 font-bold ${t.muted}`}>{i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</td>
-                      <td className={`px-2 py-1.5 font-mono ${t.text}`}>{g.guest_id}</td>
-                      <td className={`px-2 py-1.5 font-semibold ${segColor}`}>{g.segment}</td>
-                      <td className={`px-2 py-1.5 ${t.text}`}>{g.count}</td>
-                      <td className={`px-2 py-1.5 font-medium ${t.text}`}>{fmtKRW(g.revenue)}</td>
-                      <td className={`px-2 py-1.5 ${t.muted}`}>{fmtKRW(g.avgRevenue)}</td>
-                      <td className={`px-2 py-1.5 ${t.text}`}>{g.branches}</td>
-                      <td className={`px-2 py-1.5 ${t.text}`}>{g.areas}</td>
-                      <td className={`px-2 py-1.5 ${t.text}`}>{g.avgNights.toFixed(1)}</td>
+                      <td className={`px-4 py-2.5 font-bold ${t.muted}`}>{i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</td>
+                      <td className={`px-4 py-2.5 font-mono ${t.text}`}>{g.guest_id}</td>
+                      <td className={`px-4 py-2.5 font-semibold ${segColor}`}>{g.segment}</td>
+                      <td className={`px-4 py-2.5 ${t.text}`}>{g.count}</td>
+                      <td className={`px-4 py-2.5 font-medium ${t.text}`}>{fmtKRW(g.revenue)}</td>
+                      <td className={`px-4 py-2.5 ${t.muted}`}>{fmtKRW(g.avgRevenue)}</td>
+                      <td className={`px-4 py-2.5 ${t.text}`}>{g.branches}</td>
+                      <td className={`px-4 py-2.5 ${t.text}`}>{g.areas}</td>
+                      <td className={`px-4 py-2.5 ${t.text}`}>{g.avgNights.toFixed(1)}</td>
                     </tr>
                   )
                 })}

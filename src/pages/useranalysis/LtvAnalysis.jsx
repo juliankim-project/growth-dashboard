@@ -172,7 +172,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
                     </div>
                     <div>
                       <span className={`text-xs font-bold ${seg.color}`}>{seg.label}</span>
-                      <div className={`text-[10px] ${t.muted}`}>{fmtNum(seg.users)}명 · {fmtPct(pct)}</div>
+                      <div className={`text-xs ${t.muted}`}>{fmtNum(seg.users)}명 · {fmtPct(pct)}</div>
                     </div>
                   </div>
                 </div>
@@ -198,7 +198,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
             <div className="flex flex-col items-center gap-1 w-20">
               <ArrowRight size={18} className="text-emerald-400" />
               <span className={`text-sm font-bold tabular-nums ${conversionRates.rate12 > 20 ? 'text-emerald-400' : t.text}`}>{fmtPct(conversionRates.rate12)}</span>
-              <span className={`text-[10px] ${t.muted}`}>{Math.round(purchaseCycle.avg12)}일</span>
+              <span className={`text-xs ${t.muted}`}>{Math.round(purchaseCycle.avg12)}일</span>
             </div>
             {/* 2회 구매 */}
             <div className="flex-1">
@@ -211,7 +211,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
             <div className="flex flex-col items-center gap-1 w-20">
               <ArrowRight size={18} className="text-violet-400" />
               <span className={`text-sm font-bold tabular-nums ${conversionRates.rate23 > 30 ? 'text-violet-400' : t.text}`}>{fmtPct(conversionRates.rate23)}</span>
-              <span className={`text-[10px] ${t.muted}`}>{Math.round(purchaseCycle.avg23)}일</span>
+              <span className={`text-xs ${t.muted}`}>{Math.round(purchaseCycle.avg23)}일</span>
             </div>
             {/* 3회+ 구매 */}
             <div className="flex-1">
@@ -292,7 +292,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
               </div>
               <div>
                 <h2 className={`text-sm font-bold ${t.text}`}>이탈 위험 유저</h2>
-                <div className={`text-[11px] ${t.muted}`}>
+                <div className={`text-xs ${t.muted}`}>
                   {fmtNum(churnRisk.length)}명 · 위험 매출 {fmtKRW(churnRevenue)}
                 </div>
               </div>
@@ -326,13 +326,13 @@ export default function LtvAnalysis({ dark, dateRange }) {
                       <tr key={r.guestId} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]/50' : 'hover:bg-slate-50'} transition-colors`}>
                         <td className={`px-4 py-2.5 font-mono font-medium ${t.text}`}>{r.guestId}</td>
                         <td className="px-4 py-2.5">
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${seg.bg} ${seg.color} border ${seg.border}`}>{seg.label}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${seg.bg} ${seg.color} border ${seg.border}`}>{seg.label}</span>
                         </td>
                         <td className={`px-4 py-2.5 font-medium ${t.text}`}>{r.count}회</td>
                         <td className={`px-4 py-2.5 font-bold ${t.text}`}>{fmtKRW(r.revenue)}</td>
                         <td className={`px-4 py-2.5 font-mono ${t.muted}`}>{r.lastDate}</td>
                         <td className="px-4 py-2.5">
-                          <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold tabular-nums ${daysColor(r.daysSince)}`}>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-bold tabular-nums ${daysColor(r.daysSince)}`}>
                             {r.daysSince}일
                           </span>
                         </td>

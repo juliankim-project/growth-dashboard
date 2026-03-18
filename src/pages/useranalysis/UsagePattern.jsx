@@ -158,7 +158,7 @@ function HeatCell({ value, rowTotal, rowMax, showPct, colorScheme = 'blue', dark
     : intensity > 0 ? c.faint
     : ''
   return (
-    <td className={`px-1.5 py-1 text-center text-[11px] font-medium rounded ${bg}`}>
+    <td className={`px-2 py-1.5 text-center text-xs font-medium rounded ${bg}`}>
       {value > 0 ? (showPct ? fmtPct(pct) : value) : ''}
     </td>
   )
@@ -256,55 +256,55 @@ export default function UsagePattern({ dark, dateRange }) {
     <div className={`min-h-screen ${t.bg}`}>
       {/* ── Sticky 필터 + 헤더 ── */}
       <div className={`sticky top-0 z-20 ${dark ? 'bg-[#1D2125]/95' : 'bg-slate-50/95'} backdrop-blur-sm border-b ${t.border}`}>
-        <div className="px-4 pt-3 pb-2">
-          <h1 className={`text-base font-bold ${t.text}`}>📊 이용 패턴 분석</h1>
+        <div className="px-6 pt-4 pb-2">
+          <h1 className={`text-lg font-bold ${t.text}`}>📊 이용 패턴 분석</h1>
         </div>
-        <div className="px-4 pb-2.5 flex items-center gap-3 flex-wrap">
-          <Filter size={13} className={t.muted} />
+        <div className="px-6 pb-3 flex items-center gap-3 flex-wrap">
+          <Filter size={16} className={t.muted} />
           <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
-            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}>
             <option value="">전체 권역</option>
             {areaList.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
-            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}>
             <option value="">전체 지점</option>
             {branchList.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
           {(selectedArea || selectedBranch) && (
             <button onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
-              className={`text-[11px] px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+              className={`text-sm px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
               초기화
             </button>
           )}
-          <span className={`text-[11px] ml-auto ${t.muted}`}>{fmtNum(totalCount)}건</span>
+          <span className={`text-sm ml-auto ${t.muted}`}>{fmtNum(totalCount)}건</span>
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-6 space-y-3">
+      <div className="px-6 pt-5 pb-8 space-y-5">
         {/* ── KPI 요약 ── */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-3">
           {[
-            { label: '예약건', value: fmtNum(totalCount), sub: '건', icon: <Calendar size={13}/>, color: 'text-blue-500 bg-blue-500/10' },
-            { label: '평균숙박', value: avgNights.toFixed(1), sub: '박', icon: <Bed size={13}/>, color: 'text-violet-500 bg-violet-500/10' },
-            { label: '리드타임', value: Math.round(avgLeadTime), sub: '일', icon: <Clock size={13}/>, color: 'text-amber-500 bg-amber-500/10' },
-            { label: '투숙객', value: avgPeoples.toFixed(1), sub: '명', icon: <Home size={13}/>, color: 'text-emerald-500 bg-emerald-500/10' },
+            { label: '예약건', value: fmtNum(totalCount), sub: '건', icon: <Calendar size={16}/>, color: 'text-blue-500 bg-blue-500/10' },
+            { label: '평균숙박', value: avgNights.toFixed(1), sub: '박', icon: <Bed size={16}/>, color: 'text-violet-500 bg-violet-500/10' },
+            { label: '리드타임', value: Math.round(avgLeadTime), sub: '일', icon: <Clock size={16}/>, color: 'text-amber-500 bg-amber-500/10' },
+            { label: '투숙객', value: avgPeoples.toFixed(1), sub: '명', icon: <Home size={16}/>, color: 'text-emerald-500 bg-emerald-500/10' },
           ].map((kpi, i) => (
-            <div key={i} className={`rounded-lg p-2.5 border ${t.card} ${t.border}`}>
+            <div key={i} className={`rounded-xl p-4 border ${t.card} ${t.border}`}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <div className={`w-5 h-5 rounded flex items-center justify-center ${kpi.color}`}>{kpi.icon}</div>
-                <span className={`text-[11px] ${t.muted}`}>{kpi.label}</span>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${kpi.color}`}>{kpi.icon}</div>
+                <span className={`text-sm ${t.muted}`}>{kpi.label}</span>
               </div>
-              <div className={`text-base font-bold ${t.text}`}>{kpi.value}<span className={`text-xs font-normal ml-0.5 ${t.muted}`}>{kpi.sub}</span></div>
+              <div className={`text-xl font-bold ${t.text}`}>{kpi.value}<span className={`text-xs font-normal ml-0.5 ${t.muted}`}>{kpi.sub}</span></div>
             </div>
           ))}
         </div>
 
         {/* ── 요일별 전체 분포 (미니 바) ── */}
-        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
+        <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
           <div className="flex items-center justify-between mb-2">
-            <h2 className={`text-xs font-semibold ${t.text}`}>요일별 체크인 분포</h2>
-            <span className={`text-[11px] ${t.muted}`}>전체 {fmtNum(totalCount)}건</span>
+            <h2 className={`text-sm font-semibold ${t.text}`}>요일별 체크인 분포</h2>
+            <span className={`text-sm ${t.muted}`}>전체 {fmtNum(totalCount)}건</span>
           </div>
           <div className="flex items-end gap-1" style={{ height: 60 }}>
             {dayTotals.map((v, i) => {
@@ -317,7 +317,7 @@ export default function UsagePattern({ dark, dateRange }) {
                   <div className="w-full rounded-t" style={{ height: `${h}%`, minHeight: v > 0 ? 4 : 0 }}>
                     <div className={`w-full h-full rounded-t ${i === 0 ? 'bg-red-400' : i === 6 ? 'bg-blue-400' : 'bg-slate-400'} opacity-70`} />
                   </div>
-                  <span className={`text-[10px] font-semibold ${DAYS_COLOR[i] || t.sub}`}>{DAYS_KR[i]}</span>
+                  <span className={`text-xs font-semibold ${DAYS_COLOR[i] || t.sub}`}>{DAYS_KR[i]}</span>
                   <span className={`text-[9px] ${t.muted}`}>{fmtNum(v)}</span>
                 </div>
               )
@@ -326,12 +326,12 @@ export default function UsagePattern({ dark, dateRange }) {
         </div>
 
         {/* ── 체크인 요일 히트맵 (지점/권역 토글 + 건수/비율 토글) ── */}
-        <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-          <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
+        <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+          <div className={`px-5 py-3 border-b ${t.border} flex items-center justify-between`}>
             <div className="flex items-center gap-2">
               {['branch', 'area'].map(m => (
                 <button key={m} onClick={() => setHeatmapView(m)}
-                  className={`text-[11px] px-2 py-0.5 rounded font-medium transition-all
+                  className={`text-sm px-2 py-0.5 rounded font-medium transition-all
                     ${heatmapView === m
                       ? 'bg-[#0C66E4] text-white'
                       : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}>
@@ -353,16 +353,16 @@ export default function UsagePattern({ dark, dateRange }) {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
+            <table className="w-full text-xs">
               <thead>
                 <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
-                  <th className={`px-2 py-1.5 text-left font-semibold ${t.sub} min-w-[100px]`}>
+                  <th className={`px-4 py-2.5 text-left font-semibold ${t.sub} min-w-[100px]`}>
                     {heatmapView === 'branch' ? '지점' : '권역'}
                   </th>
                   {DAYS_KR.map((d, i) => (
-                    <th key={d} className={`px-1.5 py-1.5 text-center font-semibold w-10 ${DAYS_COLOR[i] || t.sub}`}>{d}</th>
+                    <th key={d} className={`px-3 py-2.5 text-center font-semibold w-10 ${DAYS_COLOR[i] || t.sub}`}>{d}</th>
                   ))}
-                  <th className={`px-2 py-1.5 text-center font-semibold ${t.sub} w-14`}>합계</th>
+                  <th className={`px-3 py-2.5 text-center font-semibold ${t.sub} w-14`}>합계</th>
                 </tr>
               </thead>
               <tbody>
@@ -372,12 +372,12 @@ export default function UsagePattern({ dark, dateRange }) {
                   const rowTotal = row.reduce((s, v) => s + v, 0)
                   return (
                     <tr key={item} className={`border-t ${t.border}`}>
-                      <td className={`px-2 py-1 font-medium whitespace-nowrap truncate max-w-[140px] ${t.text}`}>{item}</td>
+                      <td className={`px-4 py-2 font-medium whitespace-nowrap truncate max-w-[140px] ${t.text}`}>{item}</td>
                       {row.map((v, di) => (
                         <HeatCell key={di} value={v} rowTotal={rowTotal} rowMax={rowMax}
                           showPct={showPct} colorScheme={heatmapColor} dark={dark} />
                       ))}
-                      <td className={`px-2 py-1 text-center font-bold text-[11px] ${t.sub}`}>{fmtNum(rowTotal)}</td>
+                      <td className={`px-3 py-2 text-center font-bold text-xs ${t.sub}`}>{fmtNum(rowTotal)}</td>
                     </tr>
                   )
                 })}
@@ -387,20 +387,20 @@ export default function UsagePattern({ dark, dateRange }) {
         </div>
 
         {/* ── 숙박일수 + 리드타임 (2컬럼) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 숙박일수 */}
-          <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-            <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>🛏️ 숙박일수 분포</h2>
+          <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+            <h2 className={`text-sm font-semibold mb-2 ${t.text}`}>🛏️ 숙박일수 분포</h2>
             <div className="space-y-1.5">
               {nightsDist.map((row, i) => {
                 const maxCount = Math.max(...nightsDist.map(r => r.count))
                 const pct = totalCount > 0 ? row.count / totalCount * 100 : 0
                 return (
                   <div key={i} className="flex items-center gap-2">
-                    <span className={`text-[11px] font-semibold w-7 ${t.text}`}>{row.nights}</span>
+                    <span className={`text-sm font-semibold w-7 ${t.text}`}>{row.nights}</span>
                     <PctBar value={row.count} max={maxCount} color="from-violet-500 to-violet-400" height="h-3.5" />
-                    <span className={`text-[11px] font-bold w-12 text-right ${t.text}`}>{fmtNum(row.count)}</span>
-                    <span className={`text-[10px] w-10 text-right font-medium ${pct > 30 ? 'text-violet-400' : t.muted}`}>{fmtPct(pct)}</span>
+                    <span className={`text-sm font-bold w-12 text-right ${t.text}`}>{fmtNum(row.count)}</span>
+                    <span className={`text-xs w-10 text-right font-medium ${pct > 30 ? 'text-violet-400' : t.muted}`}>{fmtPct(pct)}</span>
                   </div>
                 )
               })}
@@ -408,18 +408,18 @@ export default function UsagePattern({ dark, dateRange }) {
           </div>
 
           {/* 리드타임 */}
-          <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-            <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>⏱️ 예약 리드타임</h2>
+          <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+            <h2 className={`text-sm font-semibold mb-2 ${t.text}`}>⏱️ 예약 리드타임</h2>
             <div className="space-y-1.5">
               {leadtimeDist.map((row, i) => {
                 const maxCount = Math.max(...leadtimeDist.map(r => r.count))
                 const pct = totalCount > 0 ? row.count / totalCount * 100 : 0
                 return (
                   <div key={i} className="flex items-center gap-2">
-                    <span className={`text-[11px] font-semibold w-12 ${t.text}`}>{row.label}</span>
+                    <span className={`text-sm font-semibold w-12 ${t.text}`}>{row.label}</span>
                     <PctBar value={row.count} max={maxCount} color="from-amber-500 to-amber-400" height="h-3.5" />
-                    <span className={`text-[11px] font-bold w-12 text-right ${t.text}`}>{fmtNum(row.count)}</span>
-                    <span className={`text-[10px] w-10 text-right font-medium ${pct > 25 ? 'text-amber-400' : t.muted}`}>{fmtPct(pct)}</span>
+                    <span className={`text-sm font-bold w-12 text-right ${t.text}`}>{fmtNum(row.count)}</span>
+                    <span className={`text-xs w-10 text-right font-medium ${pct > 25 ? 'text-amber-400' : t.muted}`}>{fmtPct(pct)}</span>
                   </div>
                 )
               })}
@@ -428,8 +428,8 @@ export default function UsagePattern({ dark, dateRange }) {
             <div className={`mt-2 pt-2 border-t ${t.border} grid grid-cols-3 gap-1`}>
               {leadtimeDist.filter(b => b.count > 0).slice(0, 3).map((b, i) => (
                 <div key={i} className="text-center">
-                  <div className={`text-[10px] ${t.muted}`}>{b.label}</div>
-                  <div className={`text-[11px] font-bold ${t.text}`}>{fmtKRW(b.count > 0 ? b.revenue / b.count : 0)}</div>
+                  <div className={`text-xs ${t.muted}`}>{b.label}</div>
+                  <div className={`text-sm font-bold ${t.text}`}>{fmtKRW(b.count > 0 ? b.revenue / b.count : 0)}</div>
                   <div className={`text-[9px] ${t.muted}`}>건당 매출</div>
                 </div>
               ))}
@@ -438,10 +438,10 @@ export default function UsagePattern({ dark, dateRange }) {
         </div>
 
         {/* ── 채널 분포 + 객실 타입 (2컬럼) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 채널 분포 (도넛 + 리스트) */}
-          <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-            <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>📡 채널 분포</h2>
+          <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+            <h2 className={`text-sm font-semibold mb-2 ${t.text}`}>📡 채널 분포</h2>
             <div className="flex items-start gap-3">
               <MiniDonut
                 size={64}
@@ -457,9 +457,9 @@ export default function UsagePattern({ dark, dateRange }) {
                   return (
                     <div key={i} className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: channelColors[i % channelColors.length] }} />
-                      <span className={`text-[11px] truncate flex-1 ${t.text}`}>{ch.channel}</span>
-                      <span className={`text-[10px] font-bold ${t.text}`}>{fmtPct(pct)}</span>
-                      <span className={`text-[10px] ${t.muted}`}>{fmtNum(ch.count)}</span>
+                      <span className={`text-sm truncate flex-1 ${t.text}`}>{ch.channel}</span>
+                      <span className={`text-xs font-bold ${t.text}`}>{fmtPct(pct)}</span>
+                      <span className={`text-xs ${t.muted}`}>{fmtNum(ch.count)}</span>
                     </div>
                   )
                 })}
@@ -468,16 +468,16 @@ export default function UsagePattern({ dark, dateRange }) {
           </div>
 
           {/* 객실 타입 Top 8 */}
-          <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-            <div className={`px-3 py-2 border-b ${t.border}`}>
-              <h2 className={`text-xs font-semibold ${t.text}`}>🏨 객실 타입 Top 8</h2>
+          <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+            <div className={`px-5 py-3 border-b ${t.border}`}>
+              <h2 className={`text-sm font-semibold ${t.text}`}>🏨 객실 타입 Top 8</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-[11px]">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
                     {['객실', '건수', '비중', '매출', '건당'].map(h => (
-                      <th key={h} className={`px-2 py-1.5 text-left font-semibold ${t.sub}`}>{h}</th>
+                      <th key={h} className={`px-4 py-2.5 text-left font-semibold ${t.sub}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -488,16 +488,16 @@ export default function UsagePattern({ dark, dateRange }) {
                     const revPct = totalRev > 0 ? row.revenue / totalRev * 100 : 0
                     return (
                       <tr key={i} className={`border-t ${t.border}`}>
-                        <td className={`px-2 py-1.5 font-medium truncate max-w-[120px] ${t.text}`}>{row.type}</td>
-                        <td className={`px-2 py-1.5 ${t.text}`}>{fmtNum(row.count)}</td>
-                        <td className={`px-2 py-1.5`}>
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold
+                        <td className={`px-4 py-2.5 font-medium truncate max-w-[120px] ${t.text}`}>{row.type}</td>
+                        <td className={`px-4 py-2.5 ${t.text}`}>{fmtNum(row.count)}</td>
+                        <td className={`px-4 py-2.5`}>
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold
                             ${pct > 20 ? 'bg-blue-500/20 text-blue-400' : dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                             {fmtPct(pct)}
                           </span>
                         </td>
-                        <td className={`px-2 py-1.5 ${t.text}`}>{fmtKRW(row.revenue)}</td>
-                        <td className={`px-2 py-1.5 ${t.muted}`}>{fmtKRW(row.count > 0 ? row.revenue / row.count : 0)}</td>
+                        <td className={`px-4 py-2.5 ${t.text}`}>{fmtKRW(row.revenue)}</td>
+                        <td className={`px-4 py-2.5 ${t.muted}`}>{fmtKRW(row.count > 0 ? row.revenue / row.count : 0)}</td>
                       </tr>
                     )
                   })}
