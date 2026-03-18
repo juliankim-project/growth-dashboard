@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useColumnConfig } from '../../store/useColumnConfig'
 import { TABLES, buildTableMetrics, buildTableGroupBy, getColumnLabel, getTableDisplayName } from '../../store/columnUtils'
 import { fetchDateRange } from '../../lib/supabase'
-import { Table2, GripVertical, Pencil, Plus, X, RotateCcw, Calendar, Database } from 'lucide-react'
+import { Table2, GripVertical, Pencil, Plus, X, RotateCcw, Calendar, Database, Download } from 'lucide-react'
 import Spinner from '../../components/UI/Spinner'
+import MCPImportSection from './MCPImportSection'
 import {
   DndContext, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -406,9 +407,21 @@ export default function UnifiedColumnConfig({ dark }) {
             </button>
           )
         })}
+        {/* MCP-결제 탭 */}
+        <button onClick={() => setSelTable('mcp_reservation')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5
+            ${selTable === 'mcp_reservation'
+              ? (dark ? 'bg-[#579DFF]/20 border-[#579DFF]/40 text-[#579DFF]' : 'bg-[#E9F2FF] border-[#B3D4FF] text-[#0055CC]')
+              : (dark ? 'border-[#A1BDD914] text-slate-500 hover:text-slate-300' : 'border-slate-200 text-slate-400 hover:text-slate-600')
+            }`}>
+          <Download size={12} />
+          MCP-결제
+        </button>
       </div>
 
-      {!hasData ? (
+      {selTable === 'mcp_reservation' ? (
+        <MCPImportSection dark={dark} />
+      ) : !hasData ? (
         <div className={`rounded-xl border p-8 text-center ${card}`}>
           <p className={sub}>컬럼 정의를 불러오는 중이거나, DB에 정의가 없습니다.</p>
         </div>

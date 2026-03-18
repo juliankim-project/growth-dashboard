@@ -59,9 +59,9 @@ export function mcpAsk(question, signal) {
   }, signal)
 }
 
-/** SQL 쿼리 */
-export function mcpQuery(sql, signal) {
-  return call('query', { sql }, signal)
+/** SQL 쿼리 (limit: 기본 1000, 최대 100000) */
+export function mcpQuery(sql, signal, { limit = 1000 } = {}) {
+  return call('query', { sql, limit }, signal)
 }
 
 /** 스키마 부트스트랩 */
