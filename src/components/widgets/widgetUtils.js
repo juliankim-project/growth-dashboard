@@ -37,7 +37,7 @@ export function calcMetric(data, metricId, mList) {
   }
 
   /* COUNT(*) — _weight 가중치 지원 (daily_summary 등 집계 뷰) */
-  if (m._countType) return data.reduce((s, r) => s + (r._weight || 1), 0)
+  if (m._countType || m.agg === 'count') return data.reduce((s, r) => s + (r._weight || 1), 0)
 
   /* 비율 계산컬럼 — SUM(분자) / SUM(분모) 또는 COUNT(DISTINCT) 지원 */
   if (m._ratioTerms) {
@@ -54,8 +54,14 @@ export function calcMetric(data, metricId, mList) {
     return denVal > 0 ? numVal / denVal : 0
   }
 
+  /* AVG — _weight 가중치 반영 */
+  if (m.agg === 'avg' && m.field && !m.derived) {
+    const totalWeight = data.reduce((s, r) => s + (r._weight || 1), 0)
+    return totalWeight > 0 ? sumField(data, m.field) / totalWeight : 0
+  }
+
   /* 동적 테이블 메트릭 (계산 컬럼 포함) — agg 타입 반영 */
-  if (m._computed || (m.field && m.field === m.id && !m.derived)) {
+  if (m._computed || (m.field && m.field === m.id && !m.derived) || m.agg) {
     const agg = m.agg || 'sum'
     if (agg === 'count') return data.reduce((s, r) => s + (r._weight || 1), 0)
     if (agg === 'count_distinct' && m._distinctCol) {
