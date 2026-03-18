@@ -1,36 +1,116 @@
-import { useState, useRef, useEffect } from 'react'
-import { Bell, Search, CalendarDays, ChevronDown, LogOut, User } from 'lucide-react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { Bell, Search, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, LogOut, User, ArrowRight } from 'lucide-react'
 import { DEFAULT_SECTIONS } from './Sidebar'
 import { DATE_PRESETS } from '../../store/useDateRange'
 
 /* ──────────────────────────────────────────
    날짜 포맷 헬퍼
 ─────────────────────────────────────────── */
-const fmtMD = d => d ? `${d.slice(5, 7)}.${d.slice(8, 10)}` : '—'   // MM.DD
-const fmtFull = d => d ? d.replace(/-/g, '.') : '—'                   // YYYY.MM.DD
+const fmtMD = d => d ? `${d.slice(5, 7)}.${d.slice(8, 10)}` : '—'
+const fmtFull = d => d ? d.replace(/-/g, '.') : '—'
+const toYMD = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+/* ── 미니 캘린더 ── */
+function MiniCalendar({ dark, year, month, rangeStart, rangeEnd, onSelectDate, onMonthChange }) {
+  const t = dark
+    ? { head: 'text-slate-500', day: 'text-slate-300', today: 'ring-1 ring-blue-400', muted: 'text-slate-600',
+        inRange: 'bg-blue-500/15', startEnd: 'bg-blue-600 text-white', hover: 'hover:bg-[#2C333A]' }
+    : { head: 'text-slate-400', day: 'text-slate-700', today: 'ring-1 ring-blue-500', muted: 'text-slate-300',
+        inRange: 'bg-blue-50', startEnd: 'bg-blue-600 text-white', hover: 'hover:bg-slate-50' }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const firstDay = new Date(year, month, 1).getDay() // 0=일
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const weeks = []
+  let week = new Array(firstDay).fill(null)
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    week.push(d)
+    if (week.length === 7) { weeks.push(week); week = [] }
+  }
+  if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
+
+  return (
+    <div>
+      {/* 월 네비게이션 */}
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={() => onMonthChange(-1)} className={`p-1 rounded ${t.hover}`}>
+          <ChevronLeft size={14} className={t.head} />
+        </button>
+        <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+          {year}년 {month + 1}월
+        </span>
+        <button onClick={() => onMonthChange(1)} className={`p-1 rounded ${t.hover}`}>
+          <ChevronRight size={14} className={t.head} />
+        </button>
+      </div>
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 mb-1">
+        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+          <div key={d} className={`text-center text-[10px] font-medium py-0.5 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : t.head}`}>{d}</div>
+        ))}
+      </div>
+      {/* 날짜 그리드 */}
+      {weeks.map((week, wi) => (
+        <div key={wi} className="grid grid-cols-7">
+          {week.map((day, di) => {
+            if (!day) return <div key={di} />
+            const dateStr = toYMD(year, month, day)
+            const isToday = dateStr === todayStr
+            const isStart = dateStr === rangeStart
+            const isEnd = dateStr === rangeEnd
+            const inRange = rangeStart && rangeEnd && dateStr >= rangeStart && dateStr <= rangeEnd
+            const isStartOrEnd = isStart || isEnd
+
+            return (
+              <button key={di}
+                onClick={() => onSelectDate(dateStr)}
+                className={`text-[11px] py-1.5 text-center rounded-md transition-all font-medium
+                  ${isStartOrEnd ? t.startEnd
+                    : inRange ? t.inRange + ' ' + t.day
+                    : t.day + ' ' + t.hover}
+                  ${isToday && !isStartOrEnd ? t.today : ''}
+                `}>
+                {day}
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /* ──────────────────────────────────────────
    DateRangePicker 컴포넌트
 ─────────────────────────────────────────── */
 function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
-  const [open,        setOpen]        = useState(false)
+  const [open, setOpen] = useState(false)
   const [customStart, setCustomStart] = useState(dateRange.start || '')
-  const [customEnd,   setCustomEnd]   = useState(dateRange.end   || '')
+  const [customEnd, setCustomEnd] = useState(dateRange.end || '')
+  const [selectingStart, setSelectingStart] = useState(true) // true=시작일 선택중, false=종료일 선택중
   const ref = useRef(null)
 
-  /* 드롭다운 열릴 때 현재 값으로 인풋 동기화 */
+  // 캘린더 표시 월 (2개월 표시)
+  const initDate = dateRange.start ? new Date(dateRange.start) : new Date()
+  const [calYear, setCalYear] = useState(initDate.getFullYear())
+  const [calMonth, setCalMonth] = useState(initDate.getMonth())
+
   useEffect(() => {
     if (open) {
       setCustomStart(dateRange.start || '')
-      setCustomEnd(dateRange.end   || '')
+      setCustomEnd(dateRange.end || '')
+      setSelectingStart(true)
+      if (dateRange.start) {
+        const d = new Date(dateRange.start)
+        setCalYear(d.getFullYear())
+        setCalMonth(d.getMonth())
+      }
     }
-  }, [open, dateRange.start, dateRange.end])
+  }, [open])
 
-  /* 외부 클릭 시 닫기 */
   useEffect(() => {
-    const handler = e => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
@@ -38,14 +118,65 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
   const presetLabel = DATE_PRESETS.find(p => p.id === dateRange.preset)?.label
   const displayLabel = presetLabel ?? '직접 설정'
 
+  // 선택 일수 계산
+  const dayCount = useMemo(() => {
+    if (!customStart || !customEnd) return 0
+    return Math.round((new Date(customEnd) - new Date(customStart)) / 86400000) + 1
+  }, [customStart, customEnd])
+
   const applyCustom = () => {
-    if (!customStart || !customEnd) return
-    if (customStart > customEnd) return
+    if (!customStart || !customEnd || customStart > customEnd) return
     setCustomRange(customStart, customEnd)
     setOpen(false)
   }
 
-  const inputCls = `w-full px-2 py-1.5 rounded-lg border text-xs outline-none transition-colors
+  const onSelectDate = (dateStr) => {
+    if (selectingStart) {
+      setCustomStart(dateStr)
+      setCustomEnd('')
+      setSelectingStart(false)
+    } else {
+      if (dateStr < customStart) {
+        setCustomStart(dateStr)
+        setSelectingStart(false)
+      } else {
+        setCustomEnd(dateStr)
+        setSelectingStart(true)
+      }
+    }
+  }
+
+  const changeMonth = (delta) => {
+    let m = calMonth + delta
+    let y = calYear
+    if (m < 0) { m = 11; y-- }
+    if (m > 11) { m = 0; y++ }
+    setCalMonth(m)
+    setCalYear(y)
+  }
+
+  // 월별 퀵 선택 버튼 (최근 6개월)
+  const monthButtons = useMemo(() => {
+    const result = []
+    const now = new Date()
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      const end = i === 0 ? now : last
+      result.push({
+        label: `${d.getMonth() + 1}월`,
+        start: toYMD(d.getFullYear(), d.getMonth(), 1),
+        end: toYMD(end.getFullYear(), end.getMonth(), end.getDate()),
+      })
+    }
+    return result
+  }, [])
+
+  // 두번째 캘린더 월
+  const cal2Month = calMonth + 1 > 11 ? 0 : calMonth + 1
+  const cal2Year = calMonth + 1 > 11 ? calYear + 1 : calYear
+
+  const inputCls = `w-full px-3 py-2 rounded-lg border text-xs outline-none transition-all cursor-pointer
     ${dark
       ? 'bg-[#1D2125] border-[#A1BDD914] text-white [color-scheme:dark] focus:border-[#579DFF]'
       : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-[#0C66E4]'}`
@@ -57,12 +188,8 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-xs font-medium transition-all
           ${open
-            ? dark
-              ? 'bg-[#22272B] border-[#579DFF]/60 text-white'
-              : 'bg-white border-[#0C66E4] text-slate-700 shadow-sm'
-            : dark
-              ? 'bg-[#22272B] border-[#A1BDD914] text-slate-300 hover:border-[#579DFF]/40 hover:text-white'
-              : 'bg-white border-slate-200 text-slate-600 hover:border-[#579DFF] shadow-sm'
+            ? dark ? 'bg-[#22272B] border-[#579DFF]/60 text-white' : 'bg-white border-[#0C66E4] text-slate-700 shadow-sm'
+            : dark ? 'bg-[#22272B] border-[#A1BDD914] text-slate-300 hover:border-[#579DFF]/40 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-[#579DFF] shadow-sm'
           }`}
       >
         <CalendarDays size={16} className={dark ? 'text-[#579DFF]' : 'text-[#0C66E4]'} />
@@ -70,102 +197,87 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
         <span className={`hidden sm:inline text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
           {fmtMD(dateRange.start)} – {fmtMD(dateRange.end)}
         </span>
-        <ChevronDown
-          size={14}
-          className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}
-            ${dark ? 'text-slate-400' : 'text-slate-700'}`}
-        />
+        <ChevronDown size={14} className={`transition-transform duration-150 ${open ? 'rotate-180' : ''} ${dark ? 'text-slate-400' : 'text-slate-700'}`} />
       </button>
 
       {/* ── 드롭다운 ── */}
       {open && (
-        <div className={`
-          absolute right-0 top-[calc(100%+8px)] z-[100] w-96 rounded-xl border shadow-2xl overflow-hidden
-          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}
-        `}>
-          {/* 프리셋 버튼 — 그룹별 */}
-          <div className="p-3 flex flex-col gap-2">
-            {[
-              { key: 'day',   label: '일' },
-              { key: 'week',  label: '주' },
-              { key: 'month', label: '월' },
-            ].map(g => {
-              const items = DATE_PRESETS.filter(p => p.group === g.key)
-              if (items.length === 0) return null
-              return (
-                <div key={g.key} className="flex items-center gap-1.5">
-                  <span className={`text-[11px] font-bold w-5 shrink-0 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{g.label}</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {items.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => { setPreset(p.id); setOpen(false) }}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors
-                          ${dateRange.preset === p.id
-                            ? 'bg-[#0C66E4] text-white shadow-sm'
-                            : dark
-                              ? 'bg-[#1D2125] text-slate-400 hover:bg-[#0C66E4]/20 hover:text-white'
-                              : 'bg-slate-100 text-slate-600 hover:bg-[#E9F2FF] hover:text-[#0C66E4]'
-                          }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
+        <div className={`absolute right-0 top-[calc(100%+8px)] z-[100] rounded-xl border shadow-2xl overflow-hidden
+          ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}
+          style={{ width: 520 }}>
+
+          {/* 상단: 시작일 ~ 종료일 인풋 + 일수 */}
+          <div className={`p-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
+            <div className="flex items-center gap-2">
+              <div className="flex-1" onClick={() => setSelectingStart(true)}>
+                <input type="date" value={customStart} readOnly
+                  className={`${inputCls} ${selectingStart ? (dark ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : ''}`} />
+              </div>
+              <ArrowRight size={14} className={dark ? 'text-slate-500' : 'text-slate-400'} />
+              <div className="flex-1" onClick={() => setSelectingStart(false)}>
+                <input type="date" value={customEnd} readOnly
+                  className={`${inputCls} ${!selectingStart ? (dark ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : ''}`} />
+              </div>
+              {dayCount > 0 && (
+                <span className={`text-[11px] font-bold px-2 py-1 rounded-lg shrink-0 ${dark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                  {dayCount}일
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className={`border-t ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`} />
+          <div className="flex">
+            {/* 왼쪽: 프리셋 + 월별 퀵버튼 */}
+            <div className={`w-[140px] p-2.5 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} flex flex-col gap-1`}>
+              {/* 월별 퀵선택 */}
+              <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>월별</p>
+              {monthButtons.map((mb, i) => (
+                <button key={i}
+                  onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
+                  className={`text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors
+                    ${dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
+                  {mb.label}
+                </button>
+              ))}
 
-          {/* 직접 날짜 설정 */}
-          <div className="p-3 flex flex-col gap-2.5">
-            <p className={`text-xs font-bold uppercase tracking-widest ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-              직접 설정
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <p className={`text-xs mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>시작일</p>
-                <input
-                  type="date"
-                  value={customStart}
-                  max={customEnd || undefined}
-                  onChange={e => setCustomStart(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <p className={`text-xs mb-1 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>종료일</p>
-                <input
-                  type="date"
-                  value={customEnd}
-                  min={customStart || undefined}
-                  onChange={e => setCustomEnd(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
+              <div className={`border-t my-1 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`} />
+
+              {/* 기존 프리셋 */}
+              <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>프리셋</p>
+              {DATE_PRESETS.map(p => (
+                <button key={p.id}
+                  onClick={() => { setPreset(p.id); setOpen(false) }}
+                  className={`text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors
+                    ${dateRange.preset === p.id
+                      ? 'bg-blue-600 text-white'
+                      : dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
+                  {p.label}
+                </button>
+              ))}
             </div>
 
-            {/* 적용 버튼 */}
-            <button
-              onClick={applyCustom}
-              disabled={!customStart || !customEnd || customStart > customEnd}
-              className="w-full px-4 py-2.5 bg-[#0C66E4] text-white text-xs font-semibold rounded-lg
-                hover:bg-[#0055CC] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {customStart && customEnd && customStart <= customEnd
-                ? `${fmtFull(customStart)} ~ ${fmtFull(customEnd)} 적용`
-                : '적용'}
-            </button>
+            {/* 오른쪽: 듀얼 캘린더 */}
+            <div className="flex-1 p-3">
+              <div className="grid grid-cols-2 gap-4">
+                <MiniCalendar dark={dark} year={calYear} month={calMonth}
+                  rangeStart={customStart} rangeEnd={customEnd}
+                  onSelectDate={onSelectDate} onMonthChange={changeMonth} />
+                <MiniCalendar dark={dark} year={cal2Year} month={cal2Month}
+                  rangeStart={customStart} rangeEnd={customEnd}
+                  onSelectDate={onSelectDate} onMonthChange={(d) => changeMonth(d)} />
+              </div>
+
+              {/* 적용 버튼 */}
+              <button onClick={applyCustom}
+                disabled={!customStart || !customEnd || customStart > customEnd}
+                className="w-full mt-3 px-4 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg
+                  hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                {customStart && customEnd && customStart <= customEnd
+                  ? `${fmtFull(customStart)} ~ ${fmtFull(customEnd)} 적용`
+                  : '날짜를 선택하세요'}
+              </button>
+            </div>
           </div>
-
-          {/* 선택된 기간 요약 */}
-          {dateRange.preset === 'custom' && (
-            <div className={`px-3 pb-3 text-xs ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-              현재: {fmtFull(dateRange.start)} ~ {fmtFull(dateRange.end)}
-            </div>
-          )}
         </div>
       )}
     </div>
