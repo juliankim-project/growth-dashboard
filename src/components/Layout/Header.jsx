@@ -235,13 +235,13 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
                   )
                 })}
               </div>
-              {/* 기간별 */}
+              {/* 기간별 — 2열 그리드 */}
               <p className={`text-[10px] font-bold px-1 mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>기간별</p>
-              <div className="flex flex-col gap-0.5">
+              <div className="grid grid-cols-2 gap-0.5">
                 {DATE_PRESETS.map(p => (
                   <button key={p.id}
                     onClick={() => { setPreset(p.id); setOpen(false) }}
-                    className={`text-left px-2 py-1.5 rounded text-[11px] font-medium transition-colors
+                    className={`px-1.5 py-1.5 rounded text-[11px] font-medium transition-colors text-center
                       ${dateRange.preset === p.id
                         ? 'bg-blue-600 text-white'
                         : dark ? 'text-slate-300 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
