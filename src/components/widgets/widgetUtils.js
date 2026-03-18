@@ -36,8 +36,8 @@ export function calcMetric(data, metricId, mList) {
     return set.size
   }
 
-  /* COUNT(*) */
-  if (m._countType) return data.length
+  /* COUNT(*) — _weight 가중치 지원 (daily_summary 등 집계 뷰) */
+  if (m._countType) return data.reduce((s, r) => s + (r._weight || 1), 0)
 
   /* 비율 계산컬럼 — SUM(분자) / SUM(분모) 또는 COUNT(DISTINCT) 지원 */
   if (m._ratioTerms) {
@@ -57,12 +57,13 @@ export function calcMetric(data, metricId, mList) {
   /* 동적 테이블 메트릭 (계산 컬럼 포함) — agg 타입 반영 */
   if (m._computed || (m.field && m.field === m.id && !m.derived)) {
     const agg = m.agg || 'sum'
-    if (agg === 'count') return data.length
+    if (agg === 'count') return data.reduce((s, r) => s + (r._weight || 1), 0)
     if (agg === 'count_distinct' && m._distinctCol) {
       const set = new Set(data.map(r => r[m._distinctCol]).filter(v => v != null && v !== ''))
       return set.size
     }
-    if (agg === 'avg') return data.length > 0 ? sumField(data, m.field) / data.length : 0
+    const totalWeight = data.reduce((s, r) => s + (r._weight || 1), 0)
+    if (agg === 'avg') return totalWeight > 0 ? sumField(data, m.field) / totalWeight : 0
     return sumField(data, m.field)
   }
 
@@ -203,12 +204,13 @@ export function groupData(data, groupByField, metrics, mList) {
         if (v != null && v !== '') map[k][mid + '__set'].add(v)
         return
       }
+      const w = r._weight || 1
       const agg = m._countType ? 'count' : (m.agg || 'sum')
       if (agg === 'count') {
-        map[k][mid] = (map[k][mid] || 0) + 1
+        map[k][mid] = (map[k][mid] || 0) + w
       } else if (agg === 'avg') {
         map[k][mid + '__s'] = (map[k][mid + '__s'] || 0) + (parseFloat(r[m.field]) || 0)
-        map[k][mid + '__c'] = (map[k][mid + '__c'] || 0) + 1
+        map[k][mid + '__c'] = (map[k][mid + '__c'] || 0) + w
       } else {
         map[k][mid] = (map[k][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
@@ -320,12 +322,13 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
         if (v != null && v !== '') map[gk][mid + '__set'].add(v)
         return
       }
+      const w = r._weight || 1
       const agg = m._countType ? 'count' : (m.agg || 'sum')
       if (agg === 'count') {
-        map[gk][mid] = (map[gk][mid] || 0) + 1
+        map[gk][mid] = (map[gk][mid] || 0) + w
       } else if (agg === 'avg') {
         map[gk][mid + '__s'] = (map[gk][mid + '__s'] || 0) + (parseFloat(r[m.field]) || 0)
-        map[gk][mid + '__c'] = (map[gk][mid + '__c'] || 0) + 1
+        map[gk][mid + '__c'] = (map[gk][mid + '__c'] || 0) + w
       } else {
         map[gk][mid] = (map[gk][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
