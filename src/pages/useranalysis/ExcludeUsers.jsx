@@ -1,20 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Shield, Upload, Trash2, Search, Download, AlertCircle, CheckCircle2, Users } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { Shield, Upload, Trash2, Search, Download, AlertCircle, CheckCircle2, Users, RefreshCw } from 'lucide-react'
 
-const STORAGE_KEY = 'excluded_guest_ids'
+const TABLE = 'excluded_users'
 
-/* ─── localStorage 기반 제외 목록 관리 ─── */
-export function getExcludedGuestIds() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    return JSON.parse(raw)
-  } catch { return [] }
+/* ─── DB에서 제외 목록 가져오기 (다른 파일에서도 import 가능) ─── */
+let _cache = null
+let _cacheTs = 0
+const CACHE_TTL = 30_000
+
+export async function getExcludedGuestIds() {
+  if (_cache && Date.now() - _cacheTs < CACHE_TTL) return _cache
+  if (!supabase) return []
+  const { data, error } = await supabase.from(TABLE).select('guest_id')
+  if (error) { console.error('[excluded_users]', error); return _cache || [] }
+  _cache = data.map(r => r.guest_id)
+  _cacheTs = Date.now()
+  return _cache
 }
 
-export function setExcludedGuestIds(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
-}
+export function invalidateExcludeCache() { _cache = null; _cacheTs = 0 }
 
 /* ─── CSV 파싱 ─── */
 function parseCSV(text) {
@@ -24,7 +29,6 @@ function parseCSV(text) {
   const delimiter = lines[0].includes('\t') ? '\t' : ','
   const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/"/g, ''))
 
-  // userId, email, guestId 컬럼 찾기
   const guestIdx = headers.findIndex(h => h === 'guestid' || h === 'guest_id')
   const userIdx = headers.findIndex(h => h === 'userid' || h === 'user_id')
   const emailIdx = headers.findIndex(h => h === 'email')
@@ -39,9 +43,9 @@ function parseCSV(text) {
     const guestId = cols[guestIdx]
     if (!guestId) continue
     rows.push({
-      guestId,
-      userId: userIdx >= 0 ? cols[userIdx] || '' : '',
-      email: emailIdx >= 0 ? cols[emailIdx] || '' : '',
+      guest_id: guestId,
+      user_id: userIdx >= 0 ? cols[userIdx] || null : null,
+      email: emailIdx >= 0 ? cols[emailIdx] || null : null,
     })
   }
 
@@ -51,10 +55,12 @@ function parseCSV(text) {
 const fmtNum = v => Math.round(v).toLocaleString()
 
 export default function ExcludeUsers({ dark }) {
-  const [excludeList, setExcludeList] = useState([]) // { guestId, userId, email, addedAt }
+  const [excludeList, setExcludeList] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [uploadResult, setUploadResult] = useState(null)
+  const [uploading, setUploading] = useState(false)
   const fileRef = useRef(null)
 
   const t = dark
@@ -63,47 +69,50 @@ export default function ExcludeUsers({ dark }) {
     : { bg: 'bg-slate-50', card: 'bg-white', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400',
         input: 'bg-white border-slate-200 text-slate-800', inputFocus: 'focus:border-blue-500' }
 
-  // 로드
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) setExcludeList(JSON.parse(raw))
-    } catch { /* ignore */ }
+  // DB에서 로드
+  const loadList = useCallback(async () => {
+    if (!supabase) return
+    setLoading(true)
+    const { data, error } = await supabase.from(TABLE).select('*').order('created_at', { ascending: false })
+    if (!error && data) setExcludeList(data)
+    setLoading(false)
   }, [])
 
-  // 저장
-  const save = useCallback((list) => {
-    setExcludeList(list)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
-  }, [])
+  useEffect(() => { loadList() }, [loadList])
 
-  // CSV 파일 처리
-  const handleFile = useCallback((file) => {
-    if (!file) return
+  // CSV 파일 처리 → DB upsert
+  const handleFile = useCallback(async (file) => {
+    if (!file || !supabase) return
     setUploadResult(null)
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const { rows, error } = parseCSV(e.target.result)
-      if (error) {
-        setUploadResult({ success: false, message: error })
-        return
-      }
+    setUploading(true)
 
-      const existing = new Set(excludeList.map(x => x.guestId))
-      const now = new Date().toISOString()
-      const newEntries = rows
-        .filter(r => !existing.has(r.guestId))
-        .map(r => ({ ...r, addedAt: now }))
+    const text = await file.text()
+    const { rows, error } = parseCSV(text)
+    if (error) {
+      setUploadResult({ success: false, message: error })
+      setUploading(false)
+      return
+    }
 
-      const merged = [...excludeList, ...newEntries]
-      save(merged)
+    // upsert (guest_id UNIQUE 제약 활용)
+    const { data, error: dbErr } = await supabase
+      .from(TABLE)
+      .upsert(rows, { onConflict: 'guest_id', ignoreDuplicates: true })
+      .select()
+
+    if (dbErr) {
+      setUploadResult({ success: false, message: `DB 오류: ${dbErr.message}` })
+    } else {
+      const inserted = data?.length || 0
       setUploadResult({
         success: true,
-        message: `${fmtNum(rows.length)}건 중 ${fmtNum(newEntries.length)}건 추가 (${fmtNum(rows.length - newEntries.length)}건 중복)`,
+        message: `${fmtNum(rows.length)}건 처리 → ${fmtNum(inserted)}건 추가 (${fmtNum(rows.length - inserted)}건 중복)`,
       })
+      invalidateExcludeCache()
+      loadList()
     }
-    reader.readAsText(file, 'UTF-8')
-  }, [excludeList, save])
+    setUploading(false)
+  }, [loadList])
 
   const handleDrop = (e) => {
     e.preventDefault()
@@ -112,22 +121,28 @@ export default function ExcludeUsers({ dark }) {
     if (file && (file.name.endsWith('.csv') || file.name.endsWith('.tsv'))) handleFile(file)
   }
 
-  const removeItem = (guestId) => {
-    save(excludeList.filter(x => x.guestId !== guestId))
+  const removeItem = async (id) => {
+    if (!supabase) return
+    await supabase.from(TABLE).delete().eq('id', id)
+    invalidateExcludeCache()
+    loadList()
   }
 
-  const clearAll = () => {
-    if (confirm('제외 목록을 전체 초기화하시겠습니까?')) {
-      save([])
-      setUploadResult(null)
-    }
+  const clearAll = async () => {
+    if (!confirm('제외 목록을 전체 초기화하시겠습니까?')) return
+    if (!supabase) return
+    // 전체 삭제: guest_id IS NOT NULL (= 전체)
+    await supabase.from(TABLE).delete().neq('guest_id', '')
+    invalidateExcludeCache()
+    setUploadResult(null)
+    loadList()
   }
 
   // 필터
   const filtered = search
     ? excludeList.filter(x =>
-        x.guestId.includes(search) ||
-        (x.userId && x.userId.includes(search)) ||
+        x.guest_id?.includes(search) ||
+        (x.user_id && x.user_id.includes(search)) ||
         (x.email && x.email.toLowerCase().includes(search.toLowerCase()))
       )
     : excludeList
@@ -171,7 +186,6 @@ export default function ExcludeUsers({ dark }) {
             </button>
           </div>
 
-          {/* 드래그 & 드롭 영역 */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
@@ -181,14 +195,17 @@ export default function ExcludeUsers({ dark }) {
               ${dragOver
                 ? 'border-blue-400 bg-blue-500/10'
                 : dark ? 'border-[#A1BDD914] hover:border-slate-500' : 'border-slate-200 hover:border-slate-400'}`}>
-            <Upload size={20} className={`mx-auto mb-1.5 ${dragOver ? 'text-blue-400' : t.muted}`} />
+            {uploading ? (
+              <RefreshCw size={20} className={`mx-auto mb-1.5 animate-spin ${t.muted}`} />
+            ) : (
+              <Upload size={20} className={`mx-auto mb-1.5 ${dragOver ? 'text-blue-400' : t.muted}`} />
+            )}
             <p className={`text-xs ${t.sub}`}>CSV/TSV 파일을 드래그하거나 클릭하여 업로드</p>
             <p className={`text-[10px] mt-0.5 ${t.muted}`}>필수 컬럼: guestId · 선택: userId, email</p>
             <input ref={fileRef} type="file" accept=".csv,.tsv" className="hidden"
               onChange={(e) => handleFile(e.target.files[0])} />
           </div>
 
-          {/* 업로드 결과 */}
           {uploadResult && (
             <div className={`mt-2 flex items-center gap-1.5 text-xs ${uploadResult.success ? 'text-emerald-500' : 'text-red-500'}`}>
               {uploadResult.success ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
@@ -220,7 +237,12 @@ export default function ExcludeUsers({ dark }) {
             </div>
           </div>
 
-          {filtered.length > 0 ? (
+          {loading ? (
+            <div className={`p-6 text-center ${t.muted}`}>
+              <RefreshCw size={16} className="mx-auto mb-1 animate-spin" />
+              <p className="text-xs">로딩 중...</p>
+            </div>
+          ) : filtered.length > 0 ? (
             <div className="overflow-x-auto" style={{ maxHeight: 400 }}>
               <table className="w-full text-[11px]">
                 <thead className={`sticky top-0 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'}`}>
@@ -232,15 +254,15 @@ export default function ExcludeUsers({ dark }) {
                 </thead>
                 <tbody>
                   {filtered.slice(0, 200).map((item) => (
-                    <tr key={item.guestId} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
-                      <td className={`px-2 py-1.5 font-mono font-medium ${t.text}`}>{item.guestId}</td>
-                      <td className={`px-2 py-1.5 font-mono ${t.muted}`}>{item.userId || '—'}</td>
+                    <tr key={item.id} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
+                      <td className={`px-2 py-1.5 font-mono font-medium ${t.text}`}>{item.guest_id}</td>
+                      <td className={`px-2 py-1.5 font-mono ${t.muted}`}>{item.user_id || '—'}</td>
                       <td className={`px-2 py-1.5 ${t.muted}`}>{item.email || '—'}</td>
                       <td className={`px-2 py-1.5 ${t.muted}`}>
-                        {item.addedAt ? new Date(item.addedAt).toLocaleDateString('ko-KR') : '—'}
+                        {item.created_at ? new Date(item.created_at).toLocaleDateString('ko-KR') : '—'}
                       </td>
                       <td className="px-2 py-1.5">
-                        <button onClick={() => removeItem(item.guestId)}
+                        <button onClick={() => removeItem(item.id)}
                           className="text-red-400 hover:text-red-300 p-0.5">
                           <Trash2 size={11} />
                         </button>
@@ -265,7 +287,7 @@ export default function ExcludeUsers({ dark }) {
           <ul className={`text-[11px] space-y-0.5 ${t.muted}`}>
             <li>• 지점별 분석, 유저 세그먼트, 이용 패턴 등 유저분석 전체에 적용</li>
             <li>• guestId 기준으로 해당 유저의 모든 예약 데이터가 분석에서 제외됩니다</li>
-            <li>• 제외 목록은 브라우저에 저장되며 다른 기기에서는 별도 설정이 필요합니다</li>
+            <li>• <strong className={t.sub}>DB에 저장</strong>되어 모든 사용자에게 동일하게 적용됩니다</li>
           </ul>
         </div>
       </div>

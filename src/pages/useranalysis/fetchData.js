@@ -6,7 +6,7 @@ const COLS = 'id,guest_id,user_id,branch_name,area,channel_group,channel_name,re
 /**
  * product_revenue_raw 데이터 fetch (중복 제거 + 제외 유저 필터링)
  * - id 기준 dedup: CSV 재업로드 시 동일 예약이 중복 삽입될 수 있음
- * - 제외 유저: ExcludeUsers에서 관리하는 guestId 목록 기준 필터링
+ * - 제외 유저: DB의 excluded_users 테이블 기준 (모든 사용자 공유)
  */
 export async function fetchProductData(dateRange) {
   if (!supabase) return []
@@ -35,12 +35,12 @@ export async function fetchProductData(dateRange) {
     deduped.push(row)
   }
 
-  // 제외 유저 필터링 (guestId 기준)
-  const excludedList = getExcludedGuestIds()
-  if (excludedList.length > 0) {
-    const excludedSet = new Set(excludedList.map(x => String(x.guestId)))
+  // 제외 유저 필터링 (DB 기반, guestId 기준)
+  const excludedGuestIds = await getExcludedGuestIds()
+  if (excludedGuestIds.length > 0) {
+    const excludedSet = new Set(excludedGuestIds.map(String))
     return deduped.filter(row => {
-      if (!row.guest_id) return true // guest_id 없는 행은 유지
+      if (!row.guest_id) return true
       return !excludedSet.has(String(row.guest_id))
     })
   }
