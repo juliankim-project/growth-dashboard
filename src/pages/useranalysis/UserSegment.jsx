@@ -7,7 +7,7 @@ function calcSegments(data) {
   const guestMap = {}
   data.forEach(r => {
     const g = r.guest_id
-    if (!g) return // guest_id가 없는 행은 제외
+    if (!g) return
     if (!guestMap[g]) guestMap[g] = {
       guest_id: g, user_id: r.user_id,
       count: 0, revenue: 0, nights: 0,
@@ -23,39 +23,31 @@ function calcSegments(data) {
     if (r.reservation_date > guestMap[g].lastDate) guestMap[g].lastDate = r.reservation_date
   })
 
-  const guests = Object.values(guestMap).map(g => {
+  return Object.values(guestMap).map(g => {
     const segment =
       g.count >= 10 ? 'VIP' :
       g.count >= 5  ? '충성' :
       g.count >= 2  ? '일반' : '신규'
     return {
-      ...g,
-      segment,
+      ...g, segment,
       branches: g.branches.size,
       areas: g.areas.size,
       avgRevenue: g.count > 0 ? g.revenue / g.count : 0,
       avgNights: g.count > 0 ? g.nights / g.count : 0,
     }
   })
-
-  return guests
 }
 
 /* ─── 세그먼트별 요약 ─── */
 function calcSegmentSummary(guests) {
   const segments = ['VIP', '충성', '일반', '신규']
-  const colors = { VIP: 'purple', '충성': 'amber', '일반': 'blue', '신규': 'emerald' }
   const icons = { VIP: '💎', '충성': '🥇', '일반': '🥈', '신규': '🆕' }
-
   return segments.map(seg => {
     const g = guests.filter(x => x.segment === seg)
     const totalRev = g.reduce((s, x) => s + x.revenue, 0)
     return {
-      segment: seg,
-      icon: icons[seg],
-      color: colors[seg],
-      count: g.length,
-      revenue: totalRev,
+      segment: seg, icon: icons[seg],
+      count: g.length, revenue: totalRev,
       avgRevenue: g.length > 0 ? totalRev / g.length : 0,
       avgCount: g.length > 0 ? g.reduce((s, x) => s + x.count, 0) / g.length : 0,
     }
@@ -67,12 +59,11 @@ function calcPurchaseCycle(data) {
   const guestDates = {}
   data.forEach(r => {
     const g = r.guest_id
-    if (!g) return // guest_id가 없는 행은 제외
+    if (!g) return
     if (!guestDates[g]) guestDates[g] = []
     guestDates[g].push(r.reservation_date)
   })
 
-  // 재구매 간격 계산 (고유 날짜 기준)
   const intervals = []
   Object.values(guestDates).forEach(dates => {
     if (dates.length < 2) return
@@ -87,10 +78,10 @@ function calcPurchaseCycle(data) {
   const sorted = intervals.length > 0 ? [...intervals].sort((a, b) => a - b) : []
   const median = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0
 
-  // 전환율은 실제 예약 건수(row count) 기준 — calcSegments와 동일
+  // 전환율: row count 기준 (calcSegments와 동일)
   const countMap = {}
   Object.values(guestDates).forEach(dates => {
-    const n = dates.length // row count 기준 (unique date X)
+    const n = dates.length
     countMap[n] = (countMap[n] || 0) + 1
   })
   const total = Object.values(countMap).reduce((s, v) => s + v, 0)
@@ -99,25 +90,23 @@ function calcPurchaseCycle(data) {
   const threePlus = Object.entries(countMap).filter(([k]) => Number(k) >= 3).reduce((s, [, v]) => s + v, 0)
 
   return {
-    avgDays: Math.round(avg),
-    medianDays: Math.round(median),
+    avgDays: Math.round(avg), medianDays: Math.round(median),
     totalGuests: total,
     convRate1to2: total > 0 ? (twoPlus / total * 100) : 0,
     convRate2to3: twoPlus > 0 ? (threePlus / twoPlus * 100) : 0,
   }
 }
 
-/* ─── 포맷 ─── */
 const fmtKRW = v => v == null ? '—' : Math.round(v).toLocaleString() + '원'
 const fmtNum = v => v == null ? '—' : Math.round(v).toLocaleString()
 const fmtPct = v => v == null ? '—' : v.toFixed(1) + '%'
 
 const SEGMENT_LIST = ['VIP', '충성', '일반', '신규']
 const SEGMENT_COLORS = {
-  VIP: { active: 'bg-purple-500 text-white', inactive: 'text-purple-500' },
-  '충성': { active: 'bg-amber-500 text-white', inactive: 'text-amber-500' },
-  '일반': { active: 'bg-blue-500 text-white', inactive: 'text-blue-500' },
-  '신규': { active: 'bg-emerald-500 text-white', inactive: 'text-emerald-500' },
+  VIP: { active: 'bg-purple-500 text-white', inactive: 'text-purple-500', ring: 'ring-purple-500/30' },
+  '충성': { active: 'bg-amber-500 text-white', inactive: 'text-amber-500', ring: 'ring-amber-500/30' },
+  '일반': { active: 'bg-blue-500 text-white', inactive: 'text-blue-500', ring: 'ring-blue-500/30' },
+  '신규': { active: 'bg-emerald-500 text-white', inactive: 'text-emerald-500', ring: 'ring-emerald-500/30' },
 }
 
 export default function UserSegment({ dark, dateRange }) {
@@ -129,7 +118,7 @@ export default function UserSegment({ dark, dateRange }) {
   const [sortDir, setSortDir] = useState('desc')
   const [selectedArea, setSelectedArea] = useState('')
   const [selectedBranch, setSelectedBranch] = useState('')
-  const [selectedSegments, setSelectedSegments] = useState(new Set()) // empty = all
+  const [selectedSegments, setSelectedSegments] = useState(new Set())
 
   useEffect(() => {
     setLoading(true)
@@ -138,17 +127,13 @@ export default function UserSegment({ dark, dateRange }) {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [dateRange?.start, dateRange?.end])
 
-  // 권역/지점 목록
   const areaList = useMemo(() => [...new Set(data.map(r => r.area).filter(Boolean))].sort(), [data])
   const branchList = useMemo(() => {
     const filtered = selectedArea ? data.filter(r => r.area === selectedArea) : data
     return [...new Set(filtered.map(r => r.branch_name).filter(Boolean))].sort()
   }, [data, selectedArea])
-
-  // 권역 변경시 지점 초기화
   useEffect(() => { setSelectedBranch('') }, [selectedArea])
 
-  // 필터된 데이터
   const filteredData = useMemo(() => {
     let d = data
     if (selectedArea) d = d.filter(r => r.area === selectedArea)
@@ -161,7 +146,6 @@ export default function UserSegment({ dark, dateRange }) {
   const cycle = useMemo(() => calcPurchaseCycle(filteredData), [filteredData])
   const totalRevenue = useMemo(() => guests.reduce((s, g) => s + g.revenue, 0), [guests])
 
-  // 세그먼트 필터 적용된 게스트
   const segmentFilteredGuests = useMemo(() => {
     if (selectedSegments.size === 0) return guests
     return guests.filter(g => selectedSegments.has(g.segment))
@@ -171,10 +155,7 @@ export default function UserSegment({ dark, dateRange }) {
     let list = [...segmentFilteredGuests]
     if (search) {
       const s = search.toLowerCase()
-      list = list.filter(g =>
-        String(g.guest_id).includes(s) ||
-        String(g.user_id || '').includes(s)
-      )
+      list = list.filter(g => String(g.guest_id).includes(s) || String(g.user_id || '').includes(s))
     }
     list.sort((a, b) => sortDir === 'desc' ? b[sortBy] - a[sortBy] : a[sortBy] - b[sortBy])
     return list.slice(0, 100)
@@ -183,8 +164,7 @@ export default function UserSegment({ dark, dateRange }) {
   const toggleSegment = (seg) => {
     setSelectedSegments(prev => {
       const next = new Set(prev)
-      if (next.has(seg)) next.delete(seg)
-      else next.add(seg)
+      if (next.has(seg)) next.delete(seg); else next.add(seg)
       return next
     })
   }
@@ -203,192 +183,154 @@ export default function UserSegment({ dark, dateRange }) {
   if (error) return <div className="text-red-500 p-6">에러: {error}</div>
 
   return (
-    <div className={`p-6 space-y-6 min-h-screen ${t.bg}`}>
-      {/* 헤더 */}
-      <div>
-        <h1 className={`text-xl font-bold ${t.text}`}>👤 유저 세그먼트</h1>
-        <p className={`text-sm mt-1 ${t.sub}`}>RFM 기반 유저 등급 분류, Top 구매자 랭킹, 구매 주기 분석</p>
-      </div>
-
-      {/* 필터 바 */}
-      <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter size={14} className={t.muted} />
-            <span className={`text-xs font-semibold ${t.sub}`}>필터</span>
-          </div>
-          {/* 권역 */}
-          <div className="flex items-center gap-2">
-            <label className={`text-xs ${t.sub}`}>권역</label>
-            <select
-              value={selectedArea}
-              onChange={e => setSelectedArea(e.target.value)}
-              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
-            >
-              <option value="">전체 권역</option>
-              {areaList.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-          {/* 지점 */}
-          <div className="flex items-center gap-2">
-            <label className={`text-xs ${t.sub}`}>지점</label>
-            <select
-              value={selectedBranch}
-              onChange={e => setSelectedBranch(e.target.value)}
-              className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}
-            >
-              <option value="">전체 지점</option>
-              {branchList.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-          {/* 세그먼트 토글 */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <span className={`text-xs ${t.sub} mr-1`}>등급</span>
+    <div className={`min-h-screen ${t.bg}`}>
+      {/* ── Sticky 필터 + 헤더 ── */}
+      <div className={`sticky top-0 z-20 ${dark ? 'bg-[#1D2125]/95' : 'bg-slate-50/95'} backdrop-blur-sm border-b ${t.border}`}>
+        <div className="px-4 pt-3 pb-1.5">
+          <h1 className={`text-base font-bold ${t.text}`}>👤 유저 세그먼트</h1>
+        </div>
+        <div className="px-4 pb-2.5 flex items-center gap-2.5 flex-wrap">
+          <Filter size={13} className={t.muted} />
+          <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
+            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            <option value="">전체 권역</option>
+            {areaList.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
+            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            <option value="">전체 지점</option>
+            {branchList.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+          {(selectedArea || selectedBranch) && (
+            <button onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
+              className={`text-[11px] px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+              초기화
+            </button>
+          )}
+          <div className="flex items-center gap-1 ml-auto">
             {SEGMENT_LIST.map(seg => {
               const isActive = selectedSegments.size === 0 || selectedSegments.has(seg)
-              const colors = SEGMENT_COLORS[seg]
+              const c = SEGMENT_COLORS[seg]
               return (
-                <button
-                  key={seg}
-                  onClick={() => toggleSegment(seg)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border
-                    ${isActive
-                      ? `${colors.active} border-transparent`
-                      : dark
-                        ? `bg-[#2C333A] ${colors.inactive} border-[#A1BDD914] opacity-50`
-                        : `bg-white ${colors.inactive} border-slate-200 opacity-50`
-                    }`}
-                >
+                <button key={seg} onClick={() => toggleSegment(seg)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all border
+                    ${isActive ? `${c.active} border-transparent` : dark ? `bg-[#2C333A] ${c.inactive} border-[#A1BDD914] opacity-40` : `bg-white ${c.inactive} border-slate-200 opacity-40`}`}>
                   {seg}
                 </button>
               )
             })}
             {selectedSegments.size > 0 && (
-              <button
-                onClick={() => setSelectedSegments(new Set())}
-                className={`text-xs px-2 py-1 rounded-lg ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
-              >
+              <button onClick={() => setSelectedSegments(new Set())}
+                className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
                 전체
               </button>
             )}
           </div>
-          {/* 필터 초기화 */}
-          {(selectedArea || selectedBranch) && (
-            <button
-              onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
-              className={`text-xs px-2 py-1 rounded-lg ${dark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
-            >
-              필터 초기화
-            </button>
-          )}
         </div>
       </div>
 
-      {/* 세그먼트 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {summary.map((seg, i) => (
-          <div key={i} className={`rounded-xl p-4 border ${t.card} ${t.border}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{seg.icon}</span>
-              <span className={`text-sm font-bold ${t.text}`}>{seg.segment}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${dark ? 'bg-slate-700' : 'bg-slate-100'} ${t.sub}`}>
-                {seg.count}명
-              </span>
-            </div>
-            <div className={`text-base font-bold ${t.text}`}>{fmtKRW(seg.revenue)}</div>
-            <div className={`text-xs mt-1 ${t.muted}`}>
-              매출 비중 {fmtPct(totalRevenue > 0 ? seg.revenue / totalRevenue * 100 : 0)} · 평균 {seg.avgCount.toFixed(1)}회
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 구매 주기 분석 */}
-      <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
-        <h2 className={`text-sm font-semibold mb-3 ${t.text}`}>🔄 구매 주기 분석</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { label: '평균 재구매 주기', value: cycle.avgDays + '일' },
-            { label: '중앙값 주기', value: cycle.medianDays + '일' },
-            { label: '전체 게스트', value: fmtNum(cycle.totalGuests) + '명' },
-            { label: '1회→2회 전환율', value: fmtPct(cycle.convRate1to2) },
-            { label: '2회→3회 전환율', value: fmtPct(cycle.convRate2to3) },
-          ].map((item, i) => (
-            <div key={i}>
-              <div className={`text-xs ${t.muted}`}>{item.label}</div>
-              <div className={`text-lg font-bold ${t.text}`}>{item.value}</div>
-            </div>
-          ))}
+      <div className="px-4 pt-3 pb-6 space-y-3">
+        {/* ── 세그먼트 요약 카드 ── */}
+        <div className="grid grid-cols-4 gap-2">
+          {summary.map((seg, i) => {
+            const revPct = totalRevenue > 0 ? seg.revenue / totalRevenue * 100 : 0
+            return (
+              <div key={i} className={`rounded-lg p-2.5 border ${t.card} ${t.border}`}>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-sm">{seg.icon}</span>
+                  <span className={`text-xs font-bold ${t.text}`}>{seg.segment}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ml-auto ${dark ? 'bg-slate-700' : 'bg-slate-100'} ${t.sub}`}>
+                    {seg.count}명
+                  </span>
+                </div>
+                <div className={`text-sm font-bold ${t.text}`}>{fmtKRW(seg.revenue)}</div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex-1 h-1.5 rounded-full bg-slate-200/20 overflow-hidden">
+                    <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${revPct}%` }} />
+                  </div>
+                  <span className={`text-[10px] font-medium ${t.muted}`}>{fmtPct(revPct)}</span>
+                </div>
+                <div className={`text-[10px] mt-0.5 ${t.muted}`}>평균 {seg.avgCount.toFixed(1)}회 · {fmtKRW(seg.avgRevenue)}/인</div>
+              </div>
+            )
+          })}
         </div>
-      </div>
 
-      {/* Top 구매자 랭킹 */}
-      <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
-        <div className={`px-4 py-3 border-b ${t.border} flex items-center justify-between`}>
-          <h2 className={`text-sm font-semibold ${t.text}`}>
-            🏆 Top 구매자 랭킹
-            {selectedSegments.size > 0 && (
-              <span className={`ml-2 text-xs font-normal ${t.muted}`}>
-                ({[...selectedSegments].join(', ')})
-              </span>
-            )}
-          </h2>
-          <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
-            <Search size={14} className={t.muted} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="ID 검색..."
-              className={`bg-transparent outline-none text-xs w-24 ${t.text}`}
-            />
+        {/* ── 구매 주기 분석 ── */}
+        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
+          <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>🔄 구매 주기 분석</h2>
+          <div className="grid grid-cols-5 gap-2">
+            {[
+              { label: '평균 재구매', value: cycle.avgDays + '일', highlight: cycle.avgDays < 60 },
+              { label: '중앙값', value: cycle.medianDays + '일', highlight: false },
+              { label: '전체 게스트', value: fmtNum(cycle.totalGuests) + '명', highlight: false },
+              { label: '1→2회 전환', value: fmtPct(cycle.convRate1to2), highlight: cycle.convRate1to2 > 20 },
+              { label: '2→3회 전환', value: fmtPct(cycle.convRate2to3), highlight: cycle.convRate2to3 > 30 },
+            ].map((item, i) => (
+              <div key={i} className="text-center">
+                <div className={`text-[10px] ${t.muted}`}>{item.label}</div>
+                <div className={`text-base font-bold ${item.highlight ? 'text-blue-400' : t.text}`}>{item.value}</div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
-                {[
-                  { key: 'rank', label: '#' },
-                  { key: 'guest_id', label: 'Guest ID' },
-                  { key: 'user_id', label: 'User ID' },
-                  { key: 'segment', label: '등급' },
-                  { key: 'count', label: '구매횟수' },
-                  { key: 'revenue', label: '총 매출' },
-                  { key: 'avgRevenue', label: '건당 매출' },
-                  { key: 'branches', label: '지점수' },
-                  { key: 'areas', label: '권역수' },
-                  { key: 'avgNights', label: '평균숙박' },
-                ].map(col => (
-                  <th key={col.key}
-                    onClick={() => { if (col.key !== 'rank') { setSortBy(col.key); setSortDir(d => d === 'desc' ? 'asc' : 'desc') } }}
-                    className={`px-3 py-2.5 text-left text-xs font-semibold cursor-pointer select-none ${t.sub} ${sortBy === col.key ? 'text-blue-500' : ''}`}>
-                    {col.label} {sortBy === col.key ? (sortDir === 'desc' ? '↓' : '↑') : ''}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedGuests.map((g, i) => {
-                const segColor = g.segment === 'VIP' ? 'text-purple-500' : g.segment === '충성' ? 'text-amber-500' : g.segment === '일반' ? 'text-blue-500' : 'text-emerald-500'
-                return (
-                  <tr key={g.guest_id} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
-                    <td className={`px-3 py-2.5 text-xs font-bold ${t.muted}`}>
-                      {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
-                    </td>
-                    <td className={`px-3 py-2.5 font-mono text-xs ${t.text}`}>{g.guest_id}</td>
-                    <td className={`px-3 py-2.5 font-mono text-xs ${t.sub}`}>{g.user_id || '—'}</td>
-                    <td className={`px-3 py-2.5 font-semibold text-xs ${segColor}`}>{g.segment}</td>
-                    <td className={`px-3 py-2.5 ${t.text}`}>{g.count}회</td>
-                    <td className={`px-3 py-2.5 font-medium ${t.text}`}>{fmtKRW(g.revenue)}</td>
-                    <td className={`px-3 py-2.5 ${t.text}`}>{fmtKRW(g.avgRevenue)}</td>
-                    <td className={`px-3 py-2.5 ${t.text}`}>{g.branches}</td>
-                    <td className={`px-3 py-2.5 ${t.text}`}>{g.areas}</td>
-                    <td className={`px-3 py-2.5 ${t.text}`}>{g.avgNights.toFixed(1)}박</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+
+        {/* ── Top 구매자 랭킹 ── */}
+        <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
+          <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
+            <h2 className={`text-xs font-semibold ${t.text}`}>
+              🏆 Top 구매자
+              {selectedSegments.size > 0 && <span className={`ml-1.5 font-normal ${t.muted}`}>({[...selectedSegments].join(', ')})</span>}
+            </h2>
+            <div className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${dark ? 'bg-[#2C333A]' : 'bg-slate-100'}`}>
+              <Search size={12} className={t.muted} />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="ID 검색..." className={`bg-transparent outline-none text-[11px] w-20 ${t.text}`} />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
+                  {[
+                    { key: 'rank', label: '#', w: 'w-8' },
+                    { key: 'guest_id', label: 'Guest', w: '' },
+                    { key: 'segment', label: '등급', w: 'w-12' },
+                    { key: 'count', label: '횟수', w: 'w-12' },
+                    { key: 'revenue', label: '총매출', w: '' },
+                    { key: 'avgRevenue', label: '건당', w: '' },
+                    { key: 'branches', label: '지점', w: 'w-10' },
+                    { key: 'areas', label: '권역', w: 'w-10' },
+                    { key: 'avgNights', label: '숙박', w: 'w-10' },
+                  ].map(col => (
+                    <th key={col.key}
+                      onClick={() => { if (col.key !== 'rank') { setSortBy(col.key); setSortDir(d => d === 'desc' ? 'asc' : 'desc') } }}
+                      className={`px-2 py-1.5 text-left font-semibold cursor-pointer select-none ${col.w} ${t.sub} ${sortBy === col.key ? 'text-blue-500' : ''}`}>
+                      {col.label}{sortBy === col.key ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedGuests.map((g, i) => {
+                  const segColor = g.segment === 'VIP' ? 'text-purple-500' : g.segment === '충성' ? 'text-amber-500' : g.segment === '일반' ? 'text-blue-500' : 'text-emerald-500'
+                  return (
+                    <tr key={g.guest_id} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
+                      <td className={`px-2 py-1.5 font-bold ${t.muted}`}>{i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</td>
+                      <td className={`px-2 py-1.5 font-mono ${t.text}`}>{g.guest_id}</td>
+                      <td className={`px-2 py-1.5 font-semibold ${segColor}`}>{g.segment}</td>
+                      <td className={`px-2 py-1.5 ${t.text}`}>{g.count}</td>
+                      <td className={`px-2 py-1.5 font-medium ${t.text}`}>{fmtKRW(g.revenue)}</td>
+                      <td className={`px-2 py-1.5 ${t.muted}`}>{fmtKRW(g.avgRevenue)}</td>
+                      <td className={`px-2 py-1.5 ${t.text}`}>{g.branches}</td>
+                      <td className={`px-2 py-1.5 ${t.text}`}>{g.areas}</td>
+                      <td className={`px-2 py-1.5 ${t.text}`}>{g.avgNights.toFixed(1)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
