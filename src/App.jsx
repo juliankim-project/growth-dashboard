@@ -26,6 +26,7 @@ const LtvAnalysis = lazy(() => import('./pages/useranalysis/LtvAnalysis'))
 const UsagePattern = lazy(() => import('./pages/useranalysis/UsagePattern'))
 const BranchAnalysis = lazy(() => import('./pages/useranalysis/BranchAnalysis'))
 const ExcludeUsers = lazy(() => import('./pages/useranalysis/ExcludeUsers'))
+const CheckinPace = lazy(() => import('./pages/useranalysis/CheckinPace'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -40,6 +41,7 @@ const FIXED_MAP = {
   'settings.team': SettingsTeam,
   'ailab.ask': AskQuestion,
   'ailab.history': QueryHistory,
+  'useranalysis.pace': CheckinPace,
   'useranalysis.segment': UserSegment,
   'useranalysis.cohort': CohortAnalysis,
   'useranalysis.ltv': LtvAnalysis,

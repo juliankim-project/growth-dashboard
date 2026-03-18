@@ -38,8 +38,9 @@ export const DEFAULT_SECTIONS = [
     ]
   },
   {
-    id: 'useranalysis', label: '유저 분석', icon: 'Users',
+    id: 'useranalysis', label: '예약&유저 분석', icon: 'Users',
     subs: [
+      { id:'pace',     label:'체크인 페이스',    icon:'Calendar'    },
       { id:'segment',  label:'유저 세그먼트',    icon:'Users'       },
       { id:'cohort',   label:'코호트 분석',      icon:'Activity'    },
       { id:'ltv',      label:'LTV · 구매주기',   icon:'TrendingUp'  },
