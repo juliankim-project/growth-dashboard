@@ -1,7 +1,7 @@
 import "@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0"
 
-const MCP_BASE = "https://latestrue.plott.co.kr"
+const MCP_BASE = "https://duck.plott.co.kr"
 const MCP_URL  = `${MCP_BASE}/mcp`
 const OAUTH_REGISTER  = `${MCP_BASE}/oauth/register`
 const OAUTH_AUTHORIZE = `${MCP_BASE}/oauth/authorize`
