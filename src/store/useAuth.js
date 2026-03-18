@@ -12,40 +12,18 @@ function generateCodeVerifier() {
   crypto.getRandomValues(arr)
   return btoa(String.fromCharCode(...arr)).replace(/[+/=]/g, c => c === '+' ? '-' : c === '/' ? '_' : '')
 }
-
 async function generateCodeChallenge(verifier) {
   const data = new TextEncoder().encode(verifier)
   const digest = await crypto.subtle.digest('SHA-256', data)
   return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/[+/=]/g, c => c === '+' ? '-' : c === '/' ? '_' : '')
 }
-
 function getKcTokens() {
   try { const r = localStorage.getItem(KC_TOKEN_KEY); return r ? JSON.parse(r) : null } catch { return null }
 }
 function storeKcTokens(t) { localStorage.setItem(KC_TOKEN_KEY, JSON.stringify({ ...t, stored_at: Date.now() })) }
 function clearKcTokens() { localStorage.removeItem(KC_TOKEN_KEY); sessionStorage.removeItem('kc_code_verifier'); sessionStorage.removeItem('kc_state') }
-
 function parseJwt(token) {
   try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) } catch { return null }
-}
-
-async function exchangeKcCode(code) {
-  const verifier = sessionStorage.getItem('kc_code_verifier')
-  const res = await fetch(`${KEYCLOAK_URL}/token`, {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'authorization_code', client_id: KC_CLIENT_ID, redirect_uri: KC_REDIRECT_URI, code, code_verifier: verifier || '' }),
-  })
-  if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`)
-  return res.json()
-}
-
-async function refreshKcToken(refreshToken) {
-  const res = await fetch(`${KEYCLOAK_URL}/token`, {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'refresh_token', client_id: KC_CLIENT_ID, refresh_token: refreshToken }),
-  })
-  if (!res.ok) throw new Error('Refresh failed')
-  return res.json()
 }
 
 /* ─── Hook ─── */
@@ -53,90 +31,93 @@ export function useAuth() {
   const [session, setSession] = useState(undefined)
   const [loading, setLoading] = useState(true)
   const [accessError, setAccessError] = useState('')
-  const [authMethod, setAuthMethod] = useState(null) // 'supabase' | 'keycloak'
 
-  /* ── Supabase Auth (매직링크) ── */
   useEffect(() => {
     if (!supabase) { setSession(null); setLoading(false); return }
 
-    // Keycloak callback 처리 먼저
-    const url = new URL(window.location.href)
-    const code = url.searchParams.get('code')
-    const state = url.searchParams.get('state')
-    const storedState = sessionStorage.getItem('kc_state')
+    let cancelled = false
 
-    if (code && state && state === storedState) {
-      exchangeKcCode(code).then(tokens => {
-        storeKcTokens(tokens)
-        const payload = parseJwt(tokens.access_token)
-        setAuthMethod('keycloak')
-        setSession({
-          user: {
-            email: payload?.email || '',
-            name: payload?.name || payload?.preferred_username || '',
-            id: payload?.sub,
-            accessToken: tokens.access_token,
-          }
+    // ── 1. Keycloak 콜백 체크 (kc_state가 있을 때만) ──
+    const storedState = sessionStorage.getItem('kc_state')
+    if (storedState) {
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get('code')
+      const state = url.searchParams.get('state')
+
+      if (code && state === storedState) {
+        const verifier = sessionStorage.getItem('kc_code_verifier')
+        fetch(`${KEYCLOAK_URL}/token`, {
+          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ grant_type: 'authorization_code', client_id: KC_CLIENT_ID, redirect_uri: KC_REDIRECT_URI, code, code_verifier: verifier || '' }),
+        }).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(tokens => {
+          if (cancelled) return
+          storeKcTokens(tokens)
+          const p = parseJwt(tokens.access_token)
+          setSession({ user: { email: p?.email || '', name: p?.name || '', id: p?.sub, accessToken: tokens.access_token } })
+          setLoading(false)
+          window.history.replaceState({}, '', window.location.origin)
+        }).catch(() => {
+          if (cancelled) return
+          clearKcTokens()
+          setAccessError('SSO 인증 실패. 다시 시도해주세요.')
+          setSession(null)
+          setLoading(false)
         })
-        setLoading(false)
-        window.history.replaceState({}, '', window.location.origin)
-      }).catch(e => {
-        console.error('[Keycloak] token exchange error:', e)
-        setAccessError('SSO 인증에 실패했습니다. 다시 시도해주세요.')
-        setLoading(false)
-      })
-      return
+        return () => { cancelled = true }
+      }
+      // state 불일치 → KC 세션 정리하고 Supabase로 진행
+      clearKcTokens()
     }
 
-    // 저장된 Keycloak 토큰 확인
+    // ── 2. 저장된 Keycloak 토큰 확인 ──
     const kcTokens = getKcTokens()
     if (kcTokens?.access_token) {
       const payload = parseJwt(kcTokens.access_token)
       const now = Date.now() / 1000
       if (payload && payload.exp > now + 30) {
-        setAuthMethod('keycloak')
-        setSession({
-          user: { email: payload.email || '', name: payload.name || '', id: payload.sub, accessToken: kcTokens.access_token }
-        })
+        setSession({ user: { email: payload.email || '', name: payload.name || '', id: payload.sub, accessToken: kcTokens.access_token } })
         setLoading(false)
         return
-      } else if (kcTokens.refresh_token) {
-        refreshKcToken(kcTokens.refresh_token).then(newTokens => {
-          storeKcTokens(newTokens)
-          const p = parseJwt(newTokens.access_token)
-          setAuthMethod('keycloak')
-          setSession({
-            user: { email: p?.email || '', name: p?.name || '', id: p?.sub, accessToken: newTokens.access_token }
-          })
-        }).catch(() => clearKcTokens()).finally(() => setLoading(false))
-        return
-      } else {
-        clearKcTokens()
       }
+      // 만료 → 정리 (Supabase로 폴백)
+      clearKcTokens()
     }
 
-    // Supabase Auth
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) { checkAllowed(session) }
+    // ── 3. Supabase Auth (매직링크) — 항상 설정 ──
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (cancelled) return
+      if (s) checkAllowed(s)
       else { setSession(null); setLoading(false) }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) checkAllowed(session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (cancelled) return
+      if (s) checkAllowed(s)
       else { setSession(null); setLoading(false) }
     })
 
-    return () => subscription.unsubscribe()
+    return () => { cancelled = true; subscription.unsubscribe() }
   }, [])
 
   async function checkAllowed(session) {
     try {
       const { data, error } = await supabase
         .from('allowed_users').select('email').eq('email', session.user.email).maybeSingle()
-      if (error) { console.warn('[checkAllowed]', error.message); setAccessError(''); setAuthMethod('supabase'); setSession(session) }
-      else if (!data) { await supabase.auth.signOut(); setAccessError('등록되지 않은 이메일입니다.'); setSession(null) }
-      else { setAccessError(''); setAuthMethod('supabase'); setSession(session) }
-    } catch { setAuthMethod('supabase'); setSession(session) }
+      if (error) {
+        console.warn('[checkAllowed]', error.message)
+        setSession(session) // DB 오류 → 로그인 허용
+      } else if (!data) {
+        await supabase.auth.signOut()
+        setAccessError('등록되지 않은 이메일입니다. 관리자에게 문의하세요.')
+        setSession(null)
+      } else {
+        setAccessError('')
+        setSession(session)
+      }
+    } catch (e) {
+      console.warn('[checkAllowed] 예외:', e)
+      setSession(session)
+    }
     setLoading(false)
   }
 
@@ -157,38 +138,42 @@ export function useAuth() {
     const challenge = await generateCodeChallenge(verifier)
     sessionStorage.setItem('kc_state', state)
     sessionStorage.setItem('kc_code_verifier', verifier)
-    const params = new URLSearchParams({
+    window.location.href = `${KEYCLOAK_URL}/auth?${new URLSearchParams({
       response_type: 'code', client_id: KC_CLIENT_ID, redirect_uri: KC_REDIRECT_URI,
       scope: 'openid', state, code_challenge: challenge, code_challenge_method: 'S256',
-    })
-    window.location.href = `${KEYCLOAK_URL}/auth?${params}`
+    })}`
   }, [])
 
   /* ── 로그아웃 ── */
   const signOut = useCallback(() => {
-    if (authMethod === 'keycloak') {
-      const tokens = getKcTokens()
+    const kcTokens = getKcTokens()
+    if (kcTokens?.access_token) {
       clearKcTokens()
       setSession(null)
-      setAuthMethod(null)
-      if (tokens?.id_token) {
-        const params = new URLSearchParams({ id_token_hint: tokens.id_token, post_logout_redirect_uri: window.location.origin })
-        window.location.href = `${KEYCLOAK_URL}/logout?${params}`
+      if (kcTokens.id_token) {
+        window.location.href = `${KEYCLOAK_URL}/logout?${new URLSearchParams({
+          id_token_hint: kcTokens.id_token, post_logout_redirect_uri: window.location.origin,
+        })}`
       }
-    } else {
-      supabase.auth.signOut()
+      return
     }
-  }, [authMethod])
+    supabase.auth.signOut()
+  }, [])
 
   /* ── Keycloak access token (duck API용) ── */
   const getAccessToken = useCallback(async () => {
     const stored = getKcTokens()
-    if (!stored) return null
+    if (!stored?.access_token) return null
     const payload = parseJwt(stored.access_token)
     if (payload && payload.exp > Date.now() / 1000 + 30) return stored.access_token
     if (stored.refresh_token) {
       try {
-        const newTokens = await refreshKcToken(stored.refresh_token)
+        const res = await fetch(`${KEYCLOAK_URL}/token`, {
+          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ grant_type: 'refresh_token', client_id: KC_CLIENT_ID, refresh_token: stored.refresh_token }),
+        })
+        if (!res.ok) throw new Error()
+        const newTokens = await res.json()
         storeKcTokens(newTokens)
         return newTokens.access_token
       } catch { clearKcTokens(); return null }
