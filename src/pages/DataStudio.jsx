@@ -371,6 +371,10 @@ export default function DataStudio({ dark }) {
 
       const res = { ok: true, count: inserted, mode: uploadMode, dateRange }
       invalidateTableCache() // CSV 업로드 후 대시보드 캐시 무효화
+      // product_revenue_raw 업로드 시 daily_summary 뷰 자동 갱신
+      if (selectedTable === 'product_revenue_raw') {
+        supabase.rpc('refresh_daily_summary').catch(e => console.warn('[daily_summary refresh]', e))
+      }
       setResult(res)
       setStep(2)
       appendHistory({
