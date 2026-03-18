@@ -1,41 +1,6 @@
-import { useState } from 'react'
-import { Mail, BarChart2, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { BarChart2, LogIn } from 'lucide-react'
 
-export default function Login({ onSignInWithMagicLink, dark, accessError }) {
-  const [email,   setEmail]   = useState('')
-  const [loading, setLoading] = useState(false)
-  const [sent,    setSent]    = useState(false)
-  const [error,   setError]   = useState('')
-
-  const handleSubmit = async e => {
-    e.preventDefault()
-    if (!email.trim()) return
-    setLoading(true)
-    setError('')
-    const { error } = await onSignInWithMagicLink(email.trim())
-    if (error) {
-      const msg = error.message || ''
-      if (msg === 'email_not_allowed') {
-        setError('등록되지 않은 이메일입니다. 관리자에게 문의하세요.')
-      } else if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('Email rate limit')) {
-        setError('잠시 후 다시 시도해주세요. (발송 횟수 초과)')
-      } else if (msg) {
-        setError(`오류: ${msg}`)
-      } else {
-        setError('오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
-      }
-      setLoading(false)
-    } else {
-      setSent(true)
-      setLoading(false)
-    }
-  }
-
-  const inp = `w-full px-5 py-3.5 rounded-xl border text-base outline-none transition-colors
-    ${dark
-      ? 'bg-[#1D2125] border-[#A1BDD914] text-white placeholder:text-slate-500 focus:border-[#579DFF]'
-      : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-600 focus:border-[#0C66E4]'}`
-
+export default function Login({ onSignIn, dark, accessError }) {
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 ${dark ? 'bg-[#1D2125]' : 'bg-[#F7F8F9]'}`}>
       <div className="w-full max-w-sm">
@@ -55,90 +20,34 @@ export default function Login({ onSignInWithMagicLink, dark, accessError }) {
 
         {/* 카드 */}
         <div className={`rounded-2xl border p-7 shadow-xl ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}>
-
-          {sent ? (
-            /* ── 전송 완료 상태 ── */
-            <div className="flex flex-col items-center text-center gap-3 py-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 size={24} className="text-emerald-500" />
-              </div>
-              <div>
-                <p className={`text-base font-semibold ${dark ? 'text-white' : 'text-slate-800'}`}>
-                  이메일을 확인해주세요
-                </p>
-                <p className={`text-sm mt-1.5 leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                  <span className="font-medium text-[#579DFF]">{email}</span>으로<br/>
-                  로그인 링크를 보냈어요.<br/>
-                  링크를 클릭하면 바로 접속됩니다.
-                </p>
-              </div>
-              <button
-                onClick={() => { setSent(false); setEmail('') }}
-                className={`text-sm mt-2 ${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-600 hover:text-slate-600'} transition-colors`}
-              >
-                다른 이메일로 시도
-              </button>
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className={`text-base font-semibold mb-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
+                로그인
+              </p>
+              <p className={`text-sm ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
+                Plott 계정으로 로그인합니다
+              </p>
             </div>
-          ) : (
-            /* ── 이메일 입력 폼 ── */
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <p className={`text-base font-semibold mb-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
-                  로그인
-                </p>
-                <p className={`text-sm ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-                  이메일 주소를 입력하면 로그인 링크를 보내드려요
-                </p>
+
+            {accessError && (
+              <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {accessError}
               </div>
+            )}
 
-              {/* 접근 권한 없음 에러 (외부에서 전달) */}
-              {accessError && (
-                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                  🚫 {accessError}
-                </div>
-              )}
-
-              {/* 일반 에러 */}
-              {error && (
-                <div className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <div className="relative">
-                <Mail size={18} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${dark ? 'text-slate-500' : 'text-slate-700'}`} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="이메일 주소"
-                  autoComplete="email"
-                  autoFocus
-                  className={`${inp} pl-10`}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || !email.trim()}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-[#0C66E4] text-white text-base font-semibold rounded-xl hover:bg-[#0055CC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading
-                  ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : (
-                    <>
-                      로그인 링크 보내기
-                      <ArrowRight size={18} />
-                    </>
-                  )
-                }
-              </button>
-            </form>
-          )}
+            <button
+              onClick={onSignIn}
+              className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-[#0C66E4] text-white text-base font-semibold rounded-xl hover:bg-[#0055CC] transition-colors"
+            >
+              <LogIn size={18} />
+              Plott SSO로 로그인
+            </button>
+          </div>
         </div>
 
         <p className={`text-center text-sm mt-4 ${dark ? 'text-slate-400' : 'text-slate-700'}`}>
-          접근 권한이 없다면 관리자에게 문의하세요
+          Plott OS 계정이 필요합니다
         </p>
       </div>
     </div>
