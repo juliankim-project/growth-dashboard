@@ -3,9 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0"
 
 const MCP_BASE = "https://duck.plott.co.kr"
 const MCP_URL  = `${MCP_BASE}/mcp`
-const OAUTH_REGISTER  = `${MCP_BASE}/oauth/register`
-const OAUTH_AUTHORIZE = `${MCP_BASE}/oauth/authorize`
-const OAUTH_TOKEN     = `${MCP_BASE}/oauth/token`
+const KEYCLOAK_BASE = "https://auth.plott.co.kr/realms/plott/protocol/openid-connect"
+const OAUTH_REGISTER  = `https://auth.plott.co.kr/realms/plott/clients-registrations/openid-connect`
+const OAUTH_AUTHORIZE = `${KEYCLOAK_BASE}/auth`
+const OAUTH_TOKEN     = `${KEYCLOAK_BASE}/token`
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -60,7 +61,7 @@ async function ensureClient() {
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
       token_endpoint_auth_method: "client_secret_post",
-      scope: "mcp:tools",
+      scope: "openid",
     }),
   })
   if (!res.ok) {
