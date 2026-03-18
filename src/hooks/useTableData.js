@@ -141,30 +141,14 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
 
     Promise.all(
       tablesToFetch.map(t => {
-        // product_revenue_raw → daily_summary 자동 대체 (집계 뷰, 즉시 로딩)
-        const useSummary = t === 'product_revenue_raw'
-        const actualTable = useSummary ? 'daily_summary' : t
-        const dateCol = useSummary ? 'reservation_date' : columnConfig?.[t]?.dateColumn
-        const columns = useSummary ? '*' : getNeededColumns(t, columnConfig)
+        const dateCol = columnConfig?.[t]?.dateColumn
+        const columns = getNeededColumns(t, columnConfig)
         const fetcher = (dateCol && expandedStart && dateRange?.end)
-          ? fetchByDateRange(actualTable, dateCol, expandedStart, dateRange.end, columns)
-          : fetchAll(actualTable, columns)
+          ? fetchByDateRange(t, dateCol, expandedStart, dateRange.end, columns)
+          : fetchAll(t, columns)
 
         return fetcher
-          .then(rows => {
-            // daily_summary → product_revenue_raw 칼럼 매핑 + _weight
-            if (useSummary && rows.length > 0) {
-              rows = rows.map(r => ({
-                ...r,
-                payment_amount: r.total_revenue ?? 0,
-                nights: r.total_nights ?? 0,
-                peoples: r.total_peoples ?? 0,
-                lead_time: r.avg_lead_time ?? 0,
-                _weight: r.reservation_count ?? 1, // COUNT 가중치
-              }))
-            }
-            return { table: t, rows, error: null }
-          })
+          .then(rows => ({ table: t, rows, error: null }))
           .catch(err => ({ table: t, rows: [], error: err.message }))
       })
     ).then(results => {
