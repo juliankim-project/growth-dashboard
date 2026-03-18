@@ -243,7 +243,11 @@ export function groupData(data, groupByField, metrics, mList) {
 }
 
 /* ─── 일별 집계 (SUM / COUNT / AVG / RATIO 지원) ─── */
-export function dailyData(data, metrics, mList, dateColumn) {
+/**
+ * 시간 기반 그룹핑 (일/주/월)
+ * @param {'day'|'week'|'month'} timeGroup - 그룹핑 단위
+ */
+export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
   if (!mList || mList.length === 0) return []
 
   /* 파생/비율 감지 */
@@ -281,31 +285,49 @@ export function dailyData(data, metrics, mList, dateColumn) {
     ? [dateColumn]
     : ['date', 'Event Date', 'reservation_date', 'check_in_date']
 
+  /* 날짜 → 그룹키 변환 */
+  const toGroupKey = (dateStr) => {
+    if (timeGroup === 'month') return dateStr.slice(0, 7) // YYYY-MM
+    if (timeGroup === 'week') {
+      const dt = new Date(dateStr + 'T00:00:00')
+      const day = dt.getDay() || 7 // 월=1 ... 일=7
+      const mon = new Date(dt)
+      mon.setDate(dt.getDate() - (day - 1)) // 해당 주 월요일
+      return mon.toISOString().slice(0, 10) // YYYY-MM-DD (월요일)
+    }
+    return dateStr // day
+  }
+  const toLabel = (key) => {
+    if (timeGroup === 'month') return key.slice(2) // YY-MM
+    if (timeGroup === 'week') return key.slice(5) + '~' // MM-DD~
+    return key.slice(5) // MM-DD
+  }
+
   const map = {}
   data.forEach(r => {
     let d = null
     for (const f of dateFields) { if (r[f]) { d = String(r[f]).slice(0, 10); break } }
     if (!d) return
-    if (!map[d]) { map[d] = { label: d.slice(5) } }
+    const gk = toGroupKey(d)
+    if (!map[gk]) { map[gk] = { label: toLabel(gk), _key: gk } }
     allAccum.forEach(mid => {
       const m = mCache[mid]
       if (!m || m.derived || !m.field) return
-      if (m._ratioTerms) return  // 비율 지표는 분자/분모로 처리
-      /* COUNT(DISTINCT col) — Set 기반 유니크 카운트 */
+      if (m._ratioTerms) return
       if (m._countDistinct && m._distinctCol) {
-        if (!map[d][mid + '__set']) map[d][mid + '__set'] = new Set()
+        if (!map[gk][mid + '__set']) map[gk][mid + '__set'] = new Set()
         const v = r[m._distinctCol]
-        if (v != null && v !== '') map[d][mid + '__set'].add(v)
+        if (v != null && v !== '') map[gk][mid + '__set'].add(v)
         return
       }
       const agg = m._countType ? 'count' : (m.agg || 'sum')
       if (agg === 'count') {
-        map[d][mid] = (map[d][mid] || 0) + 1
+        map[gk][mid] = (map[gk][mid] || 0) + 1
       } else if (agg === 'avg') {
-        map[d][mid + '__s'] = (map[d][mid + '__s'] || 0) + (parseFloat(r[m.field]) || 0)
-        map[d][mid + '__c'] = (map[d][mid + '__c'] || 0) + 1
+        map[gk][mid + '__s'] = (map[gk][mid + '__s'] || 0) + (parseFloat(r[m.field]) || 0)
+        map[gk][mid + '__c'] = (map[gk][mid + '__c'] || 0) + 1
       } else {
-        map[d][mid] = (map[d][mid] || 0) + (parseFloat(r[m.field]) || 0)
+        map[gk][mid] = (map[gk][mid] || 0) + (parseFloat(r[m.field]) || 0)
       }
     })
   })
@@ -332,7 +354,7 @@ export function dailyData(data, metrics, mList, dateColumn) {
   })
 
   if (hasDerived || hasRatio) Object.values(map).forEach(row => calcDerived(row, metrics, mList))
-  return Object.values(map).sort((a, b) => a.label.localeCompare(b.label))
+  return Object.values(map).sort((a, b) => (a._key || a.label).localeCompare(b._key || b.label))
 }
 
 export const CHART_COLORS = ['#0C66E4','#1F845A','#E56910','#CA3521','#6E5DC6','#0055CC','#E774BB']

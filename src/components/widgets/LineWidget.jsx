@@ -1,6 +1,12 @@
-import { useMemo, memo } from 'react'
+import { useMemo, useState, memo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { dailyData, fmtAxis, fmtMetric, CHART_COLORS } from './widgetUtils'
+
+const TIME_GROUPS = [
+  { id: 'day', label: '일' },
+  { id: 'week', label: '주' },
+  { id: 'month', label: '월' },
+]
 
 function Tip({ active, payload, label, dark, metricsProp, isDual, rightSet }) {
   if (!active || !payload?.length) return null
@@ -24,12 +30,14 @@ function Tip({ active, payload, label, dark, metricsProp, isDual, rightSet }) {
 function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const {
     metrics = ['cost','revenue'],
-    title = '일별 트렌드',
+    title = '트렌드',
     axisMode = 'single',
     rightMetrics = [],
+    timeGroup: cfgTimeGroup,
   } = config
 
-  const chartData = useMemo(() => dailyData(data, metrics, metricsProp, dateColumn), [data, metrics, metricsProp, dateColumn])
+  const [timeGroup, setTimeGroup] = useState(cfgTimeGroup || 'day')
+  const chartData = useMemo(() => dailyData(data, metrics, metricsProp, dateColumn, timeGroup), [data, metrics, metricsProp, dateColumn, timeGroup])
   const tick  = dark ? '#64748B' : '#475569'
   const grid  = dark ? '#1E2130' : '#F1F5F9'
 
@@ -44,7 +52,20 @@ function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+        <div className={`flex items-center rounded-md p-0.5 ${dark ? 'bg-[#1D2125]' : 'bg-slate-100'}`}>
+          {TIME_GROUPS.map(tg => (
+            <button key={tg.id} onClick={(e) => { e.stopPropagation(); setTimeGroup(tg.id) }}
+              className={`text-[10px] px-2 py-0.5 rounded font-medium transition-all
+                ${timeGroup === tg.id
+                  ? `${dark ? 'bg-[#22272B] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'}`
+                  : `${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}`}>
+              {tg.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex-1 min-h-[160px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top:5, right: isDual ? 10 : 10, left:5, bottom:0 }}>

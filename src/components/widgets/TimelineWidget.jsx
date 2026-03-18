@@ -1,6 +1,12 @@
-import { useMemo, memo } from 'react'
+import { useMemo, useState, memo } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { dailyData, calcMetric, fmtMetric, CHART_COLORS } from './widgetUtils'
+
+const TIME_GROUPS = [
+  { id: 'day', label: '일' },
+  { id: 'week', label: '주' },
+  { id: 'month', label: '월' },
+]
 
 /* ── 미니 스파크라인 SVG ── */
 function Sparkline({ points, color, width = 120, height = 28 }) {
@@ -31,12 +37,13 @@ function Sparkline({ points, color, width = 120, height = 28 }) {
 }
 
 function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
-  const { metrics = [], title = '트렌드 요약' } = config
+  const { metrics = [], title = '트렌드 요약', timeGroup: cfgTimeGroup } = config
+  const [timeGroup, setTimeGroup] = useState(cfgTimeGroup || 'day')
 
   const rows = useMemo(() => {
     if (!data?.length || metrics.length === 0) return []
 
-    const daily = dailyData(data, metrics, metricsProp, dateColumn)
+    const daily = dailyData(data, metrics, metricsProp, dateColumn, timeGroup)
 
     return metrics.map((mid, idx) => {
       const meta = metricsProp?.find(x => x.id === mid)
@@ -59,12 +66,25 @@ function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }
         color: CHART_COLORS[idx % CHART_COLORS.length],
       }
     })
-  }, [data, metrics, metricsProp, dateColumn])
+  }, [data, metrics, metricsProp, dateColumn, timeGroup])
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col
       ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>
-      <p className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-700'}`}>{title}</p>
+        <div className={`flex items-center rounded-md p-0.5 ${dark ? 'bg-[#1D2125]' : 'bg-slate-100'}`}>
+          {TIME_GROUPS.map(tg => (
+            <button key={tg.id} onClick={(e) => { e.stopPropagation(); setTimeGroup(tg.id) }}
+              className={`text-[10px] px-2 py-0.5 rounded font-medium transition-all
+                ${timeGroup === tg.id
+                  ? `${dark ? 'bg-[#22272B] text-white shadow-sm' : 'bg-white text-slate-800 shadow-sm'}`
+                  : `${dark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}`}>
+              {tg.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {rows.length === 0 ? (
         <div className={`text-center py-10 text-sm ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
