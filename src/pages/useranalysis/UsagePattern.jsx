@@ -173,12 +173,15 @@ export default function UsagePattern({ dark, dateRange }) {
   const [heatmapMode, setHeatmapMode] = useState('count') // count | pct
   const [heatmapView, setHeatmapView] = useState('branch') // branch | area
 
+  const fetchKey = `${dateRange?.start || ''}_${dateRange?.end || ''}`
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     fetchProductData(dateRange)
-      .then(rows => { setData(rows); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
-  }, [dateRange?.start, dateRange?.end])
+      .then(rows => { if (!cancelled) { setData(rows); setLoading(false) } })
+      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [fetchKey])
 
   const areaList = useMemo(() => [...new Set(data.map(r => r.area).filter(Boolean))].sort(), [data])
   const branchList = useMemo(() => {

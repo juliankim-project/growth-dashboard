@@ -26,12 +26,15 @@ export default function CohortAnalysis({ dark, dateRange }) {
   const [selectedChannel, setSelectedChannel] = useState('')
   const [mode, setMode] = useState('retention')
 
+  const fetchKey = `${dateRange?.start || ''}_${dateRange?.end || ''}`
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     fetchProductData(dateRange)
-      .then(rows => { setData(rows); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
-  }, [dateRange?.start, dateRange?.end])
+      .then(rows => { if (!cancelled) { setData(rows); setLoading(false) } })
+      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [fetchKey])
 
   const filtered = useMemo(() =>
     applyFilters(data, { selectedAreas, selectedBranch, selectedChannel })
