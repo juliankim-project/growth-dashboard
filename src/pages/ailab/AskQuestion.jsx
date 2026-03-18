@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2, Database, MessageSquare, AlertCircle, KeyRound, Clock } from 'lucide-react'
-import { mcpAsk, mcpQuery, mcpCheckAuth, MCPAuthRequiredError } from '../../lib/mcpClient'
+import { mcpAsk, mcpQuery, mcpCheckAuth, mcpLogin, MCPAuthRequiredError } from '../../lib/mcpClient'
 import { supabase } from '../../lib/supabase'
 
 function ResultTable({ rows }) {
@@ -47,7 +47,7 @@ export default function AskQuestion({ dark }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-  const [authUrl, setAuthUrl] = useState(null)
+  const [needsAuth, setNeedsAuth] = useState(false)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
 
@@ -56,11 +56,8 @@ export default function AskQuestion({ dark }) {
   // 인증 상태 확인
   useEffect(() => {
     mcpCheckAuth().then(res => {
-      if (!res.authenticated) {
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mcp-proxy?action=auth`
-        setAuthUrl(url)
-      }
-    }).catch(() => {})
+      setNeedsAuth(!res.authenticated)
+    }).catch(() => setNeedsAuth(true))
   }, [])
 
   const handleSubmit = async (e) => {
@@ -114,7 +111,7 @@ export default function AskQuestion({ dark }) {
       clearTimeout(timeout)
       if (err.name === 'AbortError') return
       if (err instanceof MCPAuthRequiredError) {
-        setAuthUrl(err.authUrl)
+        setNeedsAuth(true)
         setError(null)
       } else {
         setError(err.message)
@@ -225,34 +222,23 @@ export default function AskQuestion({ dark }) {
       )}
 
       {/* 인증 필요 안내 */}
-      {authUrl && (
+      {needsAuth && (
         <div className={`flex items-center gap-3 p-4 rounded-lg border ${
           dark ? 'bg-amber-900/20 border-amber-800 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'
         }`}>
           <KeyRound size={18} className="shrink-0" />
           <div className="flex-1 text-sm">
-            <p className="font-medium">MCP 서버 인증이 필요합니다</p>
-            <p className="mt-0.5 opacity-80">최초 1회만 인증하면 이후 자동으로 갱신됩니다</p>
+            <p className="font-medium">Plott Duck 인증이 필요합니다</p>
+            <p className="mt-0.5 opacity-80">Keycloak SSO 로그인 후 자동으로 연결됩니다</p>
           </div>
-          <a
-            href={authUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              const check = setInterval(() => {
-                mcpCheckAuth().then(res => {
-                  if (res.authenticated) {
-                    setAuthUrl(null)
-                    clearInterval(check)
-                  }
-                }).catch(() => {})
-              }, 3000)
-              setTimeout(() => clearInterval(check), 120000)
+          <button
+            onClick={async () => {
+              try { await mcpLogin() } catch { /* redirect happens */ }
             }}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors shrink-0"
           >
-            인증하기
-          </a>
+            로그인
+          </button>
         </div>
       )}
 
