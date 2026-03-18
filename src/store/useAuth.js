@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 const KEYCLOAK_URL = 'https://auth.plott.co.kr/realms/plott/protocol/openid-connect'
 const CLIENT_ID = 'plott-sandbox'
-const REDIRECT_URI = window.location.origin + '/auth/callback'
+const REDIRECT_URI = window.location.origin + '/'
 const TOKEN_KEY = 'kc_tokens'
 
 function generateCodeVerifier() {
