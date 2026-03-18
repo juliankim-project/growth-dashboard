@@ -23,6 +23,7 @@ const QueryHistory = lazy(() => import('./pages/ailab/QueryHistory'))
 const BranchAnalysis = lazy(() => import('./pages/useranalysis/BranchAnalysis'))
 const UserSegment = lazy(() => import('./pages/useranalysis/UserSegment'))
 const UsagePattern = lazy(() => import('./pages/useranalysis/UsagePattern'))
+const ExcludeUsers = lazy(() => import('./pages/useranalysis/ExcludeUsers'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -40,6 +41,7 @@ const FIXED_MAP = {
   'useranalysis.branch': BranchAnalysis,
   'useranalysis.segment': UserSegment,
   'useranalysis.pattern': UsagePattern,
+  'useranalysis.exclude': ExcludeUsers,
 }
 
 import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'

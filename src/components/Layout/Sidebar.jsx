@@ -43,6 +43,7 @@ export const DEFAULT_SECTIONS = [
       { id:'branch',   label:'지점별 분석',    icon:'Home'      },
       { id:'segment',  label:'유저 세그먼트',  icon:'Users'     },
       { id:'pattern',  label:'이용 패턴',      icon:'Activity'  },
+      { id:'exclude',  label:'유저 제외',      icon:'Shield'    },
     ]
   },
   {
