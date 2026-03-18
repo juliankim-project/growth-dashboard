@@ -10,16 +10,19 @@ const fmtMD = d => d ? `${d.slice(5, 7)}.${d.slice(8, 10)}` : '—'
 const fmtFull = d => d ? d.replace(/-/g, '.') : '—'
 const toYMD = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
-/* ── 미니 캘린더 ── */
-function MiniCalendar({ dark, year, month, rangeStart, rangeEnd, onSelectDate, onMonthChange }) {
+/* ── 미니 캘린더 (월~일 순서) ── */
+const DAY_HEADERS = ['월', '화', '수', '목', '금', '토', '일']
+
+function MiniCalendar({ dark, year, month, rangeStart, rangeEnd, onSelectDate, showNav = true, onMonthChange }) {
   const t = dark
-    ? { head: 'text-slate-500', day: 'text-slate-300', today: 'ring-1 ring-blue-400', muted: 'text-slate-600',
+    ? { head: 'text-slate-500', day: 'text-slate-300', today: 'ring-2 ring-blue-400', muted: 'text-slate-600',
         inRange: 'bg-blue-500/15', startEnd: 'bg-blue-600 text-white', hover: 'hover:bg-[#2C333A]' }
-    : { head: 'text-slate-400', day: 'text-slate-700', today: 'ring-1 ring-blue-500', muted: 'text-slate-300',
-        inRange: 'bg-blue-50', startEnd: 'bg-blue-600 text-white', hover: 'hover:bg-slate-50' }
+    : { head: 'text-slate-400', day: 'text-slate-700', today: 'ring-2 ring-blue-500', muted: 'text-slate-300',
+        inRange: 'bg-blue-50', startEnd: 'bg-blue-600 text-white', hover: 'hover:bg-slate-100' }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const firstDay = new Date(year, month, 1).getDay() // 0=일
+  const rawFirstDay = new Date(year, month, 1).getDay() // 0=일
+  const firstDay = rawFirstDay === 0 ? 6 : rawFirstDay - 1 // 월=0, 화=1 ... 일=6
   const todayStr = new Date().toISOString().slice(0, 10)
   const weeks = []
   let week = new Array(firstDay).fill(null)
@@ -32,22 +35,26 @@ function MiniCalendar({ dark, year, month, rangeStart, rangeEnd, onSelectDate, o
 
   return (
     <div>
-      {/* 월 네비게이션 */}
-      <div className="flex items-center justify-between mb-2">
-        <button onClick={() => onMonthChange(-1)} className={`p-1 rounded ${t.hover}`}>
-          <ChevronLeft size={14} className={t.head} />
-        </button>
-        <span className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
+      {/* 월 헤더 */}
+      <div className="flex items-center justify-between mb-1.5">
+        {showNav ? (
+          <button onClick={() => onMonthChange?.(-1)} className={`p-1 rounded ${t.hover}`}>
+            <ChevronLeft size={14} className={t.head} />
+          </button>
+        ) : <div className="w-6" />}
+        <span className={`text-sm font-bold ${dark ? 'text-white' : 'text-slate-800'}`}>
           {year}년 {month + 1}월
         </span>
-        <button onClick={() => onMonthChange(1)} className={`p-1 rounded ${t.hover}`}>
-          <ChevronRight size={14} className={t.head} />
-        </button>
+        {showNav ? (
+          <button onClick={() => onMonthChange?.(1)} className={`p-1 rounded ${t.hover}`}>
+            <ChevronRight size={14} className={t.head} />
+          </button>
+        ) : <div className="w-6" />}
       </div>
       {/* 요일 헤더 */}
-      <div className="grid grid-cols-7 mb-1">
-        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-          <div key={d} className={`text-center text-[10px] font-medium py-0.5 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : t.head}`}>{d}</div>
+      <div className="grid grid-cols-7 mb-0.5">
+        {DAY_HEADERS.map((d, i) => (
+          <div key={d} className={`text-center text-[10px] font-semibold py-1 ${i === 5 ? 'text-blue-400' : i === 6 ? 'text-red-400' : t.head}`}>{d}</div>
         ))}
       </div>
       {/* 날짜 그리드 */}
@@ -61,13 +68,16 @@ function MiniCalendar({ dark, year, month, rangeStart, rangeEnd, onSelectDate, o
             const isEnd = dateStr === rangeEnd
             const inRange = rangeStart && rangeEnd && dateStr >= rangeStart && dateStr <= rangeEnd
             const isStartOrEnd = isStart || isEnd
+            const isSat = di === 5, isSun = di === 6
 
             return (
               <button key={di}
                 onClick={() => onSelectDate(dateStr)}
-                className={`text-[11px] py-1.5 text-center rounded-md transition-all font-medium
+                className={`text-xs py-1.5 text-center rounded-lg transition-all font-medium
                   ${isStartOrEnd ? t.startEnd
                     : inRange ? t.inRange + ' ' + t.day
+                    : isSun ? 'text-red-400 ' + t.hover
+                    : isSat ? 'text-blue-400 ' + t.hover
                     : t.day + ' ' + t.hover}
                   ${isToday && !isStartOrEnd ? t.today : ''}
                 `}>
@@ -202,52 +212,32 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
 
       {/* ── 드롭다운 ── */}
       {open && (
-        <div className={`absolute right-0 top-[calc(100%+8px)] z-[100] rounded-xl border shadow-2xl overflow-hidden
+        <div className={`absolute right-0 top-[calc(100%+6px)] z-[100] rounded-xl border shadow-2xl
           ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}
-          style={{ width: 520 }}>
-
-          {/* 상단: 시작일 ~ 종료일 인풋 + 일수 */}
-          <div className={`p-3 border-b ${dark ? 'border-[#A1BDD914]' : 'border-slate-100'}`}>
-            <div className="flex items-center gap-2">
-              <div className="flex-1" onClick={() => setSelectingStart(true)}>
-                <input type="date" value={customStart} readOnly
-                  className={`${inputCls} ${selectingStart ? (dark ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : ''}`} />
-              </div>
-              <ArrowRight size={14} className={dark ? 'text-slate-500' : 'text-slate-400'} />
-              <div className="flex-1" onClick={() => setSelectingStart(false)}>
-                <input type="date" value={customEnd} readOnly
-                  className={`${inputCls} ${!selectingStart ? (dark ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : ''}`} />
-              </div>
-              {dayCount > 0 && (
-                <span className={`text-[11px] font-bold px-2 py-1 rounded-lg shrink-0 ${dark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                  {dayCount}일
-                </span>
-              )}
-            </div>
-          </div>
+          style={{ width: 640 }}>
 
           <div className="flex">
-            {/* 왼쪽: 프리셋 + 월별 퀵버튼 */}
-            <div className={`w-[140px] p-2.5 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} flex flex-col gap-1`}>
-              {/* 월별 퀵선택 */}
-              <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>월별</p>
-              {monthButtons.map((mb, i) => (
-                <button key={i}
-                  onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
-                  className={`text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors
-                    ${dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
-                  {mb.label}
-                </button>
-              ))}
-
+            {/* ── 좌측: 프리셋 패널 ── */}
+            <div className={`w-[130px] shrink-0 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} p-2 flex flex-col`}>
+              {/* 월별 */}
+              <p className={`text-[9px] font-bold uppercase tracking-wider px-2 pt-1 pb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>월별</p>
+              <div className="flex flex-wrap gap-1 px-1 mb-1">
+                {monthButtons.map((mb, i) => (
+                  <button key={i}
+                    onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors
+                      ${dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
+                    {mb.label}
+                  </button>
+                ))}
+              </div>
               <div className={`border-t my-1 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`} />
-
-              {/* 기존 프리셋 */}
-              <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>프리셋</p>
+              {/* 프리셋 */}
+              <p className={`text-[9px] font-bold uppercase tracking-wider px-2 pt-1 pb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>프리셋</p>
               {DATE_PRESETS.map(p => (
                 <button key={p.id}
                   onClick={() => { setPreset(p.id); setOpen(false) }}
-                  className={`text-left px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors
+                  className={`text-left px-2 py-1 rounded text-[11px] font-medium transition-colors
                     ${dateRange.preset === p.id
                       ? 'bg-blue-600 text-white'
                       : dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
@@ -256,21 +246,40 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
               ))}
             </div>
 
-            {/* 오른쪽: 듀얼 캘린더 */}
-            <div className="flex-1 p-3">
-              <div className="grid grid-cols-2 gap-4">
+            {/* ── 우측: 날짜 인풋 + 듀얼 캘린더 + 적용 ── */}
+            <div className="flex-1 p-3 flex flex-col gap-2.5">
+              {/* 시작일~종료일 인풋 */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1" onClick={() => setSelectingStart(true)}>
+                  <input type="date" value={customStart} readOnly
+                    className={`${inputCls} ${selectingStart ? (dark ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : ''}`} />
+                </div>
+                <ArrowRight size={14} className={dark ? 'text-slate-500' : 'text-slate-400'} />
+                <div className="flex-1" onClick={() => setSelectingStart(false)}>
+                  <input type="date" value={customEnd} readOnly
+                    className={`${inputCls} ${!selectingStart ? (dark ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : ''}`} />
+                </div>
+                {dayCount > 0 && (
+                  <span className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg shrink-0 ${dark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                    {dayCount}일
+                  </span>
+                )}
+              </div>
+
+              {/* 듀얼 캘린더 */}
+              <div className="grid grid-cols-2 gap-5">
                 <MiniCalendar dark={dark} year={calYear} month={calMonth}
                   rangeStart={customStart} rangeEnd={customEnd}
-                  onSelectDate={onSelectDate} onMonthChange={changeMonth} />
+                  onSelectDate={onSelectDate} showNav onMonthChange={changeMonth} />
                 <MiniCalendar dark={dark} year={cal2Year} month={cal2Month}
                   rangeStart={customStart} rangeEnd={customEnd}
-                  onSelectDate={onSelectDate} onMonthChange={(d) => changeMonth(d)} />
+                  onSelectDate={onSelectDate} showNav={false} />
               </div>
 
               {/* 적용 버튼 */}
               <button onClick={applyCustom}
                 disabled={!customStart || !customEnd || customStart > customEnd}
-                className="w-full mt-3 px-4 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg
+                className="w-full px-4 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-lg
                   hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 {customStart && customEnd && customStart <= customEnd
                   ? `${fmtFull(customStart)} ~ ${fmtFull(customEnd)} 적용`
