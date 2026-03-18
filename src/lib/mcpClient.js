@@ -13,6 +13,33 @@ export class MCPAuthRequiredError extends Error {
   }
 }
 
+/**
+ * JSONRPC 응답에서 실제 데이터 추출
+ * { jsonrpc, result: { content: [{ type:"text", text: "..." }] } }
+ * → text를 JSON parse하여 반환
+ */
+function unwrapMcpResponse(raw) {
+  // 이미 rows가 있는 평문 응답
+  if (raw?.rows || raw?.columns) return raw
+
+  // JSONRPC 래퍼
+  if (raw?.result?.content) {
+    const textItem = raw.result.content.find(c => c.type === 'text')
+    if (textItem?.text) {
+      try {
+        return JSON.parse(textItem.text)
+      } catch {
+        return { text: textItem.text }
+      }
+    }
+  }
+
+  // result가 바로 있는 경우
+  if (raw?.result) return raw.result
+
+  return raw
+}
+
 async function call(tool, args = {}, signal) {
   const res = await fetch(PROXY_URL, {
     method: 'POST',
@@ -34,7 +61,9 @@ async function call(tool, args = {}, signal) {
     const txt = await res.text()
     throw new Error(`MCP proxy error ${res.status}: ${txt}`)
   }
-  return res.json()
+
+  const raw = await res.json()
+  return unwrapMcpResponse(raw)
 }
 
 /** 인증 상태 확인 */
