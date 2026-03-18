@@ -4,9 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0"
 const MCP_BASE = "https://duck.plott.co.kr"
 const MCP_URL  = `${MCP_BASE}/mcp`
 const KEYCLOAK_BASE = "https://auth.plott.co.kr/realms/plott/protocol/openid-connect"
-const OAUTH_REGISTER  = `https://auth.plott.co.kr/realms/plott/clients-registrations/openid-connect`
 const OAUTH_AUTHORIZE = `${KEYCLOAK_BASE}/auth`
 const OAUTH_TOKEN     = `${KEYCLOAK_BASE}/token`
+const KEYCLOAK_CLIENT_ID = "plott-sandbox"  // Keycloak 고정 client (public)
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -41,44 +41,11 @@ async function loadTokens() {
   return data
 }
 
-/* ── OAuth 동적 클라이언트 등록 ── */
+/* ── Keycloak 고정 client (public client — client_secret 불필요) ── */
 async function ensureClient() {
   if (clientCreds) return clientCreds
-
-  // DB에 저장된 client 확인
-  const { data } = await db.from("mcp_tokens").select("client_id, client_secret").eq("id", "plott").maybeSingle()
-  if (data?.client_id && data?.client_secret) {
-    clientCreds = { client_id: data.client_id, client_secret: data.client_secret }
-    return clientCreds
-  }
-
-  const res = await fetch(OAUTH_REGISTER, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_name: "growth-dashboard-edge",
-      redirect_uris: [CALLBACK_URL],
-      grant_types: ["authorization_code", "refresh_token"],
-      response_types: ["code"],
-      token_endpoint_auth_method: "client_secret_post",
-      scope: "openid",
-    }),
-  })
-  if (!res.ok) {
-    const txt = await res.text()
-    throw new Error(`OAuth register failed: ${res.status} ${txt}`)
-  }
-  const result = await res.json()
-  clientCreds = { client_id: result.client_id, client_secret: result.client_secret }
-
-  // client 정보 DB 저장
-  await db.from("mcp_tokens").upsert({
-    id: "plott",
-    client_id: result.client_id,
-    client_secret: result.client_secret,
-  })
-
-  return clientCreds!
+  clientCreds = { client_id: KEYCLOAK_CLIENT_ID, client_secret: "" }
+  return clientCreds
 }
 
 /* ── PKCE 코드 생성 ── */
@@ -102,7 +69,7 @@ async function ensureToken(): Promise<string> {
     throw new Error("NOT_AUTHENTICATED")
   }
 
-  const { client_id, client_secret } = await ensureClient()
+  const { client_id } = await ensureClient()
   const res = await fetch(OAUTH_TOKEN, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -110,7 +77,6 @@ async function ensureToken(): Promise<string> {
       grant_type: "refresh_token",
       refresh_token: stored.refresh_token,
       client_id,
-      client_secret,
     }),
   })
   if (!res.ok) {
@@ -248,15 +214,13 @@ Deno.serve(async (req) => {
   /* ── 1) OAuth 인증 시작: GET ?action=auth ── */
   if (action === "auth") {
     try {
-      const { client_id } = await ensureClient()
       const { verifier, challenge } = await generatePKCE()
 
       // verifier를 DB에 임시 저장
       await db.from("mcp_tokens").upsert({
         id: "plott",
         code_verifier: verifier,
-        client_id: clientCreds!.client_id,
-        client_secret: clientCreds!.client_secret,
+        client_id: KEYCLOAK_CLIENT_ID,
       })
 
       const state = crypto.randomUUID()
@@ -266,7 +230,7 @@ Deno.serve(async (req) => {
 
       const authUrl = new URL(OAUTH_AUTHORIZE)
       authUrl.searchParams.set("response_type", "code")
-      authUrl.searchParams.set("client_id", client_id)
+      authUrl.searchParams.set("client_id", KEYCLOAK_CLIENT_ID)
       authUrl.searchParams.set("redirect_uri", CALLBACK_URL)
       authUrl.searchParams.set("scope", "mcp:tools")
       authUrl.searchParams.set("state", state)
@@ -292,8 +256,8 @@ Deno.serve(async (req) => {
 
     try {
       const stored = await loadTokens()
-      if (!stored?.code_verifier || !stored?.client_id || !stored?.client_secret) {
-        return new Response("Missing PKCE verifier or client creds", { status: 400 })
+      if (!stored?.code_verifier) {
+        return new Response("Missing PKCE verifier", { status: 400 })
       }
 
       const res = await fetch(OAUTH_TOKEN, {
@@ -303,8 +267,7 @@ Deno.serve(async (req) => {
           grant_type: "authorization_code",
           code,
           redirect_uri: CALLBACK_URL,
-          client_id: stored.client_id,
-          client_secret: stored.client_secret,
+          client_id: KEYCLOAK_CLIENT_ID,
           code_verifier: stored.code_verifier,
         }),
       })
