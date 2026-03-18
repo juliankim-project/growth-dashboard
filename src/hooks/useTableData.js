@@ -47,7 +47,7 @@ export function useTableData(tableName = 'marketing_data') {
 const tableCache = new Map()
 const tableCacheTs = new Map()
 const MAX_CACHE_SIZE = 50
-const CACHE_TTL = 60_000 // 60초 후 캐시 만료
+const CACHE_TTL = 300_000 // 5분 후 캐시 만료 (로딩 최소화)
 
 function getCacheKey(table, dateKey, ccReady) {
   return `${table}|${dateKey}|${ccReady}`
