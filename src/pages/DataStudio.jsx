@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Upload, FileText, CheckCircle, AlertCircle, X, TrendingUp, Info, Trash2, RefreshCw, Package, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { invalidateTableCache } from '../hooks/useTableData'
 
 /* ─── camelCase → snake_case 변환 ─── */
 function camelToSnake(s) {
@@ -369,6 +370,7 @@ export default function DataStudio({ dark }) {
       }
 
       const res = { ok: true, count: inserted, mode: uploadMode, dateRange }
+      invalidateTableCache() // CSV 업로드 후 대시보드 캐시 무효화
       setResult(res)
       setStep(2)
       appendHistory({

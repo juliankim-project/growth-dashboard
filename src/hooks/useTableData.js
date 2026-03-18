@@ -45,10 +45,18 @@ export function useTableData(tableName = 'marketing_data') {
 
 /* ── 테이블별 캐시 — 동일 날짜+컬럼 조합은 재요청하지 않음 ── */
 const tableCache = new Map()
+const tableCacheTs = new Map()
 const MAX_CACHE_SIZE = 50
+const CACHE_TTL = 60_000 // 60초 후 캐시 만료
 
 function getCacheKey(table, dateKey, ccReady) {
   return `${table}|${dateKey}|${ccReady}`
+}
+
+/** 전체 캐시 무효화 (CSV 업로드 후 호출) */
+export function invalidateTableCache() {
+  tableCache.clear()
+  tableCacheTs.clear()
 }
 
 /**
@@ -91,8 +99,8 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
       return
     }
 
-    // 이전과 동일한 테이블 세트 + 날짜면 다시 조회하지 않음
-    if (key === prevKeyRef.current) return
+    // 이전과 동일한 키 + 캐시가 있으면 재조회 불필요
+    if (key === prevKeyRef.current && tableCache.size > 0) return
     prevKeyRef.current = key
 
     // ComparisonWidget을 위해 이전 기간도 포함하도록 확장 범위 계산
@@ -107,7 +115,8 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
     const tablesToFetch = []
     for (const t of uniqueTables) {
       const ck = getCacheKey(t, dateKey, ccReady)
-      if (tableCache.has(ck)) {
+      const cachedTs = tableCacheTs.get(ck)
+      if (tableCache.has(ck) && cachedTs && (Date.now() - cachedTs < CACHE_TTL)) {
         cachedMap[t] = tableCache.get(ck)
       } else {
         tablesToFetch.push(t)
@@ -151,9 +160,11 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
         // 캐시에 저장 (LRU 방식으로 오래된 항목 제거)
         const ck = getCacheKey(r.table, dateKey, ccReady)
         tableCache.set(ck, r.rows)
+        tableCacheTs.set(ck, Date.now())
         if (tableCache.size > MAX_CACHE_SIZE) {
           const oldest = tableCache.keys().next().value
           tableCache.delete(oldest)
+          tableCacheTs.delete(oldest)
         }
         if (r.error) errs[r.table] = r.error
       })
