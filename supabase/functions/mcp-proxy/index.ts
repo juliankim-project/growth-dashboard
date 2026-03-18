@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set("response_type", "code")
       authUrl.searchParams.set("client_id", KEYCLOAK_CLIENT_ID)
       authUrl.searchParams.set("redirect_uri", CALLBACK_URL)
-      authUrl.searchParams.set("scope", "mcp:tools")
+      authUrl.searchParams.set("scope", "openid")
       authUrl.searchParams.set("state", state)
       authUrl.searchParams.set("code_challenge", challenge)
       authUrl.searchParams.set("code_challenge_method", "S256")
