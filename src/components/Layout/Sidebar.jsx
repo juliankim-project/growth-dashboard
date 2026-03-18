@@ -40,10 +40,12 @@ export const DEFAULT_SECTIONS = [
   {
     id: 'useranalysis', label: '유저 분석', icon: 'Users',
     subs: [
-      { id:'branch',   label:'지점별 분석',    icon:'Home'      },
-      { id:'segment',  label:'유저 세그먼트',  icon:'Users'     },
-      { id:'pattern',  label:'이용 패턴',      icon:'Activity'  },
-      { id:'exclude',  label:'유저 제외',      icon:'Shield'    },
+      { id:'segment',  label:'유저 세그먼트',    icon:'Users'       },
+      { id:'cohort',   label:'코호트 분석',      icon:'Activity'    },
+      { id:'ltv',      label:'LTV · 구매주기',   icon:'TrendingUp'  },
+      { id:'pattern',  label:'이용 패턴',        icon:'Clock'       },
+      { id:'branch',   label:'지점 · 권역 비교', icon:'Home'        },
+      { id:'exclude',  label:'유저 제외',        icon:'Shield'      },
     ]
   },
   {

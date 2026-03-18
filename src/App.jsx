@@ -20,9 +20,11 @@ const CustomDashboard = lazy(() => import('./pages/CustomDashboard'))
 const ComingSoon = lazy(() => import('./pages/ComingSoon'))
 const AskQuestion = lazy(() => import('./pages/ailab/AskQuestion'))
 const QueryHistory = lazy(() => import('./pages/ailab/QueryHistory'))
-const BranchAnalysis = lazy(() => import('./pages/useranalysis/BranchAnalysis'))
 const UserSegment = lazy(() => import('./pages/useranalysis/UserSegment'))
+const CohortAnalysis = lazy(() => import('./pages/useranalysis/CohortAnalysis'))
+const LtvAnalysis = lazy(() => import('./pages/useranalysis/LtvAnalysis'))
 const UsagePattern = lazy(() => import('./pages/useranalysis/UsagePattern'))
+const BranchAnalysis = lazy(() => import('./pages/useranalysis/BranchAnalysis'))
 const ExcludeUsers = lazy(() => import('./pages/useranalysis/ExcludeUsers'))
 
 /* ──────────────────────────────────────────────
@@ -38,9 +40,11 @@ const FIXED_MAP = {
   'settings.team': SettingsTeam,
   'ailab.ask': AskQuestion,
   'ailab.history': QueryHistory,
-  'useranalysis.branch': BranchAnalysis,
   'useranalysis.segment': UserSegment,
+  'useranalysis.cohort': CohortAnalysis,
+  'useranalysis.ltv': LtvAnalysis,
   'useranalysis.pattern': UsagePattern,
+  'useranalysis.branch': BranchAnalysis,
   'useranalysis.exclude': ExcludeUsers,
 }
 
