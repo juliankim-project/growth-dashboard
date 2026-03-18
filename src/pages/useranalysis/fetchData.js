@@ -4,27 +4,47 @@ import { getExcludedGuestIds } from './ExcludeUsers'
 const COLS = 'id,guest_id,user_id,branch_name,area,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,room_type_name,room_type2,brand_name,lead_time'
 
 /**
- * product_revenue_raw 데이터 fetch (중복 제거 + 제외 유저 필터링)
- * - id 기준 dedup: CSV 재업로드 시 동일 예약이 중복 삽입될 수 있음
- * - 제외 유저: DB의 excluded_users 테이블 기준 (모든 사용자 공유)
+ * product_revenue_raw 데이터 fetch (병렬 + 중복 제거 + 제외 유저 필터링)
  */
 export async function fetchProductData(dateRange) {
   if (!supabase) return []
-  const PAGE = 5000
-  let from = 0
-  const all = []
 
-  while (true) {
-    let q = supabase.from('product_revenue_raw').select(COLS)
-    if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-    if (dateRange?.end)   q = q.lte('reservation_date', dateRange.end)
-    const { data, error } = await q.range(from, from + PAGE - 1)
-    if (error) throw error
-    if (!data?.length) break
-    all.push(...data)
-    if (data.length < PAGE) break
-    from += PAGE
+  const PAGE = 10000
+  const CONCURRENT = 5
+
+  // 1단계: 총 건수 조회
+  let countQuery = supabase
+    .from('product_revenue_raw')
+    .select('*', { count: 'exact', head: true })
+  if (dateRange?.start) countQuery = countQuery.gte('reservation_date', dateRange.start)
+  if (dateRange?.end) countQuery = countQuery.lte('reservation_date', dateRange.end)
+
+  const { count, error: countErr } = await countQuery
+  if (countErr) throw countErr
+  if (!count || count === 0) return []
+
+  // 2단계: 병렬 fetch
+  const totalPages = Math.ceil(count / PAGE)
+  const chunks = new Array(totalPages)
+
+  for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
+    const promises = []
+    for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
+      const from = i * PAGE
+      let q = supabase.from('product_revenue_raw').select(COLS)
+      if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
+      if (dateRange?.end) q = q.lte('reservation_date', dateRange.end)
+      promises.push(
+        q.range(from, from + PAGE - 1).then(({ data, error }) => {
+          if (error) throw error
+          chunks[i] = data || []
+        })
+      )
+    }
+    await Promise.all(promises)
   }
+
+  const all = chunks.flat()
 
   // id 기준 중복 제거
   const seen = new Set()

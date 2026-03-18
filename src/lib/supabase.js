@@ -47,28 +47,36 @@ export async function fetchAll(tableName, columns = '*') {
     return []
   }
 
-  const PAGE = 5000
-  let from = 0
-  const all = []
+  const PAGE = 10000
 
-  while (true) {
-    const { data, error } = await supabase
-      .from(tableName)
-      .select(columns)
-      .range(from, from + PAGE - 1)
+  // 총 건수 조회 → 병렬 fetch
+  const { count, error: countErr } = await supabase
+    .from(tableName)
+    .select('*', { count: 'exact', head: true })
 
-    if (error) throw error
-    if (!data || data.length === 0) break
+  if (countErr) throw countErr
+  if (!count || count === 0) return []
 
-    all.push(...data)
+  const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
+  const CONCURRENT = 5
+  const all = new Array(totalPages)
 
-    if (all.length >= MAX_ROWS) {
-      console.warn(`[fetchAll] ${tableName}: ${MAX_ROWS.toLocaleString()}행 제한 도달 — 데이터가 잘릴 수 있습니다.`)
-      break
+  for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
+    const promises = []
+    for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
+      const from = i * PAGE
+      promises.push(
+        supabase
+          .from(tableName)
+          .select(columns)
+          .range(from, from + PAGE - 1)
+          .then(({ data, error }) => {
+            if (error) throw error
+            all[i] = data || []
+          })
+      )
     }
-
-    if (data.length < PAGE) break
-    from += PAGE
+    await Promise.all(promises)
   }
 
   return normalizeRows(all)
@@ -126,31 +134,42 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
     return fetchAll(tableName, columns)
   }
 
-  const PAGE = 5000
-  let from = 0
-  const all = []
+  const PAGE = 10000
 
-  while (true) {
-    const { data, error } = await supabase
-      .from(tableName)
-      .select(columns)
-      .gte(dateColumn, startDate)
-      .lte(dateColumn, endDate)
-      .range(from, from + PAGE - 1)
+  // 1단계: 총 건수 먼저 조회 → 병렬 fetch 계획
+  const { count, error: countErr } = await supabase
+    .from(tableName)
+    .select('*', { count: 'exact', head: true })
+    .gte(dateColumn, startDate)
+    .lte(dateColumn, endDate)
 
-    if (error) throw error
-    if (!data || data.length === 0) break
+  if (countErr) throw countErr
+  if (!count || count === 0) return []
 
-    all.push(...data)
+  // 2단계: 병렬 fetch (한 번에 최대 5개 청크)
+  const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
+  const CONCURRENT = 5
+  const all = new Array(totalPages)
 
-    if (all.length >= MAX_ROWS) {
-      console.warn(`[fetchByDateRange] ${tableName}: ${MAX_ROWS.toLocaleString()}행 제한 도달`)
-      break
+  for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
+    const promises = []
+    for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
+      const from = i * PAGE
+      promises.push(
+        supabase
+          .from(tableName)
+          .select(columns)
+          .gte(dateColumn, startDate)
+          .lte(dateColumn, endDate)
+          .range(from, from + PAGE - 1)
+          .then(({ data, error }) => {
+            if (error) throw error
+            all[i] = data || []
+          })
+      )
     }
-
-    if (data.length < PAGE) break
-    from += PAGE
+    await Promise.all(promises)
   }
 
-  return normalizeRows(all)
+  return normalizeRows(all.flat())
 }
