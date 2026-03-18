@@ -187,98 +187,98 @@ export default function CheckinPace({ dark, dateRange }) {
     <div className={`min-h-screen ${t.bg}`}>
       {/* ── Sticky 헤더 + 필터 ── */}
       <div className={`sticky top-0 z-20 ${dark ? 'bg-[#1D2125]/95' : 'bg-slate-50/95'} backdrop-blur-sm border-b ${t.border}`}>
-        <div className="px-4 pt-3 pb-1.5">
-          <h1 className={`text-base font-bold ${t.text}`}>📅 체크인 페이스</h1>
+        <div className="px-6 pt-4 pb-2">
+          <h1 className={`text-lg font-bold ${t.text}`}>📅 체크인 페이스</h1>
         </div>
-        <div className="px-4 pb-2.5 flex items-center gap-2 flex-wrap">
-          <Filter size={13} className={t.muted} />
+        <div className="px-6 pb-3 flex items-center gap-3 flex-wrap">
+          <Filter size={14} className={t.muted} />
           <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
-            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}>
             <option value="">전체 권역</option>
             {areaList.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
           <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
-            className={`text-xs rounded-lg px-2.5 py-1 border outline-none ${t.input} ${t.inputFocus}`}>
+            className={`text-sm rounded-lg px-3 py-1.5 border outline-none ${t.input} ${t.inputFocus}`}>
             <option value="">전체 지점</option>
             {branchList.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
           {(selectedArea || selectedBranch) && (
             <button onClick={() => { setSelectedArea(''); setSelectedBranch('') }}
-              className={`text-[11px] px-2 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+              className={`text-xs px-3 py-1 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
               초기화
             </button>
           )}
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-2">
             {/* 뷰 모드 */}
             {Object.entries(viewLabels).map(([k, v]) => (
               <button key={k} onClick={() => setViewMode(k)}
-                className={`text-[11px] px-2 py-0.5 rounded font-medium transition-all
+                className={`text-xs px-3 py-1 rounded font-medium transition-all
                   ${viewMode === k ? 'bg-blue-500 text-white' : dark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}>
                 {v}
               </button>
             ))}
-            <div className={`w-px h-4 mx-1 ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+            <div className={`w-px h-5 mx-1 ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
             {/* 단위 */}
             {Object.entries(unitLabels).map(([k, v]) => (
               <button key={k} onClick={() => setUnit(k)}
-                className={`text-[11px] px-2 py-0.5 rounded font-medium transition-all
+                className={`text-xs px-3 py-1 rounded font-medium transition-all
                   ${unit === k ? 'bg-blue-500 text-white' : dark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}>
                 {v}
               </button>
             ))}
-            <div className={`w-px h-4 mx-1 ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+            <div className={`w-px h-5 mx-1 ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
             {/* 건수/매출 */}
             <button onClick={() => setCellValue(cellValue === 'count' ? 'revenue' : 'count')}
-              className={`text-[11px] px-2 py-0.5 rounded font-medium ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+              className={`text-xs px-3 py-1 rounded font-medium ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
               {cellValue === 'count' ? '건수' : '매출'}
             </button>
           </div>
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-6 space-y-3">
+      <div className="px-6 pt-5 pb-8 space-y-5">
         {/* ── KPI ── */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-4">
           {[
-            { label: '총 예약건', value: fmtNum(totalCount) + '건', icon: <Calendar size={13} />, color: 'text-blue-500 bg-blue-500/10' },
-            { label: '총 매출', value: fmtKRW(totalRevenue), icon: <BarChart3 size={13} />, color: 'text-emerald-500 bg-emerald-500/10' },
-            { label: '평균 리드타임', value: Math.round(avgLeadTime) + '일', icon: <Clock size={13} />, color: 'text-amber-500 bg-amber-500/10' },
+            { label: '총 예약건', value: fmtNum(totalCount) + '건', icon: <Calendar size={16} />, color: 'text-blue-500 bg-blue-500/10' },
+            { label: '총 매출', value: fmtKRW(totalRevenue), icon: <BarChart3 size={16} />, color: 'text-emerald-500 bg-emerald-500/10' },
+            { label: '평균 리드타임', value: Math.round(avgLeadTime) + '일', icon: <Clock size={16} />, color: 'text-amber-500 bg-amber-500/10' },
           ].map((kpi, i) => (
-            <div key={i} className={`rounded-lg p-2.5 border ${t.card} ${t.border}`}>
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <div className={`w-5 h-5 rounded flex items-center justify-center ${kpi.color}`}>{kpi.icon}</div>
-                <span className={`text-[11px] ${t.muted}`}>{kpi.label}</span>
+            <div key={i} className={`rounded-xl p-4 border ${t.card} ${t.border}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${kpi.color}`}>{kpi.icon}</div>
+                <span className={`text-sm ${t.muted}`}>{kpi.label}</span>
               </div>
-              <div className={`text-base font-bold ${t.text}`}>{kpi.value}</div>
+              <div className={`text-xl font-bold ${t.text}`}>{kpi.value}</div>
             </div>
           ))}
         </div>
 
         {/* ── 매트릭스 ── */}
         {viewMode === 'pace' ? (
-          <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-            <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
-              <h2 className={`text-xs font-semibold ${t.text}`}>
+          <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+            <div className={`px-5 py-3 border-b ${t.border} flex items-center justify-between`}>
+              <h2 className={`text-sm font-semibold ${t.text}`}>
                 예약일(↓) × 체크인일(→) — {unitLabels[unit]}단위
               </h2>
-              <span className={`text-[10px] ${t.muted}`}>
+              <span className={`text-xs ${t.muted}`}>
                 {cellValue === 'count' ? '건수' : '매출'} 기준
               </span>
             </div>
-            <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <table className="text-[10px]">
+            <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <table className="w-full text-xs">
                 <thead className={`sticky top-0 z-10 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'}`}>
                   <tr>
-                    <th className={`px-2 py-1.5 text-left font-semibold ${t.sub} sticky left-0 z-20 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'} min-w-[80px]`}>
+                    <th className={`px-4 py-2.5 text-left font-semibold ${t.sub} sticky left-0 z-20 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'} min-w-[100px]`}>
                       예약일 ＼ 체크인
                     </th>
                     {paceData.checkinKeys.map(ck => (
-                      <th key={ck} className={`px-1 py-1.5 text-center font-semibold ${t.sub} whitespace-nowrap min-w-[52px]`}>
+                      <th key={ck} className={`px-2 py-2.5 text-center font-semibold ${t.sub} whitespace-nowrap min-w-[64px]`}>
                         {unit === 'month' ? ck.slice(2) : unit === 'week' ? ck.slice(5) : ck.slice(5)}
                       </th>
                     ))}
-                    <th className={`px-2 py-1.5 text-center font-bold ${t.sub} min-w-[52px]`}>합계</th>
+                    <th className={`px-3 py-2.5 text-center font-bold ${t.sub} min-w-[64px]`}>합계</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -289,7 +289,7 @@ export default function CheckinPace({ dark, dateRange }) {
                     }, 0)
                     return (
                       <tr key={rk} className={`border-t ${t.border}`}>
-                        <td className={`px-2 py-1 font-semibold whitespace-nowrap sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>
+                        <td className={`px-4 py-2 font-semibold whitespace-nowrap sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>
                           {unit === 'month' ? rk.slice(2) : unit === 'week' ? rk.slice(5) : rk.slice(5)}
                         </td>
                         {paceData.checkinKeys.map(ck => {
@@ -297,13 +297,13 @@ export default function CheckinPace({ dark, dateRange }) {
                           const v = cellValue === 'count' ? (cell?.count || 0) : (cell?.revenue || 0)
                           const bg = getCellBg(v, paceMax, dark)
                           return (
-                            <td key={ck} className={`px-1 py-1 text-center font-medium ${bg}`}
+                            <td key={ck} className={`px-2 py-2 text-center font-medium ${bg}`}
                               title={cell ? `${fmtNum(cell.count)}건 / ${fmtKRW(cell.revenue)}` : ''}>
                               {v > 0 ? (cellValue === 'count' ? fmtNum(v) : fmtKRW(v)) : ''}
                             </td>
                           )
                         })}
-                        <td className={`px-2 py-1 text-center font-bold ${t.sub}`}>
+                        <td className={`px-3 py-2 text-center font-bold ${t.sub}`}>
                           {cellValue === 'count' ? fmtNum(rowTotal) : fmtKRW(rowTotal)}
                         </td>
                       </tr>
@@ -311,19 +311,19 @@ export default function CheckinPace({ dark, dateRange }) {
                   })}
                   {/* 합계 행 */}
                   <tr className={`border-t-2 ${t.border} font-bold`}>
-                    <td className={`px-2 py-1.5 sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>합계</td>
+                    <td className={`px-4 py-2.5 sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>합계</td>
                     {paceData.checkinKeys.map(ck => {
                       const colTotal = paceData.reservationKeys.reduce((s, rk) => {
                         const cell = paceData.matrix[rk]?.[ck]
                         return s + (cellValue === 'count' ? (cell?.count || 0) : (cell?.revenue || 0))
                       }, 0)
                       return (
-                        <td key={ck} className={`px-1 py-1.5 text-center ${t.sub}`}>
+                        <td key={ck} className={`px-2 py-2.5 text-center ${t.sub}`}>
                           {colTotal > 0 ? (cellValue === 'count' ? fmtNum(colTotal) : fmtKRW(colTotal)) : ''}
                         </td>
                       )
                     })}
-                    <td className={`px-2 py-1.5 text-center ${t.text}`}>
+                    <td className={`px-3 py-2.5 text-center ${t.text}`}>
                       {cellValue === 'count' ? fmtNum(totalCount) : fmtKRW(totalRevenue)}
                     </td>
                   </tr>
@@ -333,26 +333,26 @@ export default function CheckinPace({ dark, dateRange }) {
           </div>
         ) : (
           /* ── 리드타임 뷰 ── */
-          <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-            <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
-              <h2 className={`text-xs font-semibold ${t.text}`}>
+          <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+            <div className={`px-5 py-3 border-b ${t.border} flex items-center justify-between`}>
+              <h2 className={`text-sm font-semibold ${t.text}`}>
                 체크인일(↓) × 리드타임 구간(→) — {unitLabels[unit]}단위
               </h2>
-              <span className={`text-[10px] ${t.muted}`}>
+              <span className={`text-xs ${t.muted}`}>
                 {cellValue === 'count' ? '건수' : '매출'} 기준
               </span>
             </div>
-            <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <table className="text-[10px]">
+            <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <table className="w-full text-xs">
                 <thead className={`sticky top-0 z-10 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'}`}>
                   <tr>
-                    <th className={`px-2 py-1.5 text-left font-semibold ${t.sub} sticky left-0 z-20 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'} min-w-[80px]`}>
+                    <th className={`px-4 py-2.5 text-left font-semibold ${t.sub} sticky left-0 z-20 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'} min-w-[100px]`}>
                       체크인일
                     </th>
                     {LT_BUCKETS.map(b => (
-                      <th key={b.label} className={`px-2 py-1.5 text-center font-semibold ${t.sub} min-w-[60px]`}>{b.label}</th>
+                      <th key={b.label} className={`px-3 py-2.5 text-center font-semibold ${t.sub} min-w-[72px]`}>{b.label}</th>
                     ))}
-                    <th className={`px-2 py-1.5 text-center font-bold ${t.sub} min-w-[52px]`}>합계</th>
+                    <th className={`px-3 py-2.5 text-center font-bold ${t.sub} min-w-[64px]`}>합계</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -363,7 +363,7 @@ export default function CheckinPace({ dark, dateRange }) {
                     }, 0)
                     return (
                       <tr key={ck} className={`border-t ${t.border}`}>
-                        <td className={`px-2 py-1 font-semibold whitespace-nowrap sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>
+                        <td className={`px-4 py-2 font-semibold whitespace-nowrap sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>
                           {unit === 'month' ? ck.slice(2) : unit === 'week' ? ck.slice(5) : ck.slice(5)}
                         </td>
                         {LT_BUCKETS.map((_, bi) => {
@@ -371,13 +371,13 @@ export default function CheckinPace({ dark, dateRange }) {
                           const v = cellValue === 'count' ? (cell?.count || 0) : (cell?.revenue || 0)
                           const bg = getCellBg(v, ltMax, dark)
                           return (
-                            <td key={bi} className={`px-2 py-1 text-center font-medium ${bg}`}
+                            <td key={bi} className={`px-3 py-2 text-center font-medium ${bg}`}
                               title={cell ? `${fmtNum(cell.count)}건 / ${fmtKRW(cell.revenue)}` : ''}>
                               {v > 0 ? (cellValue === 'count' ? fmtNum(v) : fmtKRW(v)) : ''}
                             </td>
                           )
                         })}
-                        <td className={`px-2 py-1 text-center font-bold ${t.sub}`}>
+                        <td className={`px-3 py-2 text-center font-bold ${t.sub}`}>
                           {cellValue === 'count' ? fmtNum(rowTotal) : fmtKRW(rowTotal)}
                         </td>
                       </tr>
@@ -385,19 +385,19 @@ export default function CheckinPace({ dark, dateRange }) {
                   })}
                   {/* 합계 행 */}
                   <tr className={`border-t-2 ${t.border} font-bold`}>
-                    <td className={`px-2 py-1.5 sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>합계</td>
+                    <td className={`px-4 py-2.5 sticky left-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} ${t.text}`}>합계</td>
                     {LT_BUCKETS.map((_, bi) => {
                       const colTotal = ltData.checkinKeys.reduce((s, ck) => {
                         const cell = ltData.matrix[ck]?.[bi]
                         return s + (cellValue === 'count' ? (cell?.count || 0) : (cell?.revenue || 0))
                       }, 0)
                       return (
-                        <td key={bi} className={`px-2 py-1.5 text-center ${t.sub}`}>
+                        <td key={bi} className={`px-3 py-2.5 text-center ${t.sub}`}>
                           {colTotal > 0 ? (cellValue === 'count' ? fmtNum(colTotal) : fmtKRW(colTotal)) : ''}
                         </td>
                       )
                     })}
-                    <td className={`px-2 py-1.5 text-center ${t.text}`}>
+                    <td className={`px-3 py-2.5 text-center ${t.text}`}>
                       {cellValue === 'count' ? fmtNum(totalCount) : fmtKRW(totalRevenue)}
                     </td>
                   </tr>
@@ -408,9 +408,9 @@ export default function CheckinPace({ dark, dateRange }) {
         )}
 
         {/* ── 범례 ── */}
-        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className={`text-[11px] font-semibold ${t.sub}`}>범례:</span>
+        <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+          <div className="flex items-center gap-5 flex-wrap">
+            <span className={`text-xs font-semibold ${t.sub}`}>범례:</span>
             {[
               { label: '상위', bg: 'bg-blue-600', text: 'text-white' },
               { label: '중상', bg: 'bg-blue-500', text: 'text-white' },
@@ -418,9 +418,9 @@ export default function CheckinPace({ dark, dateRange }) {
               { label: '중하', bg: dark ? 'bg-blue-500/25' : 'bg-blue-200' },
               { label: '하', bg: dark ? 'bg-blue-500/10' : 'bg-blue-50' },
             ].map((l, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <div className={`w-4 h-3 rounded ${l.bg}`} />
-                <span className={`text-[10px] ${t.muted}`}>{l.label}</span>
+              <div key={i} className="flex items-center gap-1.5">
+                <div className={`w-5 h-4 rounded ${l.bg}`} />
+                <span className={`text-xs ${t.muted}`}>{l.label}</span>
               </div>
             ))}
           </div>
