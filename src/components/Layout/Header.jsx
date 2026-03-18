@@ -214,34 +214,45 @@ function DateRangePicker({ dateRange, setPreset, setCustomRange, dark }) {
       {open && (
         <div className={`absolute right-0 top-[calc(100%+6px)] z-[100] rounded-xl border shadow-2xl
           ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200'}`}
-          style={{ width: 640 }}>
+          style={{ width: 700 }}>
 
           <div className="flex">
-            {/* ── 좌측: 프리셋 사이드바 ── */}
-            <div className={`w-[100px] shrink-0 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} py-1.5 px-1 flex flex-col gap-0.5 overflow-y-auto`} style={{ maxHeight: 340 }}>
-              {monthButtons.map((mb, i) => (
-                <button key={i}
-                  onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
-                  className={`text-left px-2 py-1 rounded text-[11px] font-medium transition-colors
-                    ${dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-500 hover:bg-white hover:text-slate-800'}`}>
-                  {mb.label}
-                </button>
-              ))}
-              <div className={`border-t my-0.5 mx-1 ${dark ? 'border-[#A1BDD914]' : 'border-slate-200'}`} />
-              {DATE_PRESETS.map(p => (
-                <button key={p.id}
-                  onClick={() => { setPreset(p.id); setOpen(false) }}
-                  className={`text-left px-2 py-1 rounded text-[11px] font-medium transition-colors
-                    ${dateRange.preset === p.id
-                      ? 'bg-blue-600 text-white'
-                      : dark ? 'text-slate-400 hover:bg-[#22272B] hover:text-white' : 'text-slate-500 hover:bg-white hover:text-slate-800'}`}>
-                  {p.label}
-                </button>
-              ))}
+            {/* ── 좌측: 월별 + 기간별 ── */}
+            <div className={`w-[150px] shrink-0 border-r ${dark ? 'border-[#A1BDD914] bg-[#1D2125]' : 'border-slate-100 bg-slate-50'} p-2 flex flex-col`}>
+              {/* 월별 — 2열 그리드 */}
+              <p className={`text-[10px] font-bold px-1 mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>월별</p>
+              <div className="grid grid-cols-2 gap-1 mb-2">
+                {monthButtons.map((mb, i) => {
+                  const yr = mb.start.slice(2, 4)
+                  const mo = parseInt(mb.start.slice(5, 7))
+                  return (
+                    <button key={i}
+                      onClick={() => { setCustomRange(mb.start, mb.end); setOpen(false) }}
+                      className={`px-1.5 py-1.5 rounded text-[11px] font-medium transition-colors text-center
+                        ${dark ? 'text-slate-300 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
+                      {yr}.{String(mo).padStart(2, '0')}
+                    </button>
+                  )
+                })}
+              </div>
+              {/* 기간별 */}
+              <p className={`text-[10px] font-bold px-1 mb-1 ${dark ? 'text-slate-500' : 'text-slate-400'}`}>기간별</p>
+              <div className="flex flex-col gap-0.5">
+                {DATE_PRESETS.map(p => (
+                  <button key={p.id}
+                    onClick={() => { setPreset(p.id); setOpen(false) }}
+                    className={`text-left px-2 py-1.5 rounded text-[11px] font-medium transition-colors
+                      ${dateRange.preset === p.id
+                        ? 'bg-blue-600 text-white'
+                        : dark ? 'text-slate-300 hover:bg-[#22272B] hover:text-white' : 'text-slate-600 hover:bg-white hover:text-slate-800'}`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* ── 우측: 날짜 인풋 + 듀얼 캘린더 + 적용 ── */}
-            <div className="flex-1 p-2.5 flex flex-col gap-2">
+            <div className="flex-1 p-3 flex flex-col gap-2">
               {/* 시작일~종료일 인풋 */}
               <div className="flex items-center gap-2">
                 <div className="flex-1" onClick={() => setSelectingStart(true)}>
