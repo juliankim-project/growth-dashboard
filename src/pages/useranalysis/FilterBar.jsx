@@ -3,10 +3,6 @@ import { Filter, X } from 'lucide-react'
 
 /**
  * 공통 필터 바 (유저분석 전 탭 공유)
- * - 권역 토글 칩 (다중선택)
- * - 지점 드롭다운 (선택된 권역에 따라 필터)
- * - 채널 드롭다운
- * - 총 건수 표시
  */
 export default function FilterBar({
   dark,
@@ -23,9 +19,9 @@ export default function FilterBar({
 }) {
   const t = dark
     ? { border: 'border-[#A1BDD914]', sub: 'text-slate-400', muted: 'text-slate-500',
-        input: 'bg-[#2C333A] border-[#A1BDD914] text-white', chip: 'bg-[#2C333A] text-slate-300', chipActive: 'bg-blue-600 text-white' }
+        input: 'bg-[#2C333A] border-[#A1BDD914] text-white', chip: 'bg-[#2C333A] text-slate-300 hover:bg-[#3a424d]', chipActive: 'bg-blue-600 text-white shadow-sm' }
     : { border: 'border-slate-200', sub: 'text-slate-600', muted: 'text-slate-400',
-        input: 'bg-white border-slate-200 text-slate-800', chip: 'bg-slate-100 text-slate-600', chipActive: 'bg-blue-600 text-white' }
+        input: 'bg-white border-slate-200 text-slate-800', chip: 'bg-slate-100 text-slate-600 hover:bg-slate-200', chipActive: 'bg-blue-600 text-white shadow-sm' }
 
   const areaList = useMemo(() =>
     [...new Set(data.map(r => r.area).filter(Boolean))].sort()
@@ -54,24 +50,24 @@ export default function FilterBar({
   const hasFilter = selectedAreas.length > 0 || selectedBranch || selectedChannel
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <Filter size={12} className={t.muted} />
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <Filter size={13} className={t.muted} />
 
       {/* 권역 칩 */}
       {areaList.map(area => (
         <button key={area} onClick={() => toggleArea(area)}
-          className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-all
-            ${selectedAreas.includes(area) ? t.chipActive : `${t.chip} hover:opacity-80`}`}>
+          className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all
+            ${selectedAreas.includes(area) ? t.chipActive : t.chip}`}>
           {area}
         </button>
       ))}
 
       {/* 구분선 */}
-      <div className={`w-px h-4 ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+      <div className={`w-px h-5 mx-0.5 ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
 
       {/* 지점 */}
       <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)}
-        className={`text-[11px] rounded-lg px-2 py-1 border outline-none ${t.input}`}>
+        className={`text-xs rounded-lg px-2.5 py-1.5 border outline-none ${t.input}`}>
         <option value="">전체 지점</option>
         {branchList.map(b => <option key={b} value={b}>{b}</option>)}
       </select>
@@ -79,7 +75,7 @@ export default function FilterBar({
       {/* 채널 (선택적) */}
       {showChannel && (
         <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}
-          className={`text-[11px] rounded-lg px-2 py-1 border outline-none ${t.input}`}>
+          className={`text-xs rounded-lg px-2.5 py-1.5 border outline-none ${t.input}`}>
           <option value="">전체 채널</option>
           {channelList.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -88,8 +84,8 @@ export default function FilterBar({
       {/* 초기화 */}
       {hasFilter && (
         <button onClick={() => { setSelectedAreas([]); setSelectedBranch(''); setSelectedChannel?.('') }}
-          className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded ${dark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
-          <X size={10} /> 초기화
+          className={`flex items-center gap-0.5 text-[11px] px-2 py-1 rounded-lg ${dark ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}>
+          <X size={11} /> 초기화
         </button>
       )}
 
@@ -97,7 +93,7 @@ export default function FilterBar({
       {children}
 
       {/* 건수 */}
-      <span className={`text-[10px] ml-auto ${t.muted}`}>
+      <span className={`text-xs font-medium ml-auto ${t.muted}`}>
         {Math.round(totalCount).toLocaleString()}건
       </span>
     </div>

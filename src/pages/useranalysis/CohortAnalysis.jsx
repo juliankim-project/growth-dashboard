@@ -125,47 +125,47 @@ export default function CohortAnalysis({ dark, dateRange }) {
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-6 space-y-3">
+      <div className="px-4 pt-3 pb-6 space-y-4">
         {/* KPI */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-3">
           {[
-            { label: '전체 유저', value: fmtNum(kpis.totalGuests), sub: '명', icon: <Users size={13}/>, color: 'text-blue-500 bg-blue-500/10' },
-            { label: '재구매 유저', value: fmtNum(kpis.repeatGuests), sub: '명', icon: <Activity size={13}/>, color: 'text-emerald-500 bg-emerald-500/10' },
-            { label: '재구매율', value: fmtPct(kpis.retentionRate), sub: '', icon: <TrendingUp size={13}/>, color: 'text-violet-500 bg-violet-500/10' },
-            { label: '코호트 수', value: fmtNum(kpis.cohortCount), sub: '개월', icon: <Activity size={13}/>, color: 'text-amber-500 bg-amber-500/10' },
+            { label: '전체 유저', value: fmtNum(kpis.totalGuests), sub: '명', icon: <Users size={15}/>, color: 'text-blue-500 bg-blue-500/10' },
+            { label: '재구매 유저', value: fmtNum(kpis.repeatGuests), sub: '명', icon: <Activity size={15}/>, color: 'text-emerald-500 bg-emerald-500/10' },
+            { label: '재구매율', value: fmtPct(kpis.retentionRate), sub: '', icon: <TrendingUp size={15}/>, color: 'text-violet-500 bg-violet-500/10' },
+            { label: '코호트 수', value: fmtNum(kpis.cohortCount), sub: '개월', icon: <Activity size={15}/>, color: 'text-amber-500 bg-amber-500/10' },
           ].map((kpi, i) => (
-            <div key={i} className={`rounded-lg p-2.5 border ${t.card} ${t.border}`}>
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <div className={`w-5 h-5 rounded flex items-center justify-center ${kpi.color}`}>{kpi.icon}</div>
-                <span className={`text-[11px] ${t.muted}`}>{kpi.label}</span>
+            <div key={i} className={`rounded-xl p-3.5 border ${t.card} ${t.border}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${kpi.color}`}>{kpi.icon}</div>
+                <span className={`text-xs font-medium ${t.sub}`}>{kpi.label}</span>
               </div>
-              <div className={`text-base font-bold ${t.text}`}>{kpi.value}<span className={`text-xs font-normal ml-0.5 ${t.muted}`}>{kpi.sub}</span></div>
+              <div className={`text-xl font-bold ${t.text}`}>{kpi.value}<span className={`text-sm font-normal ml-1 ${t.muted}`}>{kpi.sub}</span></div>
             </div>
           ))}
         </div>
 
         {/* 코호트 리텐션 테이블 */}
-        <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
-          <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
-            <h2 className={`text-xs font-semibold ${t.text}`}>코호트 리텐션 테이블</h2>
+        <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
+          <div className={`px-4 py-3 border-b ${t.border} flex items-center justify-between`}>
+            <h2 className={`text-sm font-bold ${t.text}`}>코호트 리텐션 테이블</h2>
             <div className="flex items-center gap-1">
               {['retention', 'revenue'].map(m => (
                 <button key={m} onClick={() => setMode(m)}
-                  className={`text-[10px] px-2 py-0.5 rounded font-medium transition-all
-                    ${mode === m ? 'bg-blue-600 text-white' : dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  className={`text-xs px-3 py-1 rounded-lg font-medium transition-all
+                    ${mode === m ? 'bg-blue-600 text-white' : dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}>
                   {m === 'retention' ? '리텐션' : '매출'}
                 </button>
               ))}
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="text-[11px]">
+            <table className="text-xs">
               <thead>
                 <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
-                  <th className={`px-2 py-1.5 text-left font-semibold ${t.sub} sticky left-0 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'} min-w-[80px]`}>코호트</th>
-                  <th className={`px-2 py-1.5 text-center font-semibold ${t.sub} w-12`}>유저</th>
+                  <th className={`px-3 py-2 text-left font-semibold ${t.sub} sticky left-0 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'} min-w-[90px]`}>코호트</th>
+                  <th className={`px-3 py-2 text-center font-semibold ${t.sub} w-14`}>유저</th>
                   {Array.from({ length: cohortData.maxOffset + 1 }, (_, i) => (
-                    <th key={i} className={`px-1.5 py-1.5 text-center font-semibold ${t.sub} w-14`}>
+                    <th key={i} className={`px-2 py-2 text-center font-semibold ${t.sub} w-16`}>
                       {i === 0 ? 'M0' : `+${i}M`}
                     </th>
                   ))}
@@ -213,24 +213,24 @@ export default function CohortAnalysis({ dark, dateRange }) {
         </div>
 
         {/* 코호트별 재구매율 추이 바 차트 */}
-        <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-          <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>코호트별 +1M 재구매율 추이</h2>
-          <div className="space-y-1.5">
+        <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+          <h2 className={`text-sm font-bold mb-3 ${t.text}`}>코호트별 +1M 재구매율 추이</h2>
+          <div className="space-y-2">
             {cohortData.cohortMonths.slice(-12).map(cm => {
               const cohort = cohortData.cohorts[cm]
               const m1 = cohort.months[1]
               const pct = m1 && cohort.size > 0 ? m1.users / cohort.size * 100 : 0
-              const maxPct = 30 // 스케일
+              const maxPct = 30
               const barW = Math.min(pct / maxPct * 100, 100)
               return (
                 <div key={cm} className="flex items-center gap-2">
-                  <span className={`text-[11px] font-mono w-14 ${t.text}`}>{cm}</span>
-                  <div className="flex-1 h-3.5 rounded-full overflow-hidden bg-slate-200/20">
+                  <span className={`text-xs font-mono w-16 ${t.text}`}>{cm}</span>
+                  <div className="flex-1 h-5 rounded-full overflow-hidden bg-slate-200/20">
                     <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
                       style={{ width: `${barW}%` }} />
                   </div>
-                  <span className={`text-[11px] font-bold w-12 text-right ${pct > 10 ? 'text-emerald-400' : t.muted}`}>{fmtPct(pct)}</span>
-                  <span className={`text-[10px] w-10 text-right ${t.muted}`}>{fmtNum(cohort.size)}명</span>
+                  <span className={`text-xs font-bold w-14 text-right ${pct > 10 ? 'text-emerald-400' : t.muted}`}>{fmtPct(pct)}</span>
+                  <span className={`text-xs w-12 text-right ${t.muted}`}>{fmtNum(cohort.size)}명</span>
                 </div>
               )
             })}

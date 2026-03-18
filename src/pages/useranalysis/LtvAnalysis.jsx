@@ -171,22 +171,22 @@ export default function LtvAnalysis({ dark, dateRange }) {
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-6 space-y-3">
+      <div className="px-4 pt-3 pb-6 space-y-4">
         {/* 세그먼트별 LTV 카드 */}
         <div className="grid grid-cols-4 gap-2">
           {segmentLtv.map(seg => {
             const avgLtv = seg.users > 0 ? seg.totalRev / seg.users : 0
             const avgFreq = seg.users > 0 ? seg.totalCount / seg.users : 0
             return (
-              <div key={seg.id} className={`rounded-lg p-2.5 border ${t.card} ${t.border}`}>
+              <div key={seg.id} className={`rounded-xl p-3.5 border ${t.card} ${t.border}`}>
                 <div className="flex items-center gap-1.5 mb-1">
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${seg.bg}`}>
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${seg.bg}`}>
                     <DollarSign size={11} className={seg.color} />
                   </div>
                   <span className={`text-[11px] font-semibold ${seg.color}`}>{seg.label}</span>
                   <span className={`text-[10px] ml-auto ${t.muted}`}>{fmtNum(seg.users)}명</span>
                 </div>
-                <div className={`text-sm font-bold ${t.text}`}>{fmtKRW(avgLtv)}</div>
+                <div className={`text-lg font-bold ${t.text}`}>{fmtKRW(avgLtv)}</div>
                 <div className={`text-[10px] ${t.muted}`}>평균 {avgFreq.toFixed(1)}회 구매</div>
               </div>
             )
@@ -196,27 +196,27 @@ export default function LtvAnalysis({ dark, dateRange }) {
         {/* 구매주기 + 전환율 (2컬럼) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* 구매주기 */}
-          <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-            <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>⏱️ 구매주기 분포</h2>
+          <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+            <h2 className={`text-sm font-bold mb-3 ${t.text}`}>⏱️ 구매주기 분포</h2>
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className={`rounded p-2 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'}`}>
                 <div className={`text-[10px] ${t.muted}`}>평균 주기</div>
-                <div className={`text-sm font-bold ${t.text}`}>{Math.round(purchaseCycle.avg)}일</div>
+                <div className={`text-lg font-bold ${t.text}`}>{Math.round(purchaseCycle.avg)}일</div>
               </div>
               <div className={`rounded p-2 ${dark ? 'bg-[#2C333A]' : 'bg-slate-50'}`}>
                 <div className={`text-[10px] ${t.muted}`}>중앙값</div>
-                <div className={`text-sm font-bold ${t.text}`}>{Math.round(purchaseCycle.median)}일</div>
+                <div className={`text-lg font-bold ${t.text}`}>{Math.round(purchaseCycle.median)}일</div>
               </div>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               {purchaseCycle.buckets.map((b, i) => {
                 const maxCount = Math.max(...purchaseCycle.buckets.map(x => x.count))
                 const pct = purchaseCycle.totalIntervals > 0 ? b.count / purchaseCycle.totalIntervals * 100 : 0
                 const barW = maxCount > 0 ? b.count / maxCount * 100 : 0
                 return (
                   <div key={i} className="flex items-center gap-2">
-                    <span className={`text-[11px] font-medium w-12 ${t.text}`}>{b.label}</span>
-                    <div className="flex-1 h-3.5 rounded-full overflow-hidden bg-slate-200/20">
+                    <span className={`text-xs font-semibold w-14 ${t.text}`}>{b.label}</span>
+                    <div className="flex-1 h-5 rounded-full overflow-hidden bg-slate-200/20">
                       <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all"
                         style={{ width: `${barW}%` }} />
                     </div>
@@ -229,8 +229,8 @@ export default function LtvAnalysis({ dark, dateRange }) {
           </div>
 
           {/* 전환율 퍼널 */}
-          <div className={`rounded-lg border p-3 ${t.card} ${t.border}`}>
-            <h2 className={`text-xs font-semibold mb-2 ${t.text}`}>🔄 구매 전환 퍼널</h2>
+          <div className={`rounded-xl border p-4 ${t.card} ${t.border}`}>
+            <h2 className={`text-sm font-bold mb-3 ${t.text}`}>🔄 구매 전환 퍼널</h2>
             <div className="space-y-3">
               {/* 1→2 전환 */}
               <div>
@@ -238,7 +238,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
                   <span className={`text-[11px] ${t.sub}`}>1회 → 2회 전환</span>
                   <span className={`text-sm font-bold ${conversionRates.rate12 > 20 ? 'text-emerald-400' : t.text}`}>{fmtPct(conversionRates.rate12)}</span>
                 </div>
-                <div className="h-3 rounded-full overflow-hidden bg-slate-200/20">
+                <div className="h-4 rounded-full overflow-hidden bg-slate-200/20">
                   <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
                     style={{ width: `${Math.min(conversionRates.rate12, 100)}%` }} />
                 </div>
@@ -250,7 +250,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
                   <span className={`text-[11px] ${t.sub}`}>2회 → 3회 전환</span>
                   <span className={`text-sm font-bold ${conversionRates.rate23 > 30 ? 'text-emerald-400' : t.text}`}>{fmtPct(conversionRates.rate23)}</span>
                 </div>
-                <div className="h-3 rounded-full overflow-hidden bg-slate-200/20">
+                <div className="h-4 rounded-full overflow-hidden bg-slate-200/20">
                   <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400"
                     style={{ width: `${Math.min(conversionRates.rate23, 100)}%` }} />
                 </div>
@@ -286,7 +286,7 @@ export default function LtvAnalysis({ dark, dateRange }) {
         </div>
 
         {/* 이탈 위험 유저 */}
-        <div className={`rounded-lg border overflow-hidden ${t.card} ${t.border}`}>
+        <div className={`rounded-xl border overflow-hidden ${t.card} ${t.border}`}>
           <div className={`px-3 py-2 border-b ${t.border} flex items-center justify-between`}>
             <div className="flex items-center gap-1.5">
               <AlertTriangle size={13} className="text-red-400" />
