@@ -133,7 +133,7 @@ export async function fetchDateRange(tableName, dateColumn) {
 const _tableCache = {} // { tableName: { data, ts, promise } }
 const TABLE_CACHE_TTL = 1_800_000 // 30분
 
-async function ensureTableData(tableName, columns) {
+async function ensureTableData(tableName) {
   const entry = _tableCache[tableName]
 
   // 메모리 캐시 히트
@@ -144,7 +144,8 @@ async function ensureTableData(tableName, columns) {
 
   const promise = (async () => {
     try {
-      const rows = await fetchAll(tableName, columns)
+      // ★ 항상 '*'로 전체 컬럼 fetch — 어떤 위젯이든 동일 캐시 사용
+      const rows = await fetchAll(tableName, '*')
       _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
       return rows
     } catch (e) {
@@ -163,8 +164,8 @@ export async function fetchByDateRange(tableName, dateColumn, startDate, endDate
     return []
   }
 
-  // 전체 데이터 1회 로딩 (캐시)
-  const allData = await ensureTableData(tableName, columns)
+  // 전체 데이터 1회 로딩 (항상 전체 컬럼으로 캐시)
+  const allData = await ensureTableData(tableName)
 
   // 날짜 필터 없으면 전체 반환
   if (!dateColumn || !startDate || !endDate) return allData
