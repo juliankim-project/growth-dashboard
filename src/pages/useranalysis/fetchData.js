@@ -1,21 +1,21 @@
 import { supabase } from '../../lib/supabase'
 import { getExcludedGuestIds } from './ExcludeUsers'
 
-// 유저분석에 실제 필요한 컬럼만 (불필요 컬럼 제거 → 전송량 감소)
+// 유저분석에 실제 필요한 컬럼만
 const COLS = 'id,guest_id,user_id,branch_name,area,channel_group,reservation_date,check_in_date,nights,peoples,payment_amount,room_type2,brand_name,lead_time'
 
 /* ═══════════════════════════════════════════════
-   2-Layer 캐시: IndexedDB(영구) + Memory(즉시)
-   - 1차: 메모리 캐시 → 0ms (탭 전환, 필터 변경)
-   - 2차: IndexedDB → ~50ms (페이지 새로고침)
-   - 3차: DB fetch → 3-10초 (캐시 만료 시)
-   TTL: 30분 (데이터가 자주 안 바뀌니까)
+   전략: 전체 데이터를 1번만 로딩 → 날짜 변경은 즉시
+   - 날짜 범위 DB 필터 제거 (전체 fetch)
+   - 날짜 필터링은 클라이언트에서 처리 → 0ms
+   - 2-Layer 캐시: Memory + IndexedDB
    ═══════════════════════════════════════════════ */
 
 const DATA_CACHE_TTL = 1_800_000 // 30분
 const IDB_NAME = 'growth_dashboard_cache'
 const IDB_STORE = 'product_data'
 const IDB_VERSION = 1
+const IDB_KEY = 'all_product_data'
 
 /* ─── IndexedDB 헬퍼 ─── */
 function openIDB() {
@@ -23,9 +23,7 @@ function openIDB() {
     const req = indexedDB.open(IDB_NAME, IDB_VERSION)
     req.onupgradeneeded = () => {
       const db = req.result
-      if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE)
-      }
+      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE)
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -37,8 +35,7 @@ async function idbGet(key) {
     const db = await openIDB()
     return new Promise((resolve) => {
       const tx = db.transaction(IDB_STORE, 'readonly')
-      const store = tx.objectStore(IDB_STORE)
-      const req = store.get(key)
+      const req = tx.objectStore(IDB_STORE).get(key)
       req.onsuccess = () => resolve(req.result || null)
       req.onerror = () => resolve(null)
     })
@@ -50,124 +47,123 @@ async function idbSet(key, value) {
     const db = await openIDB()
     return new Promise((resolve) => {
       const tx = db.transaction(IDB_STORE, 'readwrite')
-      const store = tx.objectStore(IDB_STORE)
-      store.put(value, key)
+      tx.objectStore(IDB_STORE).put(value, key)
       tx.oncomplete = () => resolve()
       tx.onerror = () => resolve()
     })
   } catch { /* ignore */ }
 }
 
-async function idbDelete(key) {
-  try {
-    const db = await openIDB()
-    const tx = db.transaction(IDB_STORE, 'readwrite')
-    tx.objectStore(IDB_STORE).delete(key)
-  } catch { /* ignore */ }
+/* ─── 전체 데이터 캐시 (날짜 무관) ─── */
+let _allData = null
+let _allDataTs = 0
+let _fetchPromise = null // 중복 fetch 방지
+
+/** 전체 데이터 1번 로딩 (이후 캐시) */
+async function ensureAllData() {
+  // 메모리 캐시 히트
+  if (_allData && (Date.now() - _allDataTs < DATA_CACHE_TTL)) return _allData
+
+  // 중복 fetch 방지 (여러 컴포넌트가 동시에 호출해도 1번만)
+  if (_fetchPromise) return _fetchPromise
+
+  _fetchPromise = (async () => {
+    try {
+      // IndexedDB 캐시 체크
+      const idbEntry = await idbGet(IDB_KEY)
+      if (idbEntry && (Date.now() - idbEntry.ts < DATA_CACHE_TTL)) {
+        _allData = idbEntry.rows
+        _allDataTs = idbEntry.ts
+        return _allData
+      }
+
+      // DB에서 전체 fetch (날짜 필터 없음!)
+      const PAGE = 10000
+      const CONCURRENT = 4
+
+      const { count, error: countErr } = await supabase
+        .from('product_revenue_raw')
+        .select('*', { count: 'exact', head: true })
+      if (countErr) throw countErr
+      if (!count || count === 0) { _allData = []; _allDataTs = Date.now(); return _allData }
+
+      const totalPages = Math.ceil(count / PAGE)
+      const chunks = new Array(totalPages)
+
+      for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
+        const promises = []
+        for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
+          const from = i * PAGE
+          promises.push(
+            supabase.from('product_revenue_raw').select(COLS)
+              .range(from, from + PAGE - 1)
+              .then(({ data, error }) => { if (error) throw error; chunks[i] = data || [] })
+          )
+        }
+        await Promise.all(promises)
+      }
+
+      // id 기준 중복 제거
+      const seen = new Set()
+      const deduped = []
+      for (const row of chunks.flat()) {
+        if (row.id && seen.has(row.id)) continue
+        if (row.id) seen.add(row.id)
+        deduped.push(row)
+      }
+
+      _allData = deduped
+      _allDataTs = Date.now()
+
+      // IndexedDB 백그라운드 저장
+      idbSet(IDB_KEY, { rows: deduped, ts: Date.now() }).catch(() => {})
+
+      return _allData
+    } finally {
+      _fetchPromise = null
+    }
+  })()
+
+  return _fetchPromise
 }
 
-/* ─── 메모리 캐시 (1차) ─── */
-let _memCache = null
-let _memCacheKey = ''
-let _memCacheTs = 0
-
 /**
- * product_revenue_raw 데이터 fetch
- * 1차: 메모리 캐시 (즉시)
- * 2차: IndexedDB (새로고침 후에도 유지, ~50ms)
- * 3차: Supabase 병렬 fetch (네트워크)
+ * product_revenue_raw 데이터 가져오기
+ * - 전체 데이터 1번 로딩 후 캐시
+ * - 날짜 필터링은 클라이언트에서 즉시 (0ms)
+ * - 제외 유저 필터링 적용
  */
 export async function fetchProductData(dateRange) {
   if (!supabase) return []
 
-  const cacheKey = `${dateRange?.start || ''}_${dateRange?.end || ''}`
+  const allData = await ensureAllData()
 
-  // ── 1차: 메모리 캐시 ──
-  if (_memCache && _memCacheKey === cacheKey && (Date.now() - _memCacheTs < DATA_CACHE_TTL)) {
-    return applyExclusion(_memCache)
+  // 클라이언트 날짜 필터 (즉시!)
+  let filtered = allData
+  if (dateRange?.start || dateRange?.end) {
+    const start = dateRange.start || ''
+    const end = dateRange.end || '9999-12-31'
+    filtered = allData.filter(r => {
+      const d = r.reservation_date?.slice(0, 10) || ''
+      return d >= start && d <= end
+    })
   }
 
-  // ── 2차: IndexedDB 캐시 ──
-  const idbEntry = await idbGet(`data_${cacheKey}`)
-  if (idbEntry && (Date.now() - idbEntry.ts < DATA_CACHE_TTL)) {
-    // IndexedDB → 메모리로 승격
-    _memCache = idbEntry.rows
-    _memCacheKey = cacheKey
-    _memCacheTs = idbEntry.ts
-    return applyExclusion(idbEntry.rows)
-  }
-
-  // ── 3차: Supabase 네트워크 fetch ──
-  const PAGE = 10000 // 페이지 크기 증가 (Max Rows 설정 올렸으니)
-  const CONCURRENT = 4
-
-  // 총 건수 조회
-  let countQuery = supabase
-    .from('product_revenue_raw')
-    .select('*', { count: 'exact', head: true })
-  if (dateRange?.start) countQuery = countQuery.gte('reservation_date', dateRange.start)
-  if (dateRange?.end) countQuery = countQuery.lte('reservation_date', dateRange.end)
-
-  const { count, error: countErr } = await countQuery
-  if (countErr) throw countErr
-  if (!count || count === 0) return []
-
-  // 병렬 fetch
-  const totalPages = Math.ceil(count / PAGE)
-  const chunks = new Array(totalPages)
-
-  for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
-    const promises = []
-    for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
-      const from = i * PAGE
-      let q = supabase.from('product_revenue_raw').select(COLS)
-      if (dateRange?.start) q = q.gte('reservation_date', dateRange.start)
-      if (dateRange?.end) q = q.lte('reservation_date', dateRange.end)
-      promises.push(
-        q.range(from, from + PAGE - 1).then(({ data, error }) => {
-          if (error) throw error
-          chunks[i] = data || []
-        })
-      )
-    }
-    await Promise.all(promises)
-  }
-
-  const all = chunks.flat()
-
-  // id 기준 중복 제거
-  const seen = new Set()
-  const deduped = []
-  for (const row of all) {
-    if (row.id && seen.has(row.id)) continue
-    if (row.id) seen.add(row.id)
-    deduped.push(row)
-  }
-
-  // 메모리 캐시 저장
-  _memCache = deduped
-  _memCacheKey = cacheKey
-  _memCacheTs = Date.now()
-
-  // IndexedDB 비동기 저장 (백그라운드)
-  idbSet(`data_${cacheKey}`, { rows: deduped, ts: Date.now() }).catch(() => {})
-
-  return applyExclusion(deduped)
-}
-
-async function applyExclusion(data) {
+  // 제외 유저 필터링
   const excludedGuestIds = await getExcludedGuestIds()
-  if (excludedGuestIds.length === 0) return data
-  const excludedSet = new Set(excludedGuestIds.map(String))
-  return data.filter(row => !row.guest_id || !excludedSet.has(String(row.guest_id)))
+  if (excludedGuestIds.length > 0) {
+    const excludedSet = new Set(excludedGuestIds.map(String))
+    filtered = filtered.filter(row => !row.guest_id || !excludedSet.has(String(row.guest_id)))
+  }
+
+  return filtered
 }
 
 /** 캐시 무효화 (CSV 재업로드 시) */
 export function invalidateProductCache() {
-  _memCache = null
-  _memCacheKey = ''
-  _memCacheTs = 0
-  // IndexedDB도 클리어
+  _allData = null
+  _allDataTs = 0
+  _fetchPromise = null
   openIDB().then(db => {
     const tx = db.transaction(IDB_STORE, 'readwrite')
     tx.objectStore(IDB_STORE).clear()
