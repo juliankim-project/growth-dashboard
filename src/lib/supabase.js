@@ -19,7 +19,7 @@ export const supabase = isMissingEnv
  * - columns: Supabase select 문자열 (기본 '*')
  * - push 기반 누적으로 O(n) 메모리 사용
  */
-const MAX_ROWS = 100_000
+const MAX_ROWS = 200_000 // 테이블 전체 커버 (114k+ 행)
 
 /* DB 컬럼명 → 코드 내부 표준명 매핑 (한글/특수문자 컬럼 정규화) */
 const COL_ALIASES = {
@@ -47,8 +47,8 @@ export async function fetchAll(tableName, columns = '*') {
     return []
   }
 
-  const PAGE = 5000 // 타임아웃 방지 — 작은 청크
-  const CONCURRENT = 3
+  const PAGE = 20000 // Max Rows 100000으로 올렸으니 큰 청크 가능
+  const CONCURRENT = 4
 
   // 총 건수 조회
   const { count, error: countErr } = await supabase
