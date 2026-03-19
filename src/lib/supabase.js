@@ -125,51 +125,62 @@ export async function fetchDateRange(tableName, dateColumn) {
   }
 }
 
+/* ═══════════════════════════════════════════════
+   테이블별 전체 캐시: 1번 로딩 → 날짜 변경 즉시
+   - 전체 데이터를 테이블별로 캐시
+   - 날짜 필터링은 클라이언트에서 처리 (0ms)
+   ═══════════════════════════════════════════════ */
+const _tableCache = {} // { tableName: { data, ts, promise } }
+const TABLE_CACHE_TTL = 1_800_000 // 30분
+
+async function ensureTableData(tableName, columns) {
+  const entry = _tableCache[tableName]
+
+  // 메모리 캐시 히트
+  if (entry?.data && (Date.now() - entry.ts < TABLE_CACHE_TTL)) return entry.data
+
+  // 중복 fetch 방지
+  if (entry?.promise) return entry.promise
+
+  const promise = (async () => {
+    try {
+      const rows = await fetchAll(tableName, columns)
+      _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
+      return rows
+    } catch (e) {
+      _tableCache[tableName] = { ...(_tableCache[tableName] || {}), promise: null }
+      throw e
+    }
+  })()
+
+  _tableCache[tableName] = { ...(_tableCache[tableName] || {}), promise }
+  return promise
+}
+
 export async function fetchByDateRange(tableName, dateColumn, startDate, endDate, columns = '*') {
   if (!supabase) {
     console.warn('[fetchByDateRange] supabase 클라이언트가 초기화되지 않았습니다.')
     return []
   }
-  if (!dateColumn || !startDate || !endDate) {
-    return fetchAll(tableName, columns)
+
+  // 전체 데이터 1회 로딩 (캐시)
+  const allData = await ensureTableData(tableName, columns)
+
+  // 날짜 필터 없으면 전체 반환
+  if (!dateColumn || !startDate || !endDate) return allData
+
+  // 클라이언트 날짜 필터링 (즉시!)
+  return allData.filter(row => {
+    const d = String(row[dateColumn] || '').slice(0, 10)
+    return d && d >= startDate && d <= endDate
+  })
+}
+
+/** 특정 테이블 캐시 무효화 */
+export function invalidateTableCache(tableName) {
+  if (tableName) {
+    delete _tableCache[tableName]
+  } else {
+    Object.keys(_tableCache).forEach(k => delete _tableCache[k])
   }
-
-  const PAGE = 5000 // 타임아웃 방지
-
-  // 1단계: 총 건수 조회
-  const { count, error: countErr } = await supabase
-    .from(tableName)
-    .select('*', { count: 'exact', head: true })
-    .gte(dateColumn, startDate)
-    .lte(dateColumn, endDate)
-
-  if (countErr) throw countErr
-  if (!count || count === 0) return []
-
-  // 2단계: 병렬 fetch (동시 3개 — 타임아웃 방지)
-  const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
-  const CONCURRENT = 3
-  const all = new Array(totalPages)
-
-  for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
-    const promises = []
-    for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
-      const from = i * PAGE
-      promises.push(
-        supabase
-          .from(tableName)
-          .select(columns)
-          .gte(dateColumn, startDate)
-          .lte(dateColumn, endDate)
-          .range(from, from + PAGE - 1)
-          .then(({ data, error }) => {
-            if (error) throw error
-            all[i] = data || []
-          })
-      )
-    }
-    await Promise.all(promises)
-  }
-
-  return normalizeRows(all.flat())
 }
