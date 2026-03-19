@@ -47,7 +47,7 @@ export async function fetchAll(tableName, columns = '*') {
     return []
   }
 
-  const PAGE = 20000 // Max Rows 100000으로 올렸으니 큰 청크 가능
+  const PAGE = 10000
   const CONCURRENT = 4
 
   // 총 건수 조회
@@ -133,6 +133,11 @@ export async function fetchDateRange(tableName, dateColumn) {
 const _tableCache = {} // { tableName: { data, ts, promise } }
 const TABLE_CACHE_TTL = 1_800_000 // 30분
 
+/* ── 테이블별 필수 컬럼 (타임아웃 방지: * 대신 필수만) ── */
+const TABLE_ESSENTIAL_COLS = {
+  product_revenue_raw: 'id,guest_id,user_id,status,area,brand_name,branch_name,room_type_name,room_type2,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,lead_time',
+}
+
 async function ensureTableData(tableName) {
   const entry = _tableCache[tableName]
 
@@ -144,8 +149,9 @@ async function ensureTableData(tableName) {
 
   const promise = (async () => {
     try {
-      // ★ 항상 '*'로 전체 컬럼 fetch — 어떤 위젯이든 동일 캐시 사용
-      const rows = await fetchAll(tableName, '*')
+      // 테이블별 필수 컬럼 사용 (없으면 * 폴백)
+      const cols = TABLE_ESSENTIAL_COLS[tableName] || '*'
+      const rows = await fetchAll(tableName, cols)
       _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
       return rows
     } catch (e) {
