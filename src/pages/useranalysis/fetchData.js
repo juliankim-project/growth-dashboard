@@ -34,14 +34,13 @@ export async function fetchProductData(dateRange) {
     deduped.push(row)
   }
 
-  // 클라이언트 날짜 필터 — check_in_date 기준 (2월 매출 = 2월 체크인 기준)
-  // reservation_date 기준이면 "예약한 날짜"만 잡히므로 실제 매출과 괴리 발생
+  // 클라이언트 날짜 필터 — reservation_date(예약일) 기준
   let filtered = deduped
   if (dateRange?.start || dateRange?.end) {
     const start = dateRange.start || ''
     const end = dateRange.end || '9999-12-31'
     filtered = deduped.filter(r => {
-      const d = r.check_in_date?.slice(0, 10) || r.reservation_date?.slice(0, 10) || ''
+      const d = r.reservation_date?.slice(0, 10) || ''
       return d >= start && d <= end
     })
   }
