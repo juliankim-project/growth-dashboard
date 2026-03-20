@@ -17,6 +17,7 @@ export function useMarketingData() {
     let cancelled = false
     setLoading(true)
 
+    // 최적화: fetchAll이 이미 supabase.js에서 캐싱 처리 → 중복 fetch 방지
     fetchAll('marketing_data')
       .then(rows => {
         if (!cancelled) {

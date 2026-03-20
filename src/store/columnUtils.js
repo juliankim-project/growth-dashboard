@@ -54,16 +54,25 @@ const MARKETING_DERIVED = [
   { id: 'cvr_s',    label: 'CVR-S',      field: null, fmt: 'pct',      derived: true, group: 'rate' },
 ]
 
-/* buildTableMetrics 캐시: Map<tableName+configHash, metrics[]> */
+// 최적화: buildTableMetrics 캐시 + 설정 해시 최적화
 const _metricsCache = new Map()
+const _configHashCache = new WeakMap()  // 설정 객체별 해시 캐싱
 
 function _getConfigHash(tCfg) {
   /* columnConfig 구조 해시: computed, columns 변경 시만 무효화 */
-  return JSON.stringify({
+  // 최적화: 같은 tCfg 객체면 이전 해시 재사용
+  if (_configHashCache.has(tCfg)) {
+    return _configHashCache.get(tCfg)
+  }
+
+  const hash = JSON.stringify({
     cols: tCfg?.columns ? Object.keys(tCfg.columns).sort() : [],
     computed: tCfg?.computed?.length || 0,
     dims: (tCfg?.dimensionColumns || []).sort()
   })
+
+  _configHashCache.set(tCfg, hash)
+  return hash
 }
 
 export function buildTableMetrics(tableName, columnConfig) {
@@ -348,6 +357,7 @@ export function getNeededColumns() {
    WeakMap은 GC 시 자동 정리되므로 메모리 누수 방지
    ═══════════════════════════════════════════ */
 const _computedCache = new WeakMap()
+const _configKeyCache = new WeakMap()  // 설정 객체별 캐시 키 저장
 
 export function applyComputedColumns(rows, tableName, columnConfig) {
   const tCfg = columnConfig?.[tableName]
@@ -355,8 +365,15 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
   const derivedDims = tCfg?.derivedDimensions
   if ((!computed || computed.length === 0) && (!derivedDims || derivedDims.length === 0)) return rows
 
-  /* 캐시 키: rows 배열 + 컬럼 설정 문자열화 */
-  const cacheKey = JSON.stringify({ computed, derivedDims })
+  // 최적화: 캐시 키 생성 최적화 (tCfg별 저장)
+  let cacheKey
+  if (_configKeyCache.has(tCfg)) {
+    cacheKey = _configKeyCache.get(tCfg)
+  } else {
+    cacheKey = JSON.stringify({ computed, derivedDims })
+    _configKeyCache.set(tCfg, cacheKey)
+  }
+
   let cached = _computedCache.get(rows)
   if (cached && cached.key === cacheKey) {
     return cached.result

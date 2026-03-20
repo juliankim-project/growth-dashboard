@@ -40,13 +40,24 @@ function TimelineWidget({ data, config, dark, metrics: metricsProp, dateColumn }
   const { metrics = [], title = '트렌드 요약', timeGroup: cfgTimeGroup } = config
   const [timeGroup, setTimeGroup] = useState(cfgTimeGroup || 'day')
 
-  const rows = useMemo(() => {
+  // 최적화: 일별 데이터 먼저 계산
+  const daily = useMemo(() => {
     if (!data?.length || metrics.length === 0) return []
+    return dailyData(data, metrics, metricsProp, dateColumn, timeGroup)
+  }, [data, metrics, metricsProp, dateColumn, timeGroup])
 
-    const daily = dailyData(data, metrics, metricsProp, dateColumn, timeGroup)
+  // 최적화: 메트릭 메타 맵을 사전 계산
+  const metricMetaMap = useMemo(() => {
+    const map = new Map()
+    if (metricsProp) metricsProp.forEach(m => map.set(m.id, m))
+    return map
+  }, [metricsProp])
+
+  const rows = useMemo(() => {
+    if (!daily.length || metrics.length === 0) return []
 
     return metrics.map((mid, idx) => {
-      const meta = metricsProp?.find(x => x.id === mid)
+      const meta = metricMetaMap.get(mid)
       const points = daily.map(d => d[mid] || 0)
       const total = calcMetric(data, mid, metricsProp)
 

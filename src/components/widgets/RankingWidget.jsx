@@ -4,16 +4,25 @@ import { groupData, fmtMetric, CHART_COLORS } from './widgetUtils'
 function RankingWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = '', groupBy = '', topN = 10, sortDir = 'desc', title = '랭킹' } = config
 
-  const ranked = useMemo(() => {
+  // 최적화: groupData와 정렬 분리
+  const grouped = useMemo(() => {
     if (!data?.length || !metric || !groupBy) return []
-    const grouped = groupData(data, groupBy, [metric], metricsProp)
+    return groupData(data, groupBy, [metric], metricsProp)
+  }, [data, metric, groupBy, metricsProp])
+
+  const ranked = useMemo(() => {
+    if (!grouped.length) return []
     const sorted = [...grouped].sort((a, b) =>
       sortDir === 'desc' ? (b[metric] || 0) - (a[metric] || 0) : (a[metric] || 0) - (b[metric] || 0)
     )
     return sorted.slice(0, topN)
-  }, [data, metric, groupBy, topN, sortDir, metricsProp])
+  }, [grouped, metric, topN, sortDir])
 
-  const maxVal = ranked.length > 0 ? Math.max(...ranked.map(r => Math.abs(r[metric] || 0)), 1) : 1
+  // 최적화: maxVal도 메모이제이션
+  const maxVal = useMemo(
+    () => ranked.length > 0 ? Math.max(...ranked.map(r => Math.abs(r[metric] || 0)), 1) : 1,
+    [ranked, metric]
+  )
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col

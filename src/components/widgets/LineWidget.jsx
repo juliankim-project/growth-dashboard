@@ -41,14 +41,23 @@ function LineWidget({ data, config, dark, metrics: metricsProp, dateColumn }) {
   const tick  = dark ? '#64748B' : '#475569'
   const grid  = dark ? '#1E2130' : '#F1F5F9'
 
-  /* 이중 축 */
+  // 최적화: rightSet 계산을 한 번만, 메모이제이션 개선
   const rightSet = useMemo(() => new Set(rightMetrics), [rightMetrics])
   const leftMets = useMemo(() => metrics.filter(m => !rightSet.has(m)), [metrics, rightSet])
-  const isDual = axisMode === 'dual' && rightMetrics.length > 0 && leftMets.length > 0
+  const isDual = useMemo(
+    () => axisMode === 'dual' && rightMetrics.length > 0 && leftMets.length > 0,
+    [axisMode, rightMetrics.length, leftMets.length]
+  )
 
-  /* 축별 포맷터 — primary metric의 fmt 기반 */
-  const fmtLeft = v => fmtAxis(v, leftMets[0] || metrics[0], metricsProp)
-  const fmtRight = v => fmtAxis(v, rightMetrics[0], metricsProp)
+  /* 축별 포맷터 — primary metric의 fmt 기반 (메모이제이션) */
+  const fmtLeft = useMemo(
+    () => v => fmtAxis(v, leftMets[0] || metrics[0], metricsProp),
+    [leftMets, metrics, metricsProp]
+  )
+  const fmtRight = useMemo(
+    () => v => fmtAxis(v, rightMetrics[0], metricsProp),
+    [rightMetrics, metricsProp]
+  )
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>

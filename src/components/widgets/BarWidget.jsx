@@ -20,16 +20,26 @@ function Tip({ active, payload, label, dark, metric, metricsProp }) {
 function BarWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', groupBy = 'channel', title = '채널별 성과' } = config
 
-  const chartData = useMemo(() => {
-    const grouped = groupData(data, groupBy, [metric], metricsProp)
-    return grouped.sort((a, b) => (b[metric] || 0) - (a[metric] || 0)).slice(0, 10)
+  // 최적화: groupData와 정렬 분리
+  const grouped = useMemo(() => {
+    return groupData(data, groupBy, [metric], metricsProp)
   }, [data, metric, groupBy, metricsProp])
+
+  const chartData = useMemo(() => {
+    return grouped.sort((a, b) => (b[metric] || 0) - (a[metric] || 0)).slice(0, 10)
+  }, [grouped, metric])
 
   const tick = dark ? '#64748B' : '#475569'
   const grid = dark ? '#1E2130' : '#F1F5F9'
-  const meta = metricsProp?.find(x => x.id === metric)
+  const meta = useMemo(
+    () => metricsProp?.find(x => x.id === metric),
+    [metric, metricsProp]
+  )
 
-  const fmtYAxis = v => fmtAxis(v, metric, metricsProp)
+  const fmtYAxis = useMemo(
+    () => v => fmtAxis(v, metric, metricsProp),
+    [metric, metricsProp]
+  )
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>

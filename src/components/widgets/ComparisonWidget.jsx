@@ -5,19 +5,19 @@ import { calcMetric, fmtMetric, splitByPeriod } from './widgetUtils'
 function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn, dateRange }) {
   const { metrics = [], compareMode = 'period', title = '기간 비교' } = config
 
-  const rows = useMemo(() => {
-    if (!data?.length || metrics.length === 0) return []
+  // 최적화: 메트릭 메타 맵을 사전 계산
+  const metricMetaMap = useMemo(() => {
+    const map = new Map()
+    if (metricsProp) metricsProp.forEach(m => map.set(m.id, m))
+    return map
+  }, [metricsProp])
+
+  // 최적화: 비교 데이터(current/previous) 계산 분리
+  const splitData = useMemo(() => {
+    if (!data?.length) return { current: [], previous: [] }
 
     if (compareMode === 'period' && dateRange) {
-      const { current, previous } = splitByPeriod(data, dateRange, dateColumn)
-      return metrics.map(mid => {
-        const curVal = calcMetric(current, mid, metricsProp)
-        const prevVal = calcMetric(previous, mid, metricsProp)
-        const diff = curVal - prevVal
-        const pct = prevVal !== 0 ? (diff / Math.abs(prevVal)) * 100 : (curVal > 0 ? 100 : 0)
-        const meta = metricsProp?.find(x => x.id === mid)
-        return { id: mid, label: meta?.label || mid, curVal, prevVal, diff, pct }
-      })
+      return splitByPeriod(data, dateRange, dateColumn)
     }
 
     /* 전체 데이터 기간 비교 (dateRange 없을 때): 데이터 반분 */
@@ -27,18 +27,21 @@ function ComparisonWidget({ data, config, dark, metrics: metricsProp, dateColumn
       return da.localeCompare(db)
     })
     const mid2 = Math.floor(sorted.length / 2)
-    const first = sorted.slice(0, mid2)
-    const second = sorted.slice(mid2)
+    return { current: sorted.slice(mid2), previous: sorted.slice(0, mid2) }
+  }, [data, compareMode, dateRange, dateColumn])
+
+  const rows = useMemo(() => {
+    if (metrics.length === 0) return []
 
     return metrics.map(mid => {
-      const curVal = calcMetric(second, mid, metricsProp)
-      const prevVal = calcMetric(first, mid, metricsProp)
+      const curVal = calcMetric(splitData.current, mid, metricsProp)
+      const prevVal = calcMetric(splitData.previous, mid, metricsProp)
       const diff = curVal - prevVal
       const pct = prevVal !== 0 ? (diff / Math.abs(prevVal)) * 100 : (curVal > 0 ? 100 : 0)
-      const meta = metricsProp?.find(x => x.id === mid)
+      const meta = metricMetaMap.get(mid)
       return { id: mid, label: meta?.label || mid, curVal, prevVal, diff, pct }
     })
-  }, [data, metrics, metricsProp, compareMode, dateRange, dateColumn])
+  }, [metrics, splitData, metricsProp, metricMetaMap])
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col

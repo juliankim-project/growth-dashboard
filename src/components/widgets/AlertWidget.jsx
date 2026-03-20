@@ -11,6 +11,13 @@ const STATUS_STYLES = {
 function AlertWidget({ data, config, dark, metrics: metricsProp }) {
   const { metrics = [], thresholds = {}, title = '알림 모니터' } = config
 
+  // 최적화: 메트릭 메타 맵을 사전 계산
+  const metricMetaMap = useMemo(() => {
+    const map = new Map()
+    if (metricsProp) metricsProp.forEach(m => map.set(m.id, m))
+    return map
+  }, [metricsProp])
+
   const items = useMemo(() => {
     if (!data?.length || metrics.length === 0) return []
 
@@ -18,10 +25,10 @@ function AlertWidget({ data, config, dark, metrics: metricsProp }) {
       const val = calcMetric(data, mid, metricsProp)
       const th = thresholds[mid]
       const status = getThresholdStatus(val, th)
-      const meta = metricsProp?.find(x => x.id === mid)
+      const meta = metricMetaMap.get(mid)
       return { id: mid, label: meta?.label || mid, value: val, status }
     })
-  }, [data, metrics, metricsProp, thresholds])
+  }, [data, metrics, metricsProp, thresholds, metricMetaMap])
 
   const statusCounts = useMemo(() => {
     const c = { good: 0, warning: 0, danger: 0, neutral: 0 }

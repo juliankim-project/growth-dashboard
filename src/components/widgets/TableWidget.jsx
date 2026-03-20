@@ -6,13 +6,19 @@ function TableWidget({ data, config, dark, metrics: metricsProp }) {
   const { metrics = ['cost','installs','conv','revenue'], groupBy = 'channel', title = '성과 테이블' } = config
   const [sort, setSort] = useState({ key: metrics[0] || 'cost', dir: -1 })
 
+  // 최적화: groupData 결과를 먼저 캐싱, 정렬은 분리
+  const grouped = useMemo(() => {
+    return groupData(data, groupBy, metrics, metricsProp)
+  }, [data, metrics, groupBy, metricsProp])
+
   const rows = useMemo(() => {
-    const g = groupData(data, groupBy, metrics, metricsProp)
-    return [...g].sort((a, b) => {
+    if (!grouped || grouped.length === 0) return []
+    // 최적화: 원본 배열 복사 감소, 이미 groupData에서 Object.values() 호출됨
+    return [...grouped].sort((a, b) => {
       const av = a[sort.key] ?? 0, bv = b[sort.key] ?? 0
       return (bv - av) * -sort.dir
     })
-  }, [data, metrics, groupBy, sort, metricsProp])
+  }, [grouped, sort])
 
   const toggle = key => setSort(s => s.key === key ? { key, dir: -s.dir } : { key, dir: -1 })
 

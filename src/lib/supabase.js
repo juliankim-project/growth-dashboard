@@ -17,20 +17,35 @@ export const supabase = isMissingEnv
 /**
  * 페이지네이션으로 전체 데이터 fetch
  * - columns: Supabase select 문자열 (기본 '*')
- * - push 기반 누적으로 O(n) 메모리 사용
+ * - 동시성 제어 (CONCURRENT) + 캐싱으로 성능 최적화
  */
 const MAX_ROWS = 200_000 // 테이블 전체 커버 (114k+ 행)
+const PAGE = 10000
+const CONCURRENT = 4
 
 /* DB 컬럼명 → 코드 내부 표준명 매핑 (한글/특수문자 컬럼 정규화) */
 const COL_ALIASES = {
   '상품상세페이지_조회_app_web': 'view_content',
 }
 
+// 최적화: 행 정규화 캐싱 (같은 데이터면 함수 재사용)
+const _normalizeCache = new WeakMap()
+
 function normalizeRows(rows) {
   if (!rows?.length) return rows
+
+  // 캐시 히트: 같은 배열 참조이면 이전 결과 재사용
+  if (_normalizeCache.has(rows)) {
+    return _normalizeCache.get(rows)
+  }
+
   const aliases = Object.entries(COL_ALIASES)
-  if (aliases.length === 0) return rows
-  return rows.map(row => {
+  if (aliases.length === 0) {
+    _normalizeCache.set(rows, rows)
+    return rows
+  }
+
+  const result = rows.map(row => {
     const copy = { ...row }
     for (const [dbCol, stdCol] of aliases) {
       if (dbCol in copy && !(stdCol in copy)) {
@@ -39,6 +54,9 @@ function normalizeRows(rows) {
     }
     return copy
   })
+
+  _normalizeCache.set(rows, result)
+  return result
 }
 
 export async function fetchAll(tableName, columns = '*') {
@@ -46,9 +64,6 @@ export async function fetchAll(tableName, columns = '*') {
     console.warn('[fetchAll] supabase 클라이언트가 초기화되지 않았습니다. 환경변수를 확인하세요.')
     return []
   }
-
-  const PAGE = 10000
-  const CONCURRENT = 4
 
   // 총 건수 조회
   const { count, error: countErr } = await supabase
@@ -61,6 +76,7 @@ export async function fetchAll(tableName, columns = '*') {
   const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
   const all = new Array(totalPages)
 
+  // 최적화: 동시 요청으로 네트워크 I/O 병렬화
   for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
     const promises = []
     for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {

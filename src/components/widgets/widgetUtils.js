@@ -21,17 +21,29 @@ export const fmtP   = n => (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%'
 export const sumField = (data, field) =>
   data.reduce((s, r) => s + (parseFloat(r[field]) || 0), 0)
 
-/* ─── 메트릭 lookup (O(1) — mList를 Map으로 캐시) ─── */
+/* ─── 메트릭 lookup 캐시 (O(1) 성능) ─── */
+// 최적화: mList 배열 → Map 변환 결과를 WeakMap으로 캐싱
+// 같은 배열 참조면 이전 Map 재사용 → 반복 변환 제거
+const _metricMapCache = new WeakMap()
+
 function _buildMetricMap(mList) {
   /* mList를 Map으로 변환하여 O(1) lookup 지원 */
+  // 캐시 히트: 같은 배열 참조 → 즉시 반환
+  if (_metricMapCache.has(mList)) {
+    return _metricMapCache.get(mList)
+  }
+
   const map = new Map()
   if (mList) mList.forEach(m => map.set(m.id, m))
+
+  // 캐시 저장 (WeakMap은 GC 시 자동 정리)
+  _metricMapCache.set(mList, map)
   return map
 }
 
 const _m = (metricId, mList) => {
   if (!mList) return null
-  /* mList가 Map이면 직접 사용, 배열이면 변환 */
+  /* mList가 Map이면 직접 사용, 배열이면 변환 (캐시됨) */
   const map = mList instanceof Map ? mList : _buildMetricMap(mList)
   return map.get(metricId) || null
 }
@@ -174,47 +186,57 @@ function calcDerived(row, metrics, mList) {
 /* ─── 그룹핑 (SUM / COUNT / AVG / RATIO 지원) ─── */
 export function groupData(data, groupByField, metrics, mList) {
   if (!mList || mList.length === 0) return []
+  if (!data || data.length === 0) return []
 
   /* mList를 Map으로 변환 (반복 lookup 최적화) */
   const mMap = mList instanceof Map ? mList : _buildMetricMap(mList)
 
-  /* 파생지표/비율지표가 있으면 기반 지표도 함께 누적 */
-  const hasDerived = metrics.some(mid => {
+  // 최적화: 파생/비율 플래그를 Set으로 사전 계산 (매번 some() 대신)
+  const metricsSet = new Set(metrics)
+  let hasDerived = false
+  let hasRatio = false
+  const ratioMap = new Map()  // 비율 메트릭 → 분자/분모 사전 계산
+
+  metrics.forEach(mid => {
     const m = mMap.get(mid)
-    return m?.derived
-  })
-  const hasRatio = metrics.some(mid => {
-    const m = mMap.get(mid)
-    return m?._ratioTerms
+    if (m?.derived) hasDerived = true
+    if (m?._ratioTerms) {
+      hasRatio = true
+      ratioMap.set(mid, m._ratioTerms)
+    }
   })
 
   /* 누적할 메트릭 확장: 파생이면 모든 기반 포함, 비율이면 분자/분모 포함 */
   let allAccum = [...metrics]
   if (hasDerived) {
-    const baseMetrics = [...mMap.values()]
-      .filter(m => !m.derived && m.field)
-      .map(m => m.id)
+    // 최적화: [...mMap.values()]의 반복 제거
+    const baseMetrics = []
+    mMap.forEach(m => {
+      if (!m.derived && m.field) baseMetrics.push(m.id)
+    })
     allAccum = [...new Set([...allAccum, ...baseMetrics])]
   }
   if (hasRatio) {
-    metrics.forEach(mid => {
-      const m = mMap.get(mid)
-      if (m?._ratioTerms) {
-        const { num, den } = m._ratioTerms
-        /* 분자/분모가 mList에 있으면 그 ID로, 없으면 raw 컬럼으로 직접 접근 */
-        const numM = [...mMap.values()].find(x => x.field === num || x.id === num)
-        const denM = [...mMap.values()].find(x => x.field === den || x.id === den)
-        if (numM && !allAccum.includes(numM.id)) allAccum.push(numM.id)
-        if (denM && !allAccum.includes(denM.id)) allAccum.push(denM.id)
-      }
+    // 최적화: ratioMap만 순회
+    ratioMap.forEach(({ num, den }, mid) => {
+      let numM, denM
+      mMap.forEach(m => {
+        if (m.field === num || m.id === num) numM = m
+        if (m.field === den || m.id === den) denM = m
+      })
+      if (numM && !allAccum.includes(numM.id)) allAccum.push(numM.id)
+      if (denM && !allAccum.includes(denM.id)) allAccum.push(denM.id)
     })
   }
 
   const map = {}
+  const accumSet = new Set(allAccum)  // 빠른 membership check
+
   data.forEach(r => {
     const k = r[groupByField] || '(없음)'
     if (!map[k]) { map[k] = { name: k } }
-    allAccum.forEach(mid => {
+
+    accumSet.forEach(mid => {
       const m = mMap.get(mid)  /* Map lookup으로 최적화 */
       if (!m || m.derived || !m.field) return
       if (m._ratioTerms) return  // 비율 지표는 직접 누적하지 않음 (분자/분모로 처리)
@@ -237,31 +259,37 @@ export function groupData(data, groupByField, metrics, mList) {
     })
   })
 
+  const mapValues = Object.values(map)
+
   /* COUNT(DISTINCT) 확정 + Set 정리 */
-  allAccum.forEach(mid => {
-    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
-    if (m?._countDistinct && m._distinctCol) {
-      Object.values(map).forEach(row => {
-        row[mid] = row[mid + '__set']?.size || 0
-        delete row[mid + '__set']
-      })
-    }
-  })
+  if (allAccum.some(mid => mMap.get(mid)?._countDistinct && mMap.get(mid)._distinctCol)) {
+    allAccum.forEach(mid => {
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
+      if (m?._countDistinct && m._distinctCol) {
+        mapValues.forEach(row => {
+          row[mid] = row[mid + '__set']?.size || 0
+          delete row[mid + '__set']
+        })
+      }
+    })
+  }
 
   /* AVG 확정 + 임시키 정리 */
-  allAccum.forEach(mid => {
-    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
-    if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
-      Object.values(map).forEach(row => {
-        row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
-        delete row[mid + '__s']; delete row[mid + '__c']
-      })
-    }
-  })
+  if (allAccum.some(mid => mMap.get(mid)?.agg === 'avg')) {
+    allAccum.forEach(mid => {
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
+      if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
+        mapValues.forEach(row => {
+          row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
+          delete row[mid + '__s']; delete row[mid + '__c']
+        })
+      }
+    })
+  }
 
   /* 파생 + 비율 확정 */
-  if (hasDerived || hasRatio) Object.values(map).forEach(row => calcDerived(row, metrics, mList))
-  return Object.values(map)
+  if (hasDerived || hasRatio) mapValues.forEach(row => calcDerived(row, metrics, mList))
+  return mapValues
 }
 
 /* ─── 일별 집계 (SUM / COUNT / AVG / RATIO 지원) ─── */
@@ -271,25 +299,27 @@ export function groupData(data, groupByField, metrics, mList) {
  */
 export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
   if (!mList || mList.length === 0) return []
+  if (!data || data.length === 0) return []
 
   /* mList를 Map으로 변환 (반복 lookup 최적화) */
   const mMap = mList instanceof Map ? mList : _buildMetricMap(mList)
 
-  /* 파생/비율 감지 */
-  const hasDerived = metrics.some(mid => {
+  // 최적화: 파생/비율 플래그 사전 계산
+  let hasDerived = false
+  let hasRatio = false
+
+  metrics.forEach(mid => {
     const m = mMap.get(mid)
-    return m?.derived
-  })
-  const hasRatio = metrics.some(mid => {
-    const m = mMap.get(mid)
-    return m?._ratioTerms
+    if (m?.derived) hasDerived = true
+    if (m?._ratioTerms) hasRatio = true
   })
 
   let allAccum = [...metrics]
   if (hasDerived) {
-    const baseMetrics = [...mMap.values()]
-      .filter(m => !m.derived && m.field)
-      .map(m => m.id)
+    const baseMetrics = []
+    mMap.forEach(m => {
+      if (!m.derived && m.field) baseMetrics.push(m.id)
+    })
     allAccum = [...new Set([...allAccum, ...baseMetrics])]
   }
   if (hasRatio) {
@@ -297,8 +327,11 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
       const m = mMap.get(mid)
       if (m?._ratioTerms) {
         const { num, den } = m._ratioTerms
-        const numM = [...mMap.values()].find(x => x.field === num || x.id === num)
-        const denM = [...mMap.values()].find(x => x.field === den || x.id === den)
+        let numM, denM
+        mMap.forEach(x => {
+          if (x.field === num || x.id === num) numM = x
+          if (x.field === den || x.id === den) denM = x
+        })
         if (numM && !allAccum.includes(numM.id)) allAccum.push(numM.id)
         if (denM && !allAccum.includes(denM.id)) allAccum.push(denM.id)
       }
@@ -310,7 +343,7 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
     ? [dateColumn]
     : ['date', 'Event Date', 'reservation_date', 'check_in_date']
 
-  /* 날짜 → 그룹키 변환 */
+  /* 날짜 → 그룹키 변환 (최적화: 함수 호출 감소) */
   const toGroupKey = (dateStr) => {
     if (timeGroup === 'month') return dateStr.slice(0, 7) // YYYY-MM
     if (timeGroup === 'week') {
@@ -329,13 +362,16 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
   }
 
   const map = {}
+  const accumSet = new Set(allAccum)  // 빠른 membership check
+
   data.forEach(r => {
     let d = null
     for (const f of dateFields) { if (r[f]) { d = String(r[f]).slice(0, 10); break } }
     if (!d) return
     const gk = toGroupKey(d)
     if (!map[gk]) { map[gk] = { label: toLabel(gk), _key: gk } }
-    allAccum.forEach(mid => {
+
+    accumSet.forEach(mid => {
       const m = mMap.get(mid)  /* Map lookup으로 최적화 */
       if (!m || m.derived || !m.field) return
       if (m._ratioTerms) return
@@ -358,29 +394,39 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
     })
   })
 
+  const mapValues = Object.values(map)
+
   /* COUNT(DISTINCT) 확정 + Set 정리 */
-  allAccum.forEach(mid => {
-    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
-    if (m?._countDistinct && m._distinctCol) {
-      Object.values(map).forEach(row => {
-        row[mid] = row[mid + '__set']?.size || 0
-        delete row[mid + '__set']
-      })
-    }
-  })
+  if (allAccum.some(mid => mMap.get(mid)?._countDistinct && mMap.get(mid)._distinctCol)) {
+    allAccum.forEach(mid => {
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
+      if (m?._countDistinct && m._distinctCol) {
+        mapValues.forEach(row => {
+          row[mid] = row[mid + '__set']?.size || 0
+          delete row[mid + '__set']
+        })
+      }
+    })
+  }
 
-  allAccum.forEach(mid => {
-    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
-    if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
-      Object.values(map).forEach(row => {
-        row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
-        delete row[mid + '__s']; delete row[mid + '__c']
-      })
-    }
-  })
+  /* AVG 확정 + 임시키 정리 */
+  if (allAccum.some(mid => mMap.get(mid)?.agg === 'avg')) {
+    allAccum.forEach(mid => {
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
+      if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
+        mapValues.forEach(row => {
+          row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
+          delete row[mid + '__s']; delete row[mid + '__c']
+        })
+      }
+    })
+  }
 
-  if (hasDerived || hasRatio) Object.values(map).forEach(row => calcDerived(row, metrics, mList))
-  return Object.values(map).sort((a, b) => (a._key || a.label).localeCompare(b._key || b.label))
+  /* 파생 + 비율 확정 */
+  if (hasDerived || hasRatio) mapValues.forEach(row => calcDerived(row, metrics, mList))
+
+  // 최적화: 정렬 시 mapValues 재사용
+  return mapValues.sort((a, b) => (a._key || a.label).localeCompare(b._key || b.label))
 }
 
 export const CHART_COLORS = ['#0C66E4','#1F845A','#E56910','#CA3521','#6E5DC6','#0055CC','#E774BB']

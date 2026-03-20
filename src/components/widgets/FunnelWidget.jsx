@@ -51,18 +51,21 @@ function FunnelChart({ stages, stageValues, dark }) {
 function FunnelWidget({ data, config, dark, metrics: metricsProp }) {
   const { stages = [], title = '전환 퍼널' } = config
 
+  // 최적화: 각 단계별 값 계산 (calcMetric은 widgetUtils에서 캐싱됨)
   const stageValues = useMemo(() => {
     if (!data?.length || stages.length === 0) return stages.map(() => 0)
     return stages.map(s => calcMetric(data, s.metric, metricsProp))
   }, [data, stages, metricsProp])
 
+  // 최적화: 전체 전환율 계산 (stageValues 변경 시에만 재계산)
   const totalConv = useMemo(() => {
-    if (stages.length < 2 || stageValues[0] <= 0) return null
+    if (stages.length < 2 || !stageValues.length || stageValues[0] <= 0) return null
     return ((stageValues[stageValues.length - 1] / stageValues[0]) * 100).toFixed(1)
-  }, [stages, stageValues])
+  }, [stageValues, stages.length])
 
-  const firstStage = stages[0]
-  const lastStage = stages[stages.length - 1]
+  // 최적화: 첫/마지막 단계 캐싱
+  const firstStage = useMemo(() => stages[0], [stages])
+  const lastStage = useMemo(() => stages[stages.length - 1], [stages])
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col

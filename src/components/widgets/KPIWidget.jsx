@@ -47,10 +47,17 @@ const ICON_MAP = {
 
 function KPIWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', label = '' } = config
-  const metaDef  = metricsProp?.find(m => m.id === metric)
+  // 최적화: metricsProp Map 변환은 widgetUtils에서 캐싱됨
+  const metaDef  = useMemo(
+    () => metricsProp?.find(m => m.id === metric),
+    [metric, metricsProp]
+  )
   const title    = label || metaDef?.label || metric
   const value    = useMemo(() => calcMetric(data, metric, metricsProp), [data, metric, metricsProp])
-  const display  = fmtMetric(metric, value, metricsProp)
+  const display  = useMemo(
+    () => fmtMetric(metric, value, metricsProp),
+    [metric, value, metricsProp]
+  )
   const colorCls = COLOR_MAP[metric] || 'text-slate-500 bg-slate-500/10'
 
   return (

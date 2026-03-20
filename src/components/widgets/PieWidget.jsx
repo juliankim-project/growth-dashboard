@@ -5,15 +5,22 @@ import { groupData, fmtW, CHART_COLORS } from './widgetUtils'
 function PieWidget({ data, config, dark, metrics: metricsProp }) {
   const { metric = 'cost', groupBy = 'Channel', title = '구성 비율' } = config
 
+  // 최적화: groupData와 필터링 분리
+  const grouped = useMemo(() => {
+    return groupData(data, groupBy, [metric], metricsProp)
+  }, [data, metric, groupBy, metricsProp])
+
   const chartData = useMemo(() => {
-    const grouped = groupData(data, groupBy, [metric], metricsProp)
     return grouped
       .filter(r => (r[metric] || 0) > 0)
       .sort((a, b) => (b[metric] || 0) - (a[metric] || 0))
       .slice(0, 6)
-  }, [data, metric, groupBy, metricsProp])
+  }, [grouped, metric])
 
-  const meta = metricsProp?.find(x => x.id === metric)
+  const meta = useMemo(
+    () => metricsProp?.find(x => x.id === metric),
+    [metric, metricsProp]
+  )
 
   return (
     <div className={`rounded-xl p-4 border h-full overflow-hidden flex flex-col ${dark ? 'bg-[#22272B] border-[#A1BDD914]' : 'bg-white border-slate-200 shadow-sm'}`}>

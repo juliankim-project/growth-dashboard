@@ -149,10 +149,14 @@ const GridCard = memo(function GridCard({ slot, editMode, onEdit, onDelete, onCo
   const widgetDateCol = columnConfig?.[widgetTable]?.dateColumn
   /* comparison 위젯은 current+previous 기간 모두 필요 → filterByDate 적용 안 함 */
   const isComparison = slot.type === 'comparison'
+
+  // 최적화: widgetData 필터링은 이미 dataMap이 캐싱된 상태
   const widgetData = useMemo(() => {
     if (isComparison) return widgetRawData
     return filterByDate ? filterByDate(widgetRawData, widgetDateCol) : widgetRawData
   }, [widgetRawData, filterByDate, widgetDateCol, isComparison])
+
+  // 최적화: buildTableMetrics는 columnUtils에서 Map 캐싱됨
   const widgetMetrics = useMemo(() => buildTableMetrics(widgetTable, columnConfig), [widgetTable, columnConfig])
 
   /* 칸반 등 자체 config 업데이트가 필요한 위젯용 콜백 */
