@@ -18,28 +18,17 @@ import { getExcludedGuestIds } from './ExcludeUsers'
  */
 export async function fetchProductData(dateRange) {
   // 전체 데이터 로드 (캐시 히트 시 즉시)
+  // ★ dedup은 supabase.js ensureTableData에서 처리됨 (캐시·네트워크 모두 적용)
   const allData = await fetchByDateRange('product_revenue_raw', null, null, null)
 
   if (!allData || allData.length === 0) return []
 
-  // id 기준 중복 제거 (페이지네이션 경계에서 중복 row 가능)
-  const seen = new Set()
-  const deduped = []
-  for (const row of allData) {
-    const key = row.id ?? row.no // id 또는 no 컬럼 사용
-    if (key != null) {
-      if (seen.has(key)) continue
-      seen.add(key)
-    }
-    deduped.push(row)
-  }
-
   // 클라이언트 날짜 필터 — reservation_date(예약일) 기준
-  let filtered = deduped
+  let filtered = allData
   if (dateRange?.start || dateRange?.end) {
     const start = dateRange.start || ''
     const end = dateRange.end || '9999-12-31'
-    filtered = deduped.filter(r => {
+    filtered = allData.filter(r => {
       const d = r.reservation_date?.slice(0, 10) || ''
       return d >= start && d <= end
     })

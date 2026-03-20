@@ -89,24 +89,31 @@ export async function fetchAll(tableName, columns = '*') {
   }
 
   const flat = all.flat()
-
-  // id/no 기준 중복 제거 (페이지네이션 경계 + CSV 중복 업로드 방지)
-  if (flat.length > 0 && (flat[0].id != null || flat[0].no != null)) {
-    const seen = new Set()
-    const deduped = []
-    const keyField = flat[0].id != null ? 'id' : 'no'
-    for (const row of flat) {
-      const key = row[keyField]
-      if (key != null) {
-        if (seen.has(key)) continue
-        seen.add(key)
-      }
-      deduped.push(row)
-    }
-    return normalizeRows(deduped)
-  }
-
   return normalizeRows(flat)
+}
+
+/* ═══════════════════════════════════════════════
+   deduplicateRows: id/no 기준 중복 제거
+   - 페이지네이션 경계 중복
+   - CSV 이중 업로드 중복
+   - 캐시/네트워크 무관하게 항상 적용
+   ═══════════════════════════════════════════════ */
+function deduplicateRows(rows) {
+  if (!rows || rows.length === 0) return rows
+  if (rows[0].id == null && rows[0].no == null) return rows
+
+  const seen = new Set()
+  const deduped = []
+  const keyField = rows[0].id != null ? 'id' : 'no'
+  for (const row of rows) {
+    const key = row[keyField]
+    if (key != null) {
+      if (seen.has(key)) continue
+      seen.add(key)
+    }
+    deduped.push(row)
+  }
+  return deduped
 }
 
 /* ═══════════════════════════════════════════════
@@ -147,6 +154,9 @@ const _tableCache = {} // { tableName: { data, ts, promise } }
 const TABLE_CACHE_TTL = 1_800_000     // 메모리 캐시 30분
 const IDB_CACHE_TTL   = 86_400_000    // IndexedDB 24시간
 
+/* 캐시 버전: 변경 시 stale IndexedDB 데이터 자동 무효화 */
+const CACHE_VERSION = 2  // v1→v2: dedup 로직 이동 후 stale 캐시 제거
+
 /* 테이블별 필수 컬럼 (불필요한 컬럼 제외로 전송량 절약) */
 const TABLE_ESSENTIAL_COLS = {
   product_revenue_raw: 'id,no,guest_id,user_id,status,area,brand_name,branch_name,room_type_name,room_type2,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,lead_time',
@@ -163,8 +173,8 @@ function emitProgress(tableName, stage, detail) {
 async function ensureTableData(tableName) {
   const entry = _tableCache[tableName]
 
-  // 1) 메모리 캐시 히트
-  if (entry?.data && (Date.now() - entry.ts < TABLE_CACHE_TTL)) {
+  // 1) 메모리 캐시 히트 (버전 일치 + TTL 이내)
+  if (entry?.data && entry?.ver === CACHE_VERSION && (Date.now() - entry.ts < TABLE_CACHE_TTL)) {
     const cols = TABLE_ESSENTIAL_COLS[tableName]
     if (cols && entry.data.length > 0) {
       const required = cols.split(',')
@@ -189,27 +199,36 @@ async function ensureTableData(tableName) {
     try {
       // 2) IndexedDB 캐시 체크 (네트워크보다 훨씬 빠름)
       const idbEntry = await idbGet(tableName, IDB_CACHE_TTL)
-      if (idbEntry?.data?.length > 0) {
+      if (idbEntry?.data?.length > 0 && idbEntry?.ver === CACHE_VERSION) {
+        // ★ 캐시 데이터에도 dedup 적용 (stale 캐시 중복 방지)
+        const cleaned = deduplicateRows(idbEntry.data)
         emitProgress(tableName, 'cache-hit', { source: 'indexeddb', age: idbEntry.age })
-        // 메모리 캐시에도 올려놓기
-        _tableCache[tableName] = { data: idbEntry.data, ts: Date.now(), promise: null }
+        _tableCache[tableName] = { data: cleaned, ts: Date.now(), ver: CACHE_VERSION, promise: null }
 
         // 백그라운드 갱신 (1시간 이상 된 경우)
         if (idbEntry.age > 3_600_000) {
           setTimeout(() => refreshTableInBackground(tableName), 100)
         }
 
-        return idbEntry.data
+        return cleaned
+      }
+
+      // IndexedDB 캐시 버전 불일치 시 삭제
+      if (idbEntry?.data && idbEntry?.ver !== CACHE_VERSION) {
+        idbDelete(tableName).catch(() => {})
       }
 
       // 3) 네트워크 fetch
       emitProgress(tableName, 'fetching', { message: '서버에서 데이터 로딩 중...' })
       const cols = TABLE_ESSENTIAL_COLS[tableName] || '*'
-      const rows = await fetchAll(tableName, cols)
+      const rawRows = await fetchAll(tableName, cols)
 
-      // 양쪽 캐시에 저장
-      _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
-      idbSet(tableName, rows).catch(() => {}) // 비동기, 실패해도 무시
+      // ★ 네트워크 데이터에도 dedup 적용 (페이지네이션 경계 + CSV 중복)
+      const rows = deduplicateRows(rawRows)
+
+      // 양쪽 캐시에 저장 (버전 포함)
+      _tableCache[tableName] = { data: rows, ts: Date.now(), ver: CACHE_VERSION, promise: null }
+      idbSet(tableName, rows, CACHE_VERSION).catch(() => {}) // 비동기, 실패해도 무시
       emitProgress(tableName, 'loaded', { rowCount: rows.length })
 
       return rows
@@ -228,9 +247,10 @@ async function ensureTableData(tableName) {
 async function refreshTableInBackground(tableName) {
   try {
     const cols = TABLE_ESSENTIAL_COLS[tableName] || '*'
-    const rows = await fetchAll(tableName, cols)
-    _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
-    await idbSet(tableName, rows)
+    const rawRows = await fetchAll(tableName, cols)
+    const rows = deduplicateRows(rawRows)
+    _tableCache[tableName] = { data: rows, ts: Date.now(), ver: CACHE_VERSION, promise: null }
+    await idbSet(tableName, rows, CACHE_VERSION)
     emitProgress(tableName, 'bg-refresh', { rowCount: rows.length })
   } catch (e) {
     console.warn(`[bg-refresh] ${tableName} 실패:`, e.message)

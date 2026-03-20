@@ -38,7 +38,7 @@ function openDB() {
 }
 
 /* ── 데이터 저장 ── */
-export async function idbSet(tableName, data) {
+export async function idbSet(tableName, data, ver = 1) {
   try {
     const db = await openDB()
     const tx = db.transaction(STORE_NAME, 'readwrite')
@@ -48,6 +48,7 @@ export async function idbSet(tableName, data) {
       key: tableName,
       data,
       ts: Date.now(),
+      ver,
       rowCount: data?.length || 0,
     })
 
@@ -80,6 +81,7 @@ export async function idbGet(tableName, maxAge = 86400000) {
         resolve({
           data: entry.data,
           ts: entry.ts,
+          ver: entry.ver || 1,
           rowCount: entry.rowCount,
           age: Date.now() - entry.ts,
         })
