@@ -5,9 +5,12 @@ import { createClient } from "@supabase/supabase-js"
  * keyword-collector: 매일 실행되는 키워드 수집 Edge Function
  *
  * 1. product_revenue_raw 에서 area, branch_name 고유값 추출
- * 2. 권역/지역별 키워드 셋 생성
+ * 2. 고정 키워드 구조에 따라 키워드 셋 생성:
+ *    - 숙소 유형별 (accom_type): 7개 카테고리의 고정 키워드
+ *    - 지역별 (area): 각 지역의 지점명을 기반으로 생성
+ *    - 브랜드 (brand): 각 브랜드의 고정 키워드
  * 3. 네이버 검색광고 API 호출 (5개씩 배치)
- * 4. keyword_trends 테이블에 upsert
+ * 4. keyword_trends 테이블에 upsert (keyword_group 필드 포함)
  *
  * 호출: POST /functions/v1/keyword-collector
  * 또는 Supabase cron job / 외부 스케줄러에서 호출
@@ -25,12 +28,16 @@ const REGION_MAP: Record<string, string> = {
   '통영': '동남권', '거제': '동남권',
 }
 
-/* ── 여행/숙박 업종 공통 키워드 ── */
-const INDUSTRY_KEYWORDS = [
-  '호텔 예약', '숙박 예약', '리조트 예약',
-  '국내 여행', '호텔 추천', '숙소 추천',
-  '펜션 예약', '풀빌라', '글램핑',
-]
+/* ── 숙소 유형별 고정 키워드 (전체 여행 수요) ── */
+const ACCOMMODATION_TYPE_KEYWORDS: Record<string, string[]> = {
+  '숙소': ['숙소', '숙소 추천', '숙소 예약'],
+  '여행': ['여행', '국내 여행', '국내여행'],
+  '펜션': ['펜션', '펜션 예약', '펜션 추천'],
+  '호텔': ['호텔', '호텔 예약', '호텔 추천'],
+  '숙박': ['숙박', '숙박 예약', '숙박 추천'],
+  '레지던스': ['레지던스', '서비스 레지던스'],
+  '에어비앤비': ['에어비앤비', '에어비엔비'],
+}
 
 const NAVER_API_BASE = "https://api.naver.com"
 const KEYWORD_TOOL_URI = "/keywordstool"
@@ -45,6 +52,7 @@ const CORS = {
 async function generateSignature(
   timestamp: string, method: string, uri: string, secretKey: string
 ): Promise<string> {
+  // 타임스탐프, HTTP 메서드, URI를 조합하여 서명할 메시지 생성
   const message = `${timestamp}.${method}.${uri}`
   const enc = new TextEncoder()
   const cryptoKey = await crypto.subtle.importKey(
@@ -63,6 +71,7 @@ async function fetchKeywordTool(
 ) {
   const timestamp = Date.now().toString()
   const sig = await generateSignature(timestamp, "GET", KEYWORD_TOOL_URI, secretKey)
+  // 공백을 제거한 키워드들을 쉼표로 구분
   const hintKeywords = keywords.map(k => k.replace(/\s+/g, "")).join(",")
   const url = `${NAVER_API_BASE}${KEYWORD_TOOL_URI}?hintKeywords=${encodeURIComponent(hintKeywords)}&showDetail=1`
 
@@ -84,7 +93,7 @@ async function fetchKeywordTool(
   return await res.json()
 }
 
-/* ── 배치 호출 (5개씩 나눠서, rate limit 방지 1초 딜레이) ── */
+/* ── 배치 호출 (5개씩 나눠서, rate limit 방지 1.2초 딜레이) ── */
 async function fetchAllKeywords(
   allKeywords: string[], customerId: string, apiKey: string, secretKey: string
 ) {
@@ -101,7 +110,7 @@ async function fetchAllKeywords(
     } catch (err) {
       console.error(`배치 ${i}~${i + batchSize} 실패:`, err)
     }
-    // rate limit 방지
+    // API rate limit 방지 (마지막 배치 제외)
     if (i + batchSize < allKeywords.length) {
       await new Promise(r => setTimeout(r, 1200))
     }
@@ -119,30 +128,28 @@ function getRegion(area: string): string {
   return '기타'
 }
 
-/* ── 키워드 카테고리 분류 ── */
-function classifyKeyword(kw: string, hintKeywords: Set<string>): { category: string; area: string | null; region: string | null } {
-  const areas = Object.keys(REGION_MAP)
-  let matchedArea: string | null = null
-
-  for (const a of areas) {
-    if (kw.includes(a)) {
-      matchedArea = a
-      break
-    }
+/* ── 키워드에 해당하는 그룹 판정 ── */
+function determineKeywordGroup(
+  keyword: string,
+  hintKeyword: string,
+  accommTypeHints: Set<string>,
+  areaHints: Set<string>,
+  brandHints: Set<string>
+): string {
+  // 숙소 유형별 고정 키워드에 해당하는지 확인
+  if (accommTypeHints.has(hintKeyword)) {
+    return 'accom_type'
   }
-
-  const region = matchedArea ? getRegion(matchedArea) : null
-
-  let category = 'generic'
-  if (matchedArea && (kw.includes('호텔') || kw.includes('숙박') || kw.includes('리조트') || kw.includes('여행'))) {
-    category = 'regional'
-  } else if (kw.includes('예약') || kw.includes('가격') || kw.includes('후기')) {
-    category = 'branded'
-  } else if (kw.includes('룸') || kw.includes('스위트') || kw.includes('스탠다드')) {
-    category = 'room'
+  // 지역별 키워드에 해당하는지 확인
+  if (areaHints.has(hintKeyword)) {
+    return 'area'
   }
-
-  return { category, area: matchedArea, region }
+  // 브랜드 키워드에 해당하는지 확인
+  if (brandHints.has(hintKeyword)) {
+    return 'brand'
+  }
+  // 기본값 (API 응답의 연관 키워드)
+  return 'related'
 }
 
 /* ── 메인 핸들러 ── */
@@ -154,7 +161,7 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    // 환경 변수
+    // ── 환경 변수 검증 ──
     const customerId = Deno.env.get("NAVER_CUSTOMER_ID")!
     const apiKey = Deno.env.get("NAVER_API_KEY")!
     const secretKey = Deno.env.get("NAVER_SECRET_KEY")!
@@ -167,14 +174,13 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // 1. product_revenue_raw에서 고유 area, branch_name 추출
+    // ── 1단계: product_revenue_raw에서 고유 area, branch_name 추출 ──
     const { data: products, error: prodErr } = await supabase
       .from("product_revenue_raw")
       .select("area, branch_name")
 
     if (prodErr) throw new Error(`상품 데이터 조회 실패: ${prodErr.message}`)
 
-    // 고유 지역 추출
     const areaSet = new Set<string>()
     const brandSet = new Set<string>()
     products?.forEach((r: any) => {
@@ -182,63 +188,96 @@ Deno.serve(async (req) => {
       if (r.branch_name) brandSet.add(r.branch_name.trim())
     })
 
-    // 2. 키워드 셋 생성
+    console.log(`추출된 지역: ${areaSet.size}개, 브랜드: ${brandSet.size}개`)
+
+    // ── 2단계: 고정 키워드 구조에 따라 키워드 셋 생성 ──
     const keywordSet = new Set<string>()
 
-    // 업종 공통 키워드
-    INDUSTRY_KEYWORDS.forEach(kw => keywordSet.add(kw))
+    // 숙소 유형별 고정 키워드 (전체 여행 수요)
+    const accommTypeHints = new Set<string>()
+    Object.values(ACCOMMODATION_TYPE_KEYWORDS).forEach(keywords => {
+      keywords.forEach(kw => {
+        keywordSet.add(kw)
+        accommTypeHints.add(kw)
+      })
+    })
 
     // 지역별 키워드
+    // 각 지역마다: ${area}, ${area} 숙소, ${area} 호텔, ${area} 펜션, ${area} 숙박, ${area} 여행, ${area} 리조트
+    const areaHints = new Set<string>()
     areaSet.forEach(area => {
-      keywordSet.add(`${area} 호텔`)
-      keywordSet.add(`${area} 숙박`)
-      keywordSet.add(`${area} 리조트`)
-      keywordSet.add(`${area} 여행`)
-      keywordSet.add(`${area} 호텔 예약`)
-      keywordSet.add(`${area} 펜션`)
+      const areaKeywords = [
+        area,
+        `${area} 숙소`,
+        `${area} 호텔`,
+        `${area} 펜션`,
+        `${area} 숙박`,
+        `${area} 여행`,
+        `${area} 리조트`,
+      ]
+      areaKeywords.forEach(kw => {
+        keywordSet.add(kw)
+        areaHints.add(kw)
+      })
     })
 
     // 브랜드 키워드
+    // 각 브랜드마다: ${brand}, ${brand} 예약, ${brand} 가격
+    const brandHints = new Set<string>()
     brandSet.forEach(brand => {
-      keywordSet.add(brand)
-      keywordSet.add(`${brand} 예약`)
-    })
-
-    // 권역별 키워드
-    const regionSet = new Set(Array.from(areaSet).map(a => getRegion(a)))
-    regionSet.forEach(region => {
-      if (region !== '기타') {
-        // 권역명 자체는 검색에 부적합하므로 skip
-      }
+      const brandKeywords = [
+        brand,
+        `${brand} 예약`,
+        `${brand} 가격`,
+      ]
+      brandKeywords.forEach(kw => {
+        keywordSet.add(kw)
+        brandHints.add(kw)
+      })
     })
 
     const allKeywords = Array.from(keywordSet)
     console.log(`수집 대상 키워드: ${allKeywords.length}개`)
+    console.log(`  - 숙소 유형: ${accommTypeHints.size}개`)
+    console.log(`  - 지역별: ${areaHints.size}개`)
+    console.log(`  - 브랜드: ${brandHints.size}개`)
 
-    // 3. 네이버 API 배치 호출
-    const hintSet = new Set(allKeywords)
+    // ── 3단계: 네이버 검색광고 API 배치 호출 ──
     const keywordList = await fetchAllKeywords(allKeywords, customerId, apiKey, secretKey)
     console.log(`API 응답 키워드: ${keywordList.length}개`)
 
-    // 4. keyword_trends 테이블에 upsert
+    // ── 4단계: keyword_trends 테이블에 upsert (keyword_group 포함) ──
     const today = new Date().toISOString().split("T")[0]
     const rows = keywordList.map((item: any) => {
-      const kw = item.relKeyword || ""
-      const { category, area, region } = classifyKeyword(kw, hintSet)
+      const responseKeyword = item.relKeyword || ""
+
+      // 응답 키워드와 원본 hint 키워드 매칭 시도
+      let matchedHintKeyword = ""
+      let keywordGroup = "related"
+
+      // 응답 키워드가 힌트 셋에 정확히 포함되어 있는지 확인
+      if (accommTypeHints.has(responseKeyword)) {
+        matchedHintKeyword = responseKeyword
+        keywordGroup = "accom_type"
+      } else if (areaHints.has(responseKeyword)) {
+        matchedHintKeyword = responseKeyword
+        keywordGroup = "area"
+      } else if (brandHints.has(responseKeyword)) {
+        matchedHintKeyword = responseKeyword
+        keywordGroup = "brand"
+      }
 
       return {
         collected_at: today,
-        keyword: kw,
-        region: region,
-        area: area,
-        category: category,
+        keyword: responseKeyword,
+        keyword_group: keywordGroup,
         monthly_pc: typeof item.monthlyPcQcCnt === "number" ? item.monthlyPcQcCnt : 0,
         monthly_mobile: typeof item.monthlyMobileQcCnt === "number" ? item.monthlyMobileQcCnt : 0,
         monthly_total: (typeof item.monthlyPcQcCnt === "number" ? item.monthlyPcQcCnt : 0)
           + (typeof item.monthlyMobileQcCnt === "number" ? item.monthlyMobileQcCnt : 0),
         competition: item.compIdx === "높음" ? "높음" : item.compIdx === "중간" ? "중간" : "낮음",
         comp_idx: typeof item.compIdx === "number" ? item.compIdx : null,
-        is_hint: hintSet.has(kw),
+        is_hint: allKeywords.includes(responseKeyword),
         raw_json: item,
       }
     })
@@ -261,6 +300,7 @@ Deno.serve(async (req) => {
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
+    // ── 수집 완료 ──
     const summary = {
       success: true,
       collected_at: today,
