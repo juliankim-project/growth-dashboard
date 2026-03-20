@@ -394,3 +394,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/naver-trend/deno.json"
 entrypoint = "./functions/naver-trend/index.ts"
+
+[functions.keyword-collector]
+enabled = true
+verify_jwt = false
+import_map = "./functions/keyword-collector/deno.json"
+entrypoint = "./functions/keyword-collector/index.ts"

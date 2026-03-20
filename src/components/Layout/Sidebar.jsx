@@ -61,6 +61,7 @@ export const DEFAULT_SECTIONS = [
     id: 'searchads', label: '검색 광고 AI', icon: 'Binoculars',
     subs: [
       { id:'ai', label:'트렌드 분석', icon:'TrendingUp' },
+      { id:'trend', label:'키워드 트렌드', icon:'BarChart2' },
     ]
   },
   {
