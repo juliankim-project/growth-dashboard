@@ -167,6 +167,15 @@ export function useColumnConfig() {
           })
         }
 
+        /* 🔍 DEBUG */
+        const prr = baseConfig['product_revenue_raw']
+        console.log('[useColumnConfig] 로드 결과:', {
+          tables: Object.keys(baseConfig),
+          prr_exists: !!prr,
+          prr_computed: prr?.computed?.map(c => ({ id: c.id, aggType: c.aggType })),
+          defRows: defRes.data?.length,
+          wmcRows: wmcRes.data?.length,
+        })
         _setColumnConfig(baseConfig)
         saveLocal(baseConfig)
       } catch (err) {

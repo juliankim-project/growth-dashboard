@@ -54,11 +54,29 @@ const MARKETING_DERIVED = [
   { id: 'cvr_s',    label: 'CVR-S',      field: null, fmt: 'pct',      derived: true, group: 'rate' },
 ]
 
+/* buildTableMetrics 캐시: Map<tableName+configHash, metrics[]> */
+const _metricsCache = new Map()
+
+function _getConfigHash(tCfg) {
+  /* columnConfig 구조 해시: computed, columns 변경 시만 무효화 */
+  return JSON.stringify({
+    cols: tCfg?.columns ? Object.keys(tCfg.columns).sort() : [],
+    computed: tCfg?.computed?.length || 0,
+    dims: (tCfg?.dimensionColumns || []).sort()
+  })
+}
+
 export function buildTableMetrics(tableName, columnConfig) {
   if (!tableName) return []
 
   const tCfg = columnConfig?.[tableName]
   if (!tCfg || !tCfg.columns || Object.keys(tCfg.columns).length === 0) return []
+
+  /* 캐시 조회: 테이블명 + 설정 해시 */
+  const cfgHash = _getConfigHash(tCfg)
+  const cacheKey = tableName + '|' + cfgHash
+  const cached = _metricsCache.get(cacheKey)
+  if (cached) return cached
 
   const dims = new Set(tCfg.dimensionColumns || [])
   const metrics = []
@@ -134,6 +152,8 @@ export function buildTableMetrics(tableName, columnConfig) {
     })
   }
 
+  /* 캐시에 저장 */
+  _metricsCache.set(cacheKey, metrics)
   return metrics
 }
 
@@ -323,13 +343,26 @@ export function getNeededColumns() {
   return '*'
 }
 
+/* ═══════════════════════════════════════════
+   계산 컬럼 캐시 (같은 rows 배열이면 이전 결과 재사용)
+   WeakMap은 GC 시 자동 정리되므로 메모리 누수 방지
+   ═══════════════════════════════════════════ */
+const _computedCache = new WeakMap()
+
 export function applyComputedColumns(rows, tableName, columnConfig) {
   const tCfg = columnConfig?.[tableName]
   const computed = tCfg?.computed
   const derivedDims = tCfg?.derivedDimensions
   if ((!computed || computed.length === 0) && (!derivedDims || derivedDims.length === 0)) return rows
 
-  return rows.map(row => {
+  /* 캐시 키: rows 배열 + 컬럼 설정 문자열화 */
+  const cacheKey = JSON.stringify({ computed, derivedDims })
+  let cached = _computedCache.get(rows)
+  if (cached && cached.key === cacheKey) {
+    return cached.result
+  }
+
+  const result = rows.map(row => {
     const newRow = { ...row }
     /* 계산 컬럼 (숫자) */
     ;(computed || []).forEach(cc => {
@@ -353,4 +386,8 @@ export function applyComputedColumns(rows, tableName, columnConfig) {
     })
     return newRow
   })
+
+  /* 캐시에 저장 (같은 rows 배열 재사용 시 다음 호출에서 즉시 반환) */
+  _computedCache.set(rows, { key: cacheKey, result })
+  return result
 }

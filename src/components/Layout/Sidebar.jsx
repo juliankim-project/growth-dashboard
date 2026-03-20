@@ -13,6 +13,7 @@ import {
   ShoppingCart, DollarSign, CreditCard, Search, Filter,
   Mail, Phone, Home, Shield, Wrench, Cpu, Server,
   Wifi, Map, Image, Heart, Award, Rocket, Compass, Layers, Eye, Tv,
+  Binoculars,
 } from 'lucide-react'
 
 /* ─────────── 기본 네비 구조 ─────────── */
@@ -57,6 +58,12 @@ export const DEFAULT_SECTIONS = [
     ]
   },
   {
+    id: 'searchads', label: '검색 광고 AI', icon: 'Binoculars',
+    subs: [
+      { id:'ai', label:'트렌드 분석', icon:'TrendingUp' },
+    ]
+  },
+  {
     id: 'datastudio', label: 'Data Studio', icon: 'Database',
     subs: [
       { id:'upload',  label:'CSV 업로드',  icon:'Upload'  },
@@ -83,7 +90,7 @@ export const ICONS = {
   PieChart, Activity, Briefcase, Folder, Box, Monitor,
   ShoppingCart, DollarSign, CreditCard, Search, Filter,
   Mail, Phone, Home, Shield, Wrench, Cpu, Server,
-  Wifi, Map, Image, Heart, Award, Rocket, Compass, Eye, Tv,
+  Wifi, Map, Image, Heart, Award, Rocket, Compass, Eye, Tv, Binoculars,
 }
 
 /* 아이콘 피커용 순서 정렬 목록 */
@@ -92,7 +99,7 @@ export const ICON_LIST = [
   'TrendingUp','Target','FileBarChart','GitBranch','Zap','Rocket',
   'Megaphone','Package','Database','Settings','Sliders','Briefcase',
   'Users','Heart','Star','Award','Bookmark','Flag',
-  'Upload','Table2','History','Search','Filter','Folder',
+  'Upload','Table2','History','Search','Filter','Folder','Binoculars',
   'DollarSign','CreditCard','ShoppingCart','Monitor','Server','Cpu',
   'Globe','Map','Compass','Wifi','Mail','Phone',
   'Calendar','Clock','Bell','Tag','Shield','Home',

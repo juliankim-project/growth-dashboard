@@ -21,14 +21,29 @@ export const fmtP   = n => (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%'
 export const sumField = (data, field) =>
   data.reduce((s, r) => s + (parseFloat(r[field]) || 0), 0)
 
-/* ─── 메트릭 lookup ─── */
-const _m = (metricId, mList) => mList?.find(x => x.id === metricId)
+/* ─── 메트릭 lookup (O(1) — mList를 Map으로 캐시) ─── */
+function _buildMetricMap(mList) {
+  /* mList를 Map으로 변환하여 O(1) lookup 지원 */
+  const map = new Map()
+  if (mList) mList.forEach(m => map.set(m.id, m))
+  return map
+}
+
+const _m = (metricId, mList) => {
+  if (!mList) return null
+  /* mList가 Map이면 직접 사용, 배열이면 변환 */
+  const map = mList instanceof Map ? mList : _buildMetricMap(mList)
+  return map.get(metricId) || null
+}
 
 /* ─── 지표 ID → 값 계산 (SUM / COUNT / AVG / RATIO + 파생) ─── */
 export function calcMetric(data, metricId, mList) {
   const m = _m(metricId, mList)
   if (!m) return 0
   if (!data || data.length === 0) return 0
+
+  /* mList를 Map으로 변환 (반복 lookup 최적화) */
+  const mMap = mList instanceof Map ? mList : _buildMetricMap(mList)
 
   /* COUNT(DISTINCT col) */
   if (m._countDistinct && m._distinctCol) {
@@ -42,8 +57,8 @@ export function calcMetric(data, metricId, mList) {
   /* 비율 계산컬럼 — SUM(분자) / SUM(분모) 또는 COUNT(DISTINCT) 지원 */
   if (m._ratioTerms) {
     const { num, den } = m._ratioTerms
-    const denM = mList?.find(x => x.id === den)
-    const numM = mList?.find(x => x.id === num)
+    const denM = mMap.get(den)
+    const numM = mMap.get(num)
     const denVal = (denM?._countDistinct && denM._distinctCol)
       ? new Set(data.map(r => r[denM._distinctCol]).filter(v => v != null && v !== '')).size
       : sumField(data, den)
@@ -112,7 +127,7 @@ export function fmtMetric(metricId, value, mList) {
 /** 차트 축/툴팁 전용 — 메트릭 fmt 기반 풀 포맷 (축약 없음) */
 export function fmtAxis(value, metricId, mList) {
   if (value == null || isNaN(value)) return '—'
-  const m = mList?.find(x => x.id === metricId)
+  const m = _m(metricId, mList)  /* Map lookup으로 최적화됨 */
   if (!m) return Math.round(value).toLocaleString()
   if (m.fmt === 'currency') return Math.round(value).toLocaleString() + '원'
   if (m.fmt === 'roas')     return Math.round(value * 100).toLocaleString() + '%'
@@ -144,8 +159,9 @@ function calcDerived(row, metrics, mList) {
 
   /* 비율 계산컬럼 — 이미 분자/분모가 SUM 누적된 상태에서 나누기 */
   if (mList) {
+    const mMap = mList instanceof Map ? mList : _buildMetricMap(mList)
     metrics.forEach(mid => {
-      const m = mList.find(x => x.id === mid)
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
       if (m?._ratioTerms) {
         const { num, den } = m._ratioTerms
         const denVal = row[den] || 0
@@ -159,45 +175,47 @@ function calcDerived(row, metrics, mList) {
 export function groupData(data, groupByField, metrics, mList) {
   if (!mList || mList.length === 0) return []
 
+  /* mList를 Map으로 변환 (반복 lookup 최적화) */
+  const mMap = mList instanceof Map ? mList : _buildMetricMap(mList)
+
   /* 파생지표/비율지표가 있으면 기반 지표도 함께 누적 */
   const hasDerived = metrics.some(mid => {
-    const m = mList.find(x => x.id === mid)
+    const m = mMap.get(mid)
     return m?.derived
   })
   const hasRatio = metrics.some(mid => {
-    const m = mList.find(x => x.id === mid)
+    const m = mMap.get(mid)
     return m?._ratioTerms
   })
 
   /* 누적할 메트릭 확장: 파생이면 모든 기반 포함, 비율이면 분자/분모 포함 */
   let allAccum = [...metrics]
   if (hasDerived) {
-    allAccum = [...new Set([...allAccum, ...mList.filter(m => !m.derived && m.field).map(m => m.id)])]
+    const baseMetrics = [...mMap.values()]
+      .filter(m => !m.derived && m.field)
+      .map(m => m.id)
+    allAccum = [...new Set([...allAccum, ...baseMetrics])]
   }
   if (hasRatio) {
     metrics.forEach(mid => {
-      const m = mList.find(x => x.id === mid)
+      const m = mMap.get(mid)
       if (m?._ratioTerms) {
         const { num, den } = m._ratioTerms
         /* 분자/분모가 mList에 있으면 그 ID로, 없으면 raw 컬럼으로 직접 접근 */
-        const numM = mList.find(x => x.field === num || x.id === num)
-        const denM = mList.find(x => x.field === den || x.id === den)
+        const numM = [...mMap.values()].find(x => x.field === num || x.id === num)
+        const denM = [...mMap.values()].find(x => x.field === den || x.id === den)
         if (numM && !allAccum.includes(numM.id)) allAccum.push(numM.id)
         if (denM && !allAccum.includes(denM.id)) allAccum.push(denM.id)
       }
     })
   }
 
-  /* 메트릭별 agg 타입 캐시 */
-  const mCache = {}
-  allAccum.forEach(mid => { mCache[mid] = mList.find(x => x.id === mid) })
-
   const map = {}
   data.forEach(r => {
     const k = r[groupByField] || '(없음)'
     if (!map[k]) { map[k] = { name: k } }
     allAccum.forEach(mid => {
-      const m = mCache[mid]
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
       if (!m || m.derived || !m.field) return
       if (m._ratioTerms) return  // 비율 지표는 직접 누적하지 않음 (분자/분모로 처리)
       /* COUNT(DISTINCT col) — Set 기반 유니크 카운트 */
@@ -221,7 +239,7 @@ export function groupData(data, groupByField, metrics, mList) {
 
   /* COUNT(DISTINCT) 확정 + Set 정리 */
   allAccum.forEach(mid => {
-    const m = mCache[mid]
+    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
     if (m?._countDistinct && m._distinctCol) {
       Object.values(map).forEach(row => {
         row[mid] = row[mid + '__set']?.size || 0
@@ -232,7 +250,7 @@ export function groupData(data, groupByField, metrics, mList) {
 
   /* AVG 확정 + 임시키 정리 */
   allAccum.forEach(mid => {
-    const m = mCache[mid]
+    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
     if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
       Object.values(map).forEach(row => {
         row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
@@ -254,35 +272,38 @@ export function groupData(data, groupByField, metrics, mList) {
 export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
   if (!mList || mList.length === 0) return []
 
+  /* mList를 Map으로 변환 (반복 lookup 최적화) */
+  const mMap = mList instanceof Map ? mList : _buildMetricMap(mList)
+
   /* 파생/비율 감지 */
   const hasDerived = metrics.some(mid => {
-    const m = mList.find(x => x.id === mid)
+    const m = mMap.get(mid)
     return m?.derived
   })
   const hasRatio = metrics.some(mid => {
-    const m = mList.find(x => x.id === mid)
+    const m = mMap.get(mid)
     return m?._ratioTerms
   })
 
   let allAccum = [...metrics]
   if (hasDerived) {
-    allAccum = [...new Set([...allAccum, ...mList.filter(m => !m.derived && m.field).map(m => m.id)])]
+    const baseMetrics = [...mMap.values()]
+      .filter(m => !m.derived && m.field)
+      .map(m => m.id)
+    allAccum = [...new Set([...allAccum, ...baseMetrics])]
   }
   if (hasRatio) {
     metrics.forEach(mid => {
-      const m = mList.find(x => x.id === mid)
+      const m = mMap.get(mid)
       if (m?._ratioTerms) {
         const { num, den } = m._ratioTerms
-        const numM = mList.find(x => x.field === num || x.id === num)
-        const denM = mList.find(x => x.field === den || x.id === den)
+        const numM = [...mMap.values()].find(x => x.field === num || x.id === num)
+        const denM = [...mMap.values()].find(x => x.field === den || x.id === den)
         if (numM && !allAccum.includes(numM.id)) allAccum.push(numM.id)
         if (denM && !allAccum.includes(denM.id)) allAccum.push(denM.id)
       }
     })
   }
-
-  const mCache = {}
-  allAccum.forEach(mid => { mCache[mid] = mList.find(x => x.id === mid) })
 
   /* 날짜 컬럼: 명시적 dateColumn 우선, 없으면 자동 감지 */
   const dateFields = dateColumn
@@ -315,7 +336,7 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
     const gk = toGroupKey(d)
     if (!map[gk]) { map[gk] = { label: toLabel(gk), _key: gk } }
     allAccum.forEach(mid => {
-      const m = mCache[mid]
+      const m = mMap.get(mid)  /* Map lookup으로 최적화 */
       if (!m || m.derived || !m.field) return
       if (m._ratioTerms) return
       if (m._countDistinct && m._distinctCol) {
@@ -339,7 +360,7 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
 
   /* COUNT(DISTINCT) 확정 + Set 정리 */
   allAccum.forEach(mid => {
-    const m = mCache[mid]
+    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
     if (m?._countDistinct && m._distinctCol) {
       Object.values(map).forEach(row => {
         row[mid] = row[mid + '__set']?.size || 0
@@ -349,7 +370,7 @@ export function dailyData(data, metrics, mList, dateColumn, timeGroup = 'day') {
   })
 
   allAccum.forEach(mid => {
-    const m = mCache[mid]
+    const m = mMap.get(mid)  /* Map lookup으로 최적화 */
     if (m && (m.agg === 'avg') && !m._countType && !m.derived) {
       Object.values(map).forEach(row => {
         row[mid] = row[mid + '__c'] > 0 ? row[mid + '__s'] / row[mid + '__c'] : 0
