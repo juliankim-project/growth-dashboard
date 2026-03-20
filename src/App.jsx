@@ -55,6 +55,10 @@ const FIXED_MAP = {
 }
 
 import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
+import { prefetchTables } from './lib/supabase'
+
+// 앱 시작과 동시에 주요 테이블 프리페치 (대시보드 진입 전 데이터 미리 로딩)
+prefetchTables()
 
 /* ────────────── 대시보드 메인 ────────────── */
 function Dashboard({ dark, setDark, user, signOut }) {

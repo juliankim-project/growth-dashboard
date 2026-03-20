@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { idbSet, idbGet, idbDelete, idbClear } from './idbCache'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -9,35 +10,27 @@ if (isMissingEnv) {
   console.error('⚠️ Supabase 환경변수 누락: VITE_SUPABASE_URL 또는 VITE_SUPABASE_ANON_KEY 확인 필요')
 }
 
-// 환경변수 없어도 앱이 죽지 않도록 fallback
 export const supabase = isMissingEnv
   ? null
   : createClient(supabaseUrl, supabaseAnon)
 
-/**
- * 페이지네이션으로 전체 데이터 fetch
- * - columns: Supabase select 문자열 (기본 '*')
- * - 동시성 제어 (CONCURRENT) + 캐싱으로 성능 최적화
- */
-const MAX_ROWS = 200_000 // 테이블 전체 커버 (114k+ 행)
-const PAGE = 10000
-const CONCURRENT = 4
+/* ═══════════════════════════════════════════════
+   fetchAll: 페이지네이션 + 병렬 fetch
+   ═══════════════════════════════════════════════ */
+const MAX_ROWS = 200_000
+const PAGE = 10_000
+const CONCURRENT = 8 // 4→8 병렬 (네트워크 I/O 최대 활용)
 
-/* DB 컬럼명 → 코드 내부 표준명 매핑 (한글/특수문자 컬럼 정규화) */
+/* DB 컬럼명 → 코드 내부 표준명 매핑 */
 const COL_ALIASES = {
   '상품상세페이지_조회_app_web': 'view_content',
 }
 
-// 최적화: 행 정규화 캐싱 (같은 데이터면 함수 재사용)
 const _normalizeCache = new WeakMap()
 
 function normalizeRows(rows) {
   if (!rows?.length) return rows
-
-  // 캐시 히트: 같은 배열 참조이면 이전 결과 재사용
-  if (_normalizeCache.has(rows)) {
-    return _normalizeCache.get(rows)
-  }
+  if (_normalizeCache.has(rows)) return _normalizeCache.get(rows)
 
   const aliases = Object.entries(COL_ALIASES)
   if (aliases.length === 0) {
@@ -61,7 +54,7 @@ function normalizeRows(rows) {
 
 export async function fetchAll(tableName, columns = '*') {
   if (!supabase) {
-    console.warn('[fetchAll] supabase 클라이언트가 초기화되지 않았습니다. 환경변수를 확인하세요.')
+    console.warn('[fetchAll] supabase 클라이언트 미초기화')
     return []
   }
 
@@ -76,7 +69,7 @@ export async function fetchAll(tableName, columns = '*') {
   const totalPages = Math.min(Math.ceil(count / PAGE), Math.ceil(MAX_ROWS / PAGE))
   const all = new Array(totalPages)
 
-  // 최적화: 동시 요청으로 네트워크 I/O 병렬화
+  // 병렬 배치 fetch (CONCURRENT 동시 요청)
   for (let batch = 0; batch < totalPages; batch += CONCURRENT) {
     const promises = []
     for (let i = batch; i < Math.min(batch + CONCURRENT, totalPages); i++) {
@@ -98,43 +91,27 @@ export async function fetchAll(tableName, columns = '*') {
   return normalizeRows(all.flat())
 }
 
-/**
- * 서버사이드 날짜 필터링 fetch
- * - dateColumn, startDate, endDate가 모두 있으면 WHERE 절 추가
- * - 없으면 fetchAll 폴백
- */
-/**
- * 테이블의 날짜 컬럼 기준 최소/최대 날짜 + 총 행 수 조회
- */
+/* ═══════════════════════════════════════════════
+   fetchDateRange: 날짜 범위 메타 조회
+   ═══════════════════════════════════════════════ */
 export async function fetchDateRange(tableName, dateColumn) {
   if (!supabase || !dateColumn) return null
   try {
-    // 최소 날짜
-    const { data: minData, error: minErr } = await supabase
-      .from(tableName)
-      .select(dateColumn)
-      .order(dateColumn, { ascending: true })
-      .limit(1)
-    if (minErr) throw minErr
+    const [minRes, maxRes, countRes] = await Promise.all([
+      supabase.from(tableName).select(dateColumn).order(dateColumn, { ascending: true }).limit(1),
+      supabase.from(tableName).select(dateColumn).order(dateColumn, { ascending: false }).limit(1),
+      supabase.from(tableName).select('*', { count: 'exact', head: true }),
+    ])
 
-    // 최대 날짜
-    const { data: maxData, error: maxErr } = await supabase
-      .from(tableName)
-      .select(dateColumn)
-      .order(dateColumn, { ascending: false })
-      .limit(1)
-    if (maxErr) throw maxErr
+    if (minRes.error) throw minRes.error
+    if (maxRes.error) throw maxRes.error
+    if (countRes.error) throw countRes.error
 
-    // 총 행 수
-    const { count, error: countErr } = await supabase
-      .from(tableName)
-      .select('*', { count: 'exact', head: true })
-    if (countErr) throw countErr
-
-    const minDate = minData?.[0]?.[dateColumn] || null
-    const maxDate = maxData?.[0]?.[dateColumn] || null
-
-    return { minDate, maxDate, totalRows: count }
+    return {
+      minDate: minRes.data?.[0]?.[dateColumn] || null,
+      maxDate: maxRes.data?.[0]?.[dateColumn] || null,
+      totalRows: countRes.count,
+    }
   } catch (e) {
     console.error(`[fetchDateRange] ${tableName}:`, e)
     return null
@@ -142,22 +119,33 @@ export async function fetchDateRange(tableName, dateColumn) {
 }
 
 /* ═══════════════════════════════════════════════
-   테이블별 전체 캐시: 1번 로딩 → 날짜 변경 즉시
-   - 전체 데이터를 테이블별로 캐시
-   - 날짜 필터링은 클라이언트에서 처리 (0ms)
+   테이블 캐시: Memory + IndexedDB (2계층)
+
+   1. 메모리 캐시 히트 → 즉시 반환 (0ms)
+   2. IndexedDB 캐시 히트 → 즉시 반환 + 백그라운드 갱신
+   3. 캐시 미스 → 네트워크 fetch + 양쪽 캐시 저장
    ═══════════════════════════════════════════════ */
 const _tableCache = {} // { tableName: { data, ts, promise } }
-const TABLE_CACHE_TTL = 1_800_000 // 30분
+const TABLE_CACHE_TTL = 1_800_000     // 메모리 캐시 30분
+const IDB_CACHE_TTL   = 86_400_000    // IndexedDB 24시간
 
-/* ── 테이블별 필수 컬럼 (타임아웃 방지: * 대신 필수만) ── */
+/* 테이블별 필수 컬럼 (불필요한 컬럼 제외로 전송량 절약) */
 const TABLE_ESSENTIAL_COLS = {
   product_revenue_raw: 'id,no,guest_id,user_id,status,area,brand_name,branch_name,room_type_name,room_type2,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,lead_time',
+}
+
+/* 진행 상태 이벤트 (UI에서 구독 가능) */
+const _listeners = new Set()
+export function onFetchProgress(fn) { _listeners.add(fn); return () => _listeners.delete(fn) }
+function emitProgress(tableName, stage, detail) {
+  const ev = { tableName, stage, detail, ts: Date.now() }
+  _listeners.forEach(fn => { try { fn(ev) } catch {} })
 }
 
 async function ensureTableData(tableName) {
   const entry = _tableCache[tableName]
 
-  // 메모리 캐시 히트 — 캐시된 데이터에 필수 컬럼이 누락된 경우 캐시 무효화
+  // 1) 메모리 캐시 히트
   if (entry?.data && (Date.now() - entry.ts < TABLE_CACHE_TTL)) {
     const cols = TABLE_ESSENTIAL_COLS[tableName]
     if (cols && entry.data.length > 0) {
@@ -165,11 +153,13 @@ async function ensureTableData(tableName) {
       const sample = entry.data[0]
       const missing = required.some(c => !(c in sample))
       if (missing) {
-        _tableCache[tableName] = null  // 캐시 무효화
+        _tableCache[tableName] = null
       } else {
+        emitProgress(tableName, 'cache-hit', { source: 'memory' })
         return entry.data
       }
     } else {
+      emitProgress(tableName, 'cache-hit', { source: 'memory' })
       return entry.data
     }
   }
@@ -179,13 +169,35 @@ async function ensureTableData(tableName) {
 
   const promise = (async () => {
     try {
-      // 테이블별 필수 컬럼 사용 (없으면 * 폴백)
+      // 2) IndexedDB 캐시 체크 (네트워크보다 훨씬 빠름)
+      const idbEntry = await idbGet(tableName, IDB_CACHE_TTL)
+      if (idbEntry?.data?.length > 0) {
+        emitProgress(tableName, 'cache-hit', { source: 'indexeddb', age: idbEntry.age })
+        // 메모리 캐시에도 올려놓기
+        _tableCache[tableName] = { data: idbEntry.data, ts: Date.now(), promise: null }
+
+        // 백그라운드 갱신 (1시간 이상 된 경우)
+        if (idbEntry.age > 3_600_000) {
+          setTimeout(() => refreshTableInBackground(tableName), 100)
+        }
+
+        return idbEntry.data
+      }
+
+      // 3) 네트워크 fetch
+      emitProgress(tableName, 'fetching', { message: '서버에서 데이터 로딩 중...' })
       const cols = TABLE_ESSENTIAL_COLS[tableName] || '*'
       const rows = await fetchAll(tableName, cols)
+
+      // 양쪽 캐시에 저장
       _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
+      idbSet(tableName, rows).catch(() => {}) // 비동기, 실패해도 무시
+      emitProgress(tableName, 'loaded', { rowCount: rows.length })
+
       return rows
     } catch (e) {
       _tableCache[tableName] = { ...(_tableCache[tableName] || {}), promise: null }
+      emitProgress(tableName, 'error', { message: e.message })
       throw e
     }
   })()
@@ -194,30 +206,62 @@ async function ensureTableData(tableName) {
   return promise
 }
 
-export async function fetchByDateRange(tableName, dateColumn, startDate, endDate, columns = '*') {
-  if (!supabase) {
-    console.warn('[fetchByDateRange] supabase 클라이언트가 초기화되지 않았습니다.')
-    return []
+/* 백그라운드 갱신: UI 블로킹 없이 최신 데이터로 교체 */
+async function refreshTableInBackground(tableName) {
+  try {
+    const cols = TABLE_ESSENTIAL_COLS[tableName] || '*'
+    const rows = await fetchAll(tableName, cols)
+    _tableCache[tableName] = { data: rows, ts: Date.now(), promise: null }
+    await idbSet(tableName, rows)
+    emitProgress(tableName, 'bg-refresh', { rowCount: rows.length })
+  } catch (e) {
+    console.warn(`[bg-refresh] ${tableName} 실패:`, e.message)
   }
+}
 
-  // 전체 데이터 1회 로딩 (항상 전체 컬럼으로 캐시)
+/* ═══════════════════════════════════════════════
+   fetchByDateRange: 전체 캐시 → 클라이언트 필터
+   ═══════════════════════════════════════════════ */
+export async function fetchByDateRange(tableName, dateColumn, startDate, endDate, columns = '*') {
+  if (!supabase) return []
+
   const allData = await ensureTableData(tableName)
 
-  // 날짜 필터 없으면 전체 반환
   if (!dateColumn || !startDate || !endDate) return allData
 
-  // 클라이언트 날짜 필터링 (즉시!)
   return allData.filter(row => {
     const d = String(row[dateColumn] || '').slice(0, 10)
     return d && d >= startDate && d <= endDate
   })
 }
 
-/** 특정 테이블 캐시 무효화 */
+/* ═══════════════════════════════════════════════
+   캐시 관리
+   ═══════════════════════════════════════════════ */
+/** 특정 테이블 캐시 무효화 (메모리 + IndexedDB) */
 export function invalidateTableCache(tableName) {
   if (tableName) {
     delete _tableCache[tableName]
+    idbDelete(tableName).catch(() => {})
   } else {
     Object.keys(_tableCache).forEach(k => delete _tableCache[k])
+    idbClear().catch(() => {})
   }
+}
+
+/* ═══════════════════════════════════════════════
+   프리페치: 앱 시작시 주요 테이블 미리 로딩
+
+   사용법: 앱 최초 렌더 시 prefetchTables() 호출
+   → 대시보드 진입 전에 데이터가 이미 캐시에 있음
+   ═══════════════════════════════════════════════ */
+const PREFETCH_TABLES = ['product_revenue_raw', 'marketing_data']
+
+export function prefetchTables() {
+  if (!supabase) return
+
+  // 비동기로 각 테이블 프리페치 (에러 무시)
+  PREFETCH_TABLES.forEach(t => {
+    ensureTableData(t).catch(() => {})
+  })
 }
