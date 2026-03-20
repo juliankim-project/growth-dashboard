@@ -135,14 +135,28 @@ const TABLE_CACHE_TTL = 1_800_000 // 30분
 
 /* ── 테이블별 필수 컬럼 (타임아웃 방지: * 대신 필수만) ── */
 const TABLE_ESSENTIAL_COLS = {
-  product_revenue_raw: 'id,guest_id,user_id,status,area,brand_name,branch_name,room_type_name,room_type2,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,lead_time',
+  product_revenue_raw: 'id,no,guest_id,user_id,status,area,brand_name,branch_name,room_type_name,room_type2,channel_group,channel_name,reservation_date,check_in_date,nights,peoples,payment_amount,original_price,lead_time',
 }
 
 async function ensureTableData(tableName) {
   const entry = _tableCache[tableName]
 
-  // 메모리 캐시 히트
-  if (entry?.data && (Date.now() - entry.ts < TABLE_CACHE_TTL)) return entry.data
+  // 메모리 캐시 히트 — 캐시된 데이터에 필수 컬럼이 누락된 경우 캐시 무효화
+  if (entry?.data && (Date.now() - entry.ts < TABLE_CACHE_TTL)) {
+    const cols = TABLE_ESSENTIAL_COLS[tableName]
+    if (cols && entry.data.length > 0) {
+      const required = cols.split(',')
+      const sample = entry.data[0]
+      const missing = required.some(c => !(c in sample))
+      if (missing) {
+        _tableCache[tableName] = null  // 캐시 무효화
+      } else {
+        return entry.data
+      }
+    } else {
+      return entry.data
+    }
+  }
 
   // 중복 fetch 방지
   if (entry?.promise) return entry.promise
