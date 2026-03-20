@@ -29,6 +29,7 @@ const ExcludeUsers = lazy(() => import('./pages/useranalysis/ExcludeUsers'))
 const CheckinPace = lazy(() => import('./pages/useranalysis/CheckinPace'))
 const SearchAdsAI = lazy(() => import('./pages/searchads/SearchAdsAI'))
 const KeywordTrendDashboard = lazy(() => import('./pages/searchads/KeywordTrendDashboard'))
+const Scheduler = lazy(() => import('./pages/searchads/Scheduler'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -52,6 +53,7 @@ const FIXED_MAP = {
   'useranalysis.exclude': ExcludeUsers,
   'searchads.ai': SearchAdsAI,
   'searchads.trend': KeywordTrendDashboard,
+  'searchads.scheduler': Scheduler,
 }
 
 import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
