@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { fetchProductData } from './fetchData'
-import { Crown, Users, Star, UserPlus, RefreshCw, Search, Filter } from 'lucide-react'
+import { Crown, Users, Star, UserPlus, RefreshCw, Search, Filter, X, MapPin, Building2, Bed, Calendar, CreditCard, Clock, Hash } from 'lucide-react'
 
 /* ─── RFM 세그먼트 분류 ─── */
 function calcSegments(data) {
@@ -109,6 +109,158 @@ const SEGMENT_COLORS = {
   '신규': { active: 'bg-emerald-500 text-white', inactive: 'text-emerald-500', ring: 'ring-emerald-500/30' },
 }
 
+/* ─── 게스트 상세 모달 ─── */
+function GuestDetailModal({ dark, guestId, guestSummary, bookings, onClose }) {
+  if (!guestId) return null
+
+  const t = dark
+    ? { bg: 'bg-[#22272B]', card: 'bg-[#2C333A]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500', overlay: 'bg-black/60' }
+    : { bg: 'bg-white', card: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400', overlay: 'bg-black/40' }
+
+  const segColor = guestSummary.segment === 'VIP' ? 'text-purple-500 bg-purple-500/10' : guestSummary.segment === '충성' ? 'text-amber-500 bg-amber-500/10' : guestSummary.segment === '일반' ? 'text-blue-500 bg-blue-500/10' : 'text-emerald-500 bg-emerald-500/10'
+
+  // 지역별 집계
+  const areaStats = {}
+  const branchStats = {}
+  const roomStats = {}
+  const channelStats = {}
+  bookings.forEach(r => {
+    const area = r.area || '(미지정)'
+    const branch = r.branch_name || '(미지정)'
+    const room = r.room_type2 || '(미지정)'
+    const ch = r.channel_group || '(미지정)'
+    areaStats[area] = (areaStats[area] || 0) + 1
+    branchStats[branch] = (branchStats[branch] || 0) + 1
+    roomStats[room] = (roomStats[room] || 0) + 1
+    channelStats[ch] = (channelStats[ch] || 0) + 1
+  })
+
+  const topAreas = Object.entries(areaStats).sort((a, b) => b[1] - a[1])
+  const topBranches = Object.entries(branchStats).sort((a, b) => b[1] - a[1])
+  const topRooms = Object.entries(roomStats).sort((a, b) => b[1] - a[1])
+  const topChannels = Object.entries(channelStats).sort((a, b) => b[1] - a[1])
+
+  const avgNights = bookings.length > 0 ? bookings.reduce((s, r) => s + (Number(r.nights) || 0), 0) / bookings.length : 0
+  const avgLeadTime = bookings.filter(r => r.lead_time != null).length > 0
+    ? bookings.filter(r => r.lead_time != null).reduce((s, r) => s + Number(r.lead_time), 0) / bookings.filter(r => r.lead_time != null).length : 0
+  const avgPeoples = bookings.length > 0 ? bookings.reduce((s, r) => s + (Number(r.peoples) || 0), 0) / bookings.length : 0
+
+  const sorted = [...bookings].sort((a, b) => (b.reservation_date || '').localeCompare(a.reservation_date || ''))
+
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${t.overlay}`} onClick={onClose}>
+      <div className={`${t.bg} rounded-2xl shadow-2xl border ${t.border} w-[720px] max-h-[85vh] flex flex-col`}
+        onClick={e => e.stopPropagation()}>
+        {/* 헤더 */}
+        <div className={`px-6 py-4 border-b ${t.border} flex items-center justify-between shrink-0`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${segColor}`}>
+              <Users size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-base font-bold font-mono ${t.text}`}>{guestId}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${segColor}`}>{guestSummary.segment}</span>
+              </div>
+              <div className={`text-xs ${t.muted}`}>
+                {guestSummary.firstDate?.slice(0, 10)} ~ {guestSummary.lastDate?.slice(0, 10)}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <X size={18} className={t.muted} />
+          </button>
+        </div>
+
+        {/* 요약 KPI */}
+        <div className={`px-6 py-3 border-b ${t.border} shrink-0`}>
+          <div className="grid grid-cols-5 gap-3">
+            {[
+              { icon: <Hash size={13}/>, label: '예약', value: `${guestSummary.count}건` },
+              { icon: <CreditCard size={13}/>, label: '총매출', value: fmtKRW(guestSummary.revenue) },
+              { icon: <Bed size={13}/>, label: '평균LOS', value: `${avgNights.toFixed(1)}박` },
+              { icon: <Clock size={13}/>, label: '리드타임', value: `${Math.round(avgLeadTime)}일` },
+              { icon: <Users size={13}/>, label: '평균인원', value: `${avgPeoples.toFixed(1)}명` },
+            ].map((kpi, i) => (
+              <div key={i} className={`rounded-lg p-2.5 ${t.card}`}>
+                <div className={`flex items-center gap-1.5 mb-0.5 ${t.muted}`}>
+                  {kpi.icon}
+                  <span className="text-[10px]">{kpi.label}</span>
+                </div>
+                <div className={`text-sm font-bold ${t.text}`}>{kpi.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 선호도 분석 (2x2 그리드) */}
+        <div className={`px-6 py-3 border-b ${t.border} shrink-0`}>
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { icon: <MapPin size={12}/>, label: '권역', items: topAreas },
+              { icon: <Building2 size={12}/>, label: '지점', items: topBranches },
+              { icon: <Bed size={12}/>, label: '객실타입', items: topRooms },
+              { icon: <Calendar size={12}/>, label: '채널', items: topChannels },
+            ].map((cat, ci) => (
+              <div key={ci}>
+                <div className={`flex items-center gap-1 mb-1.5 ${t.muted}`}>
+                  {cat.icon}
+                  <span className="text-[10px] font-semibold">{cat.label}</span>
+                </div>
+                <div className="space-y-0.5">
+                  {cat.items.slice(0, 3).map(([name, cnt], j) => {
+                    const pct = bookings.length > 0 ? cnt / bookings.length * 100 : 0
+                    return (
+                      <div key={j} className="flex items-center gap-1.5">
+                        <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${dark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+                          <div className="h-full rounded-full bg-blue-500/60" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`text-[10px] truncate max-w-[60px] ${t.text}`}>{name}</span>
+                        <span className={`text-[10px] font-bold ${t.muted}`}>{cnt}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 예약 이력 테이블 */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className={`px-6 py-2 sticky top-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} z-10`}>
+            <h3 className={`text-xs font-bold ${t.sub}`}>예약 이력 ({bookings.length}건)</h3>
+          </div>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
+                {['예약일', '체크인', '지역', '지점', '객실', 'LOS', '인원', '채널', '결제'].map(h => (
+                  <th key={h} className={`px-3 py-2 text-left font-semibold ${t.sub}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r, i) => (
+                <tr key={i} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]/50' : 'hover:bg-slate-50'}`}>
+                  <td className={`px-3 py-2 font-mono ${t.text}`}>{r.reservation_date?.slice(0, 10)}</td>
+                  <td className={`px-3 py-2 font-mono ${t.muted}`}>{r.check_in_date?.slice(0, 10) || '—'}</td>
+                  <td className={`px-3 py-2 ${t.text}`}>{r.area || '—'}</td>
+                  <td className={`px-3 py-2 truncate max-w-[100px] ${t.text}`}>{r.branch_name || '—'}</td>
+                  <td className={`px-3 py-2 truncate max-w-[80px] ${t.text}`}>{r.room_type2 || '—'}</td>
+                  <td className={`px-3 py-2 font-bold ${t.text}`}>{r.nights ?? '—'}박</td>
+                  <td className={`px-3 py-2 ${t.text}`}>{r.peoples ?? '—'}명</td>
+                  <td className={`px-3 py-2 ${t.muted}`}>{r.channel_group || '—'}</td>
+                  <td className={`px-3 py-2 font-medium ${t.text}`}>{fmtKRW(Number(r.payment_amount) || 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function UserSegment({ dark, dateRange }) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
@@ -119,6 +271,7 @@ export default function UserSegment({ dark, dateRange }) {
   const [selectedArea, setSelectedArea] = useState('')
   const [selectedBranch, setSelectedBranch] = useState('')
   const [selectedSegments, setSelectedSegments] = useState(new Set())
+  const [modalGuestId, setModalGuestId] = useState(null)
 
   const fetchKey = `${dateRange?.start || ''}_${dateRange?.end || ''}`
   useEffect(() => {
@@ -171,6 +324,25 @@ export default function UserSegment({ dark, dateRange }) {
       return next
     })
   }
+
+  // 모달용: 선택된 게스트의 예약 이력
+  const modalBookings = useMemo(() => {
+    if (!modalGuestId) return []
+    return data.filter(r => String(r.guest_id) === String(modalGuestId))
+  }, [data, modalGuestId])
+
+  const modalGuestSummary = useMemo(() => {
+    if (!modalGuestId) return null
+    return guests.find(g => String(g.guest_id) === String(modalGuestId))
+  }, [guests, modalGuestId])
+
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!modalGuestId) return
+    const handler = (e) => { if (e.key === 'Escape') setModalGuestId(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [modalGuestId])
 
   const t = dark
     ? { bg: 'bg-[#1D2125]', card: 'bg-[#22272B]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500',
@@ -318,7 +490,8 @@ export default function UserSegment({ dark, dateRange }) {
                 {sortedGuests.map((g, i) => {
                   const segColor = g.segment === 'VIP' ? 'text-purple-500' : g.segment === '충성' ? 'text-amber-500' : g.segment === '일반' ? 'text-blue-500' : 'text-emerald-500'
                   return (
-                    <tr key={g.guest_id} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
+                    <tr key={g.guest_id} onClick={() => setModalGuestId(g.guest_id)}
+                      className={`border-t ${t.border} cursor-pointer transition-colors ${dark ? 'hover:bg-[#2C333A]' : 'hover:bg-slate-50'}`}>
                       <td className={`px-4 py-2.5 font-bold ${t.muted}`}>{i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</td>
                       <td className={`px-4 py-2.5 font-mono ${t.text}`}>{g.guest_id}</td>
                       <td className={`px-4 py-2.5 font-semibold ${segColor}`}>{g.segment}</td>
@@ -336,6 +509,17 @@ export default function UserSegment({ dark, dateRange }) {
           </div>
         </div>
       </div>
+
+      {/* 게스트 상세 모달 */}
+      {modalGuestId && modalGuestSummary && (
+        <GuestDetailModal
+          dark={dark}
+          guestId={modalGuestId}
+          guestSummary={modalGuestSummary}
+          bookings={modalBookings}
+          onClose={() => setModalGuestId(null)}
+        />
+      )}
     </div>
   )
 }
