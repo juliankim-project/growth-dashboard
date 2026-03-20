@@ -253,7 +253,7 @@ export function useColumnConfig() {
     return latestRef.current[tableName] || { columns: {}, computed: [], dimensionColumns: [] }
   }, [])
 
-  /* ── setColumnConfig (하위 호환 — widgetMetricConfig만 저장) ── */
+  /* ── setColumnConfig — 전체 config를 column_configs에 저장 ── */
   const setColumnConfig = useCallback((tableName, tableConfig) => {
     _setColumnConfig(prev => {
       const next = { ...prev, [tableName]: tableConfig }
@@ -262,8 +262,8 @@ export function useColumnConfig() {
       return next
     })
 
-    // widgetMetricConfig만 column_configs에 저장
-    if (supabase && tableConfig?.widgetMetricConfig) {
+    // 전체 config를 column_configs에 저장 (column_definitions 비어있을 때 폴백용)
+    if (supabase && tableConfig) {
       clearTimeout(wmcTimers.current[tableName])
       wmcTimers.current[tableName] = setTimeout(() => {
         lastPersistTs.current[tableName] = Date.now()
@@ -271,11 +271,11 @@ export function useColumnConfig() {
           .from('column_configs')
           .upsert({
             table_name: tableName,
-            config: { widgetMetricConfig: tableConfig.widgetMetricConfig },
+            config: tableConfig,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'table_name' })
           .then(({ error }) => {
-            if (error) console.warn('[useColumnConfig] widgetMetricConfig 저장 실패:', error.message)
+            if (error) console.warn('[useColumnConfig] config 저장 실패:', error.message)
           })
       }, WMC_SAVE_DEBOUNCE_MS)
     }
