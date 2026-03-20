@@ -149,11 +149,20 @@ export function useColumnConfig() {
         // 1) column_definitions → columnConfig 변환
         const baseConfig = transformRows(defRes.data, metaRes.data)
 
-        // 2) column_configs에서 widgetMetricConfig 머지
+        // 2) column_configs 머지
+        //    - column_definitions가 비어있으면 column_configs의 전체 config를 폴백으로 사용
+        //    - column_definitions가 있으면 widgetMetricConfig만 머지
         if (wmcRes.data) {
           wmcRes.data.forEach(row => {
-            if (baseConfig[row.table_name] && row.config?.widgetMetricConfig) {
-              baseConfig[row.table_name].widgetMetricConfig = row.config.widgetMetricConfig
+            if (!row.config) return
+            if (baseConfig[row.table_name]) {
+              // column_definitions에서 이미 로드됨 → widgetMetricConfig만 머지
+              if (row.config.widgetMetricConfig) {
+                baseConfig[row.table_name].widgetMetricConfig = row.config.widgetMetricConfig
+              }
+            } else if (row.config.columns) {
+              // column_definitions에 없지만 column_configs에 전체 config 있음 → 폴백
+              baseConfig[row.table_name] = row.config
             }
           })
         }
@@ -183,11 +192,17 @@ export function useColumnConfig() {
           if (defRes.error) return
           const baseConfig = transformRows(defRes.data, metaRes.data)
 
-          // 기존 widgetMetricConfig 보존
+          // 기존 widgetMetricConfig 보존 + column_configs 폴백 보존
           _setColumnConfig(prev => {
             for (const tn of Object.keys(baseConfig)) {
               if (prev[tn]?.widgetMetricConfig) {
                 baseConfig[tn].widgetMetricConfig = prev[tn].widgetMetricConfig
+              }
+            }
+            // column_definitions에 없지만 column_configs 폴백으로 존재하는 테이블 보존
+            for (const tn of Object.keys(prev)) {
+              if (!baseConfig[tn] && prev[tn]?.columns) {
+                baseConfig[tn] = prev[tn]
               }
             }
             saveLocal(baseConfig)
