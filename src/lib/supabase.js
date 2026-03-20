@@ -88,7 +88,25 @@ export async function fetchAll(tableName, columns = '*') {
     await Promise.all(promises)
   }
 
-  return normalizeRows(all.flat())
+  const flat = all.flat()
+
+  // id/no 기준 중복 제거 (페이지네이션 경계 + CSV 중복 업로드 방지)
+  if (flat.length > 0 && (flat[0].id != null || flat[0].no != null)) {
+    const seen = new Set()
+    const deduped = []
+    const keyField = flat[0].id != null ? 'id' : 'no'
+    for (const row of flat) {
+      const key = row[keyField]
+      if (key != null) {
+        if (seen.has(key)) continue
+        seen.add(key)
+      }
+      deduped.push(row)
+    }
+    return normalizeRows(deduped)
+  }
+
+  return normalizeRows(flat)
 }
 
 /* ═══════════════════════════════════════════════

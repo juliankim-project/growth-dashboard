@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { fetchProductData } from './fetchData'
-import { Crown, Users, Star, UserPlus, RefreshCw, Search, Filter, X, MapPin, Building2, Bed, Calendar, CreditCard, Clock, Hash } from 'lucide-react'
+import { Users, RefreshCw, Search, Filter, X, MapPin, Building2, Bed, Calendar, CreditCard, Clock, Hash, TrendingUp, DollarSign } from 'lucide-react'
 
 /* ─── RFM 세그먼트 분류 ─── */
 function calcSegments(data) {
@@ -109,152 +109,183 @@ const SEGMENT_COLORS = {
   '신규': { active: 'bg-emerald-500 text-white', inactive: 'text-emerald-500', ring: 'ring-emerald-500/30' },
 }
 
+/* ─── 금액 포맷 (간결) ─── */
+const fmtKRWShort = v => {
+  if (v == null || isNaN(v)) return '—'
+  if (v >= 1e8) return (v / 1e8).toFixed(1) + '억'
+  if (v >= 1e4) return Math.round(v / 1e4).toLocaleString() + '만'
+  return Math.round(v).toLocaleString() + '원'
+}
+
+/* ─── 세그먼트 스타일 ─── */
+const SEG_STYLE = {
+  VIP:  { color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', dot: 'bg-purple-500' },
+  '충성': { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', dot: 'bg-amber-500' },
+  '일반': { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', dot: 'bg-blue-500' },
+  '신규': { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-500' },
+}
+
 /* ─── 게스트 상세 모달 ─── */
 function GuestDetailModal({ dark, guestId, guestSummary, bookings, onClose }) {
   if (!guestId) return null
 
   const t = dark
-    ? { bg: 'bg-[#22272B]', card: 'bg-[#2C333A]', border: 'border-[#A1BDD914]', text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500', overlay: 'bg-black/60' }
-    : { bg: 'bg-white', card: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400', overlay: 'bg-black/40' }
+    ? { bg: 'bg-[#1a1d21]', card: 'bg-[#22272B]', card2: 'bg-[#2C333A]', border: 'border-[#A6C5E229]',
+        text: 'text-white', sub: 'text-slate-400', muted: 'text-slate-500', overlay: 'bg-black/70 backdrop-blur-sm' }
+    : { bg: 'bg-white', card: 'bg-slate-50', card2: 'bg-slate-100', border: 'border-slate-200',
+        text: 'text-slate-800', sub: 'text-slate-600', muted: 'text-slate-400', overlay: 'bg-black/40 backdrop-blur-sm' }
 
-  const segColor = guestSummary.segment === 'VIP' ? 'text-purple-500 bg-purple-500/10' : guestSummary.segment === '충성' ? 'text-amber-500 bg-amber-500/10' : guestSummary.segment === '일반' ? 'text-blue-500 bg-blue-500/10' : 'text-emerald-500 bg-emerald-500/10'
+  const ss = SEG_STYLE[guestSummary.segment] || SEG_STYLE['신규']
 
-  // 지역별 집계
-  const areaStats = {}
-  const branchStats = {}
-  const roomStats = {}
-  const channelStats = {}
-  bookings.forEach(r => {
-    const area = r.area || '(미지정)'
-    const branch = r.branch_name || '(미지정)'
-    const room = r.room_type2 || '(미지정)'
-    const ch = r.channel_group || '(미지정)'
-    areaStats[area] = (areaStats[area] || 0) + 1
-    branchStats[branch] = (branchStats[branch] || 0) + 1
-    roomStats[room] = (roomStats[room] || 0) + 1
-    channelStats[ch] = (channelStats[ch] || 0) + 1
-  })
+  /* KPI 계산 */
+  const totalNights = bookings.reduce((s, r) => s + (Number(r.nights) || 0), 0)
+  const totalRevenue = guestSummary.revenue
+  const bookingCount = guestSummary.count
+  // LOS = 총 결제박수 / 결제건수
+  const los = bookingCount > 0 ? totalNights / bookingCount : 0
+  // 객단가 = 총매출 / 건수
+  const avgPrice = bookingCount > 0 ? totalRevenue / bookingCount : 0
+  // ADR = 총매출 / 총 박수
+  const adr = totalNights > 0 ? totalRevenue / totalNights : 0
+  // 리드타임
+  const ltValid = bookings.filter(r => r.lead_time != null && Number(r.lead_time) >= 0)
+  const avgLeadTime = ltValid.length > 0 ? ltValid.reduce((s, r) => s + Number(r.lead_time), 0) / ltValid.length : 0
 
-  const topAreas = Object.entries(areaStats).sort((a, b) => b[1] - a[1])
-  const topBranches = Object.entries(branchStats).sort((a, b) => b[1] - a[1])
-  const topRooms = Object.entries(roomStats).sort((a, b) => b[1] - a[1])
-  const topChannels = Object.entries(channelStats).sort((a, b) => b[1] - a[1])
-
-  const avgNights = bookings.length > 0 ? bookings.reduce((s, r) => s + (Number(r.nights) || 0), 0) / bookings.length : 0
-  const avgLeadTime = bookings.filter(r => r.lead_time != null).length > 0
-    ? bookings.filter(r => r.lead_time != null).reduce((s, r) => s + Number(r.lead_time), 0) / bookings.filter(r => r.lead_time != null).length : 0
-  const avgPeoples = bookings.length > 0 ? bookings.reduce((s, r) => s + (Number(r.peoples) || 0), 0) / bookings.length : 0
+  /* 선호도 집계 */
+  const aggregate = (key) => {
+    const map = {}
+    bookings.forEach(r => { const v = r[key] || '(미지정)'; map[v] = (map[v] || 0) + 1 })
+    return Object.entries(map).sort((a, b) => b[1] - a[1])
+  }
+  const topAreas = aggregate('area')
+  const topBranches = aggregate('branch_name')
+  const topRooms = aggregate('room_type2')
+  const topChannels = aggregate('channel_group')
 
   const sorted = [...bookings].sort((a, b) => (b.reservation_date || '').localeCompare(a.reservation_date || ''))
 
+  /* 선호도 바 컴포넌트 */
+  const PreferBar = ({ items, color = 'bg-blue-500' }) => (
+    <div className="space-y-1">
+      {items.slice(0, 3).map(([name, cnt], j) => {
+        const pct = bookings.length > 0 ? cnt / bookings.length * 100 : 0
+        return (
+          <div key={j} className="flex items-center gap-2">
+            <span className={`text-[11px] truncate w-[72px] text-right ${t.text}`}>{name}</span>
+            <div className={`flex-1 h-[6px] rounded-full overflow-hidden ${dark ? 'bg-slate-700/40' : 'bg-slate-200/60'}`}>
+              <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className={`text-[10px] font-mono w-8 text-right ${t.muted}`}>{cnt}</span>
+          </div>
+        )
+      })}
+      {items.length === 0 && <span className={`text-[10px] ${t.muted}`}>데이터 없음</span>}
+    </div>
+  )
+
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center ${t.overlay}`} onClick={onClose}>
-      <div className={`${t.bg} rounded-2xl shadow-2xl border ${t.border} w-[720px] max-h-[85vh] flex flex-col`}
-        onClick={e => e.stopPropagation()}>
-        {/* 헤더 */}
-        <div className={`px-6 py-4 border-b ${t.border} flex items-center justify-between shrink-0`}>
+      <div className={`${t.bg} rounded-2xl shadow-2xl ring-1 ${dark ? 'ring-white/5' : 'ring-black/5'} w-[780px] max-h-[88vh] flex flex-col animate-in`}
+        onClick={e => e.stopPropagation()} style={{ animation: 'modalIn .15s ease-out' }}>
+
+        {/* ── 헤더 ── */}
+        <div className={`px-6 py-4 flex items-center justify-between shrink-0`}>
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${segColor}`}>
-              <Users size={18} />
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${ss.bg} border ${ss.border}`}>
+              <span className="text-lg">{guestSummary.segment === 'VIP' ? '💎' : guestSummary.segment === '충성' ? '🥇' : guestSummary.segment === '일반' ? '🥈' : '🆕'}</span>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`text-base font-bold font-mono ${t.text}`}>{guestId}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${segColor}`}>{guestSummary.segment}</span>
+              <div className="flex items-center gap-2.5">
+                <span className={`text-lg font-bold font-mono tracking-tight ${t.text}`}>{guestId}</span>
+                <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${ss.color} ${ss.bg} border ${ss.border}`}>{guestSummary.segment}</span>
               </div>
-              <div className={`text-xs ${t.muted}`}>
-                {guestSummary.firstDate?.slice(0, 10)} ~ {guestSummary.lastDate?.slice(0, 10)}
+              <div className={`text-xs ${t.muted} mt-0.5`}>
+                {guestSummary.firstDate?.slice(0, 10)} ~ {guestSummary.lastDate?.slice(0, 10)} · {bookingCount}건
               </div>
             </div>
           </div>
-          <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-            <X size={18} className={t.muted} />
+          <button onClick={onClose} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${dark ? 'hover:bg-white/5' : 'hover:bg-slate-100'}`}>
+            <X size={16} className={t.muted} />
           </button>
         </div>
 
-        {/* 요약 KPI */}
-        <div className={`px-6 py-3 border-b ${t.border} shrink-0`}>
-          <div className="grid grid-cols-5 gap-3">
+        {/* ── KPI 카드 (6열) ── */}
+        <div className={`px-6 pb-4 shrink-0`}>
+          <div className="grid grid-cols-6 gap-2">
             {[
-              { icon: <Hash size={13}/>, label: '예약', value: `${guestSummary.count}건` },
-              { icon: <CreditCard size={13}/>, label: '총매출', value: fmtKRW(guestSummary.revenue) },
-              { icon: <Bed size={13}/>, label: '평균LOS', value: `${avgNights.toFixed(1)}박` },
-              { icon: <Clock size={13}/>, label: '리드타임', value: `${Math.round(avgLeadTime)}일` },
-              { icon: <Users size={13}/>, label: '평균인원', value: `${avgPeoples.toFixed(1)}명` },
+              { label: '예약건수', value: `${bookingCount}건`, accent: 'text-blue-400' },
+              { label: '총매출', value: fmtKRWShort(totalRevenue), accent: 'text-emerald-400' },
+              { label: '객단가', value: fmtKRWShort(avgPrice), accent: t.text },
+              { label: 'ADR', value: fmtKRWShort(adr), accent: 'text-violet-400' },
+              { label: 'LOS', value: `${los.toFixed(1)}박`, accent: 'text-amber-400' },
+              { label: '리드타임', value: `${Math.round(avgLeadTime)}일`, accent: t.text },
             ].map((kpi, i) => (
-              <div key={i} className={`rounded-lg p-2.5 ${t.card}`}>
-                <div className={`flex items-center gap-1.5 mb-0.5 ${t.muted}`}>
-                  {kpi.icon}
-                  <span className="text-[10px]">{kpi.label}</span>
-                </div>
-                <div className={`text-sm font-bold ${t.text}`}>{kpi.value}</div>
+              <div key={i} className={`rounded-xl p-3 ${t.card} border ${t.border}`}>
+                <div className={`text-[10px] font-medium ${t.muted} mb-1`}>{kpi.label}</div>
+                <div className={`text-sm font-bold tabular-nums ${kpi.accent}`}>{kpi.value}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 선호도 분석 (2x2 그리드) */}
-        <div className={`px-6 py-3 border-b ${t.border} shrink-0`}>
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { icon: <MapPin size={12}/>, label: '권역', items: topAreas },
-              { icon: <Building2 size={12}/>, label: '지점', items: topBranches },
-              { icon: <Bed size={12}/>, label: '객실타입', items: topRooms },
-              { icon: <Calendar size={12}/>, label: '채널', items: topChannels },
-            ].map((cat, ci) => (
-              <div key={ci}>
-                <div className={`flex items-center gap-1 mb-1.5 ${t.muted}`}>
-                  {cat.icon}
-                  <span className="text-[10px] font-semibold">{cat.label}</span>
+        {/* ── 선호도 분석 (4열) ── */}
+        <div className={`px-6 pb-4 shrink-0`}>
+          <div className={`rounded-xl p-4 ${t.card} border ${t.border}`}>
+            <div className="grid grid-cols-4 gap-5">
+              {[
+                { icon: <MapPin size={11}/>, label: '권역', items: topAreas, color: 'bg-blue-500' },
+                { icon: <Building2 size={11}/>, label: '지점', items: topBranches, color: 'bg-violet-500' },
+                { icon: <Bed size={11}/>, label: '객실타입', items: topRooms, color: 'bg-amber-500' },
+                { icon: <CreditCard size={11}/>, label: '채널그룹', items: topChannels, color: 'bg-emerald-500' },
+              ].map((cat, ci) => (
+                <div key={ci}>
+                  <div className={`flex items-center gap-1.5 mb-2 ${t.sub}`}>
+                    {cat.icon}
+                    <span className="text-[11px] font-semibold">{cat.label}</span>
+                  </div>
+                  <PreferBar items={cat.items} color={cat.color} />
                 </div>
-                <div className="space-y-0.5">
-                  {cat.items.slice(0, 3).map(([name, cnt], j) => {
-                    const pct = bookings.length > 0 ? cnt / bookings.length * 100 : 0
-                    return (
-                      <div key={j} className="flex items-center gap-1.5">
-                        <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${dark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
-                          <div className="h-full rounded-full bg-blue-500/60" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className={`text-[10px] truncate max-w-[60px] ${t.text}`}>{name}</span>
-                        <span className={`text-[10px] font-bold ${t.muted}`}>{cnt}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 예약 이력 테이블 */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className={`px-6 py-2 sticky top-0 ${dark ? 'bg-[#22272B]' : 'bg-white'} z-10`}>
-            <h3 className={`text-xs font-bold ${t.sub}`}>예약 이력 ({bookings.length}건)</h3>
-          </div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className={dark ? 'bg-[#2C333A]' : 'bg-slate-50'}>
-                {['예약일', '체크인', '지역', '지점', '객실', 'LOS', '인원', '채널', '결제'].map(h => (
-                  <th key={h} className={`px-3 py-2 text-left font-semibold ${t.sub}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((r, i) => (
-                <tr key={i} className={`border-t ${t.border} ${dark ? 'hover:bg-[#2C333A]/50' : 'hover:bg-slate-50'}`}>
-                  <td className={`px-3 py-2 font-mono ${t.text}`}>{r.reservation_date?.slice(0, 10)}</td>
-                  <td className={`px-3 py-2 font-mono ${t.muted}`}>{r.check_in_date?.slice(0, 10) || '—'}</td>
-                  <td className={`px-3 py-2 ${t.text}`}>{r.area || '—'}</td>
-                  <td className={`px-3 py-2 truncate max-w-[100px] ${t.text}`}>{r.branch_name || '—'}</td>
-                  <td className={`px-3 py-2 truncate max-w-[80px] ${t.text}`}>{r.room_type2 || '—'}</td>
-                  <td className={`px-3 py-2 font-bold ${t.text}`}>{r.nights ?? '—'}박</td>
-                  <td className={`px-3 py-2 ${t.text}`}>{r.peoples ?? '—'}명</td>
-                  <td className={`px-3 py-2 ${t.muted}`}>{r.channel_group || '—'}</td>
-                  <td className={`px-3 py-2 font-medium ${t.text}`}>{fmtKRW(Number(r.payment_amount) || 0)}</td>
-                </tr>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 예약 이력 테이블 ── */}
+        <div className={`flex-1 overflow-hidden min-h-0 border-t ${t.border}`}>
+          <div className={`px-6 py-2.5 flex items-center justify-between ${dark ? 'bg-[#1a1d21]' : 'bg-white'}`}>
+            <h3 className={`text-xs font-bold ${t.sub}`}>예약 이력</h3>
+            <span className={`text-[10px] ${t.muted}`}>{bookings.length}건</span>
+          </div>
+          <div className="overflow-y-auto" style={{ maxHeight: 'calc(88vh - 380px)' }}>
+            <table className="w-full text-[11px]">
+              <thead className={`sticky top-0 z-10 ${dark ? 'bg-[#22272B]' : 'bg-slate-50'}`}>
+                <tr>
+                  {['예약일', '체크인', '권역', '지점', '객실', 'LOS', '채널', '채널명', '결제'].map(h => (
+                    <th key={h} className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${t.sub}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((r, i) => {
+                  const rowNights = Number(r.nights) || 0
+                  const rowAmt = Number(r.payment_amount) || 0
+                  return (
+                    <tr key={i} className={`border-t ${t.border} ${dark ? 'hover:bg-white/[.02]' : 'hover:bg-slate-50'} transition-colors`}>
+                      <td className={`px-3 py-2 font-mono ${t.text}`}>{r.reservation_date?.slice(2, 10)}</td>
+                      <td className={`px-3 py-2 font-mono ${t.muted}`}>{r.check_in_date?.slice(2, 10) || '—'}</td>
+                      <td className={`px-3 py-2 ${t.text}`}>{r.area || '—'}</td>
+                      <td className={`px-3 py-2 truncate max-w-[90px] ${t.text}`} title={r.branch_name}>{r.branch_name || '—'}</td>
+                      <td className={`px-3 py-2 truncate max-w-[70px] ${t.text}`} title={r.room_type2}>{r.room_type2 || '—'}</td>
+                      <td className={`px-3 py-2 font-bold tabular-nums ${t.text}`}>{rowNights > 0 ? rowNights + '박' : '—'}</td>
+                      <td className={`px-3 py-2 ${t.muted}`}>{r.channel_group || '—'}</td>
+                      <td className={`px-3 py-2 truncate max-w-[80px] ${t.text}`} title={r.channel_name}>{r.channel_name || '—'}</td>
+                      <td className={`px-3 py-2 font-medium tabular-nums ${t.text}`}>{fmtKRWShort(rowAmt)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
