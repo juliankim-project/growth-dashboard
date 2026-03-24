@@ -30,6 +30,9 @@ const CheckinPace = lazy(() => import('./pages/useranalysis/CheckinPace'))
 const SearchAdsAI = lazy(() => import('./pages/searchads/SearchAdsAI'))
 const KeywordTrendDashboard = lazy(() => import('./pages/searchads/KeywordTrendDashboard'))
 const Scheduler = lazy(() => import('./pages/searchads/Scheduler'))
+const RevuCampaignList = lazy(() => import('./pages/revu/CampaignList'))
+const RevuApplicants = lazy(() => import('./pages/revu/Applicants'))
+const RevuSelectionHistory = lazy(() => import('./pages/revu/SelectionHistory'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
@@ -54,6 +57,9 @@ const FIXED_MAP = {
   'searchads.ai': SearchAdsAI,
   'searchads.trend': KeywordTrendDashboard,
   'searchads.scheduler': Scheduler,
+  'revu.campaigns': RevuCampaignList,
+  'revu.applicants': RevuApplicants,
+  'revu.history': RevuSelectionHistory,
 }
 
 import { DEFAULT_SECTIONS } from './components/Layout/Sidebar'
@@ -185,9 +191,9 @@ function Dashboard({ dark, setDark, user, signOut }) {
       />
     )
   } else if (FIXED_MAP[key]) {
-    /* DataStudio · Settings 고정 UI */
+    /* DataStudio · Settings · Revu 등 고정 UI */
     const Comp = FIXED_MAP[key]
-    PageContent = <Comp dark={dark} nav={nav} filterByDate={filterByDate} dateRange={dateRange} />
+    PageContent = <Comp dark={dark} nav={nav} setNav={setNav} filterByDate={filterByDate} dateRange={dateRange} user={user} />
   } else {
     /* Overview · Marketing · Product · 커스텀 서브탭 → 모두 CustomDashboard */
     const subDataSource = cfg.getSubDataSource(nav.section, nav.sub)

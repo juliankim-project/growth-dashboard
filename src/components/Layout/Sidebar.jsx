@@ -13,7 +13,7 @@ import {
   ShoppingCart, DollarSign, CreditCard, Search, Filter,
   Mail, Phone, Home, Shield, Wrench, Cpu, Server,
   Wifi, Map, Image, Heart, Award, Rocket, Compass, Layers, Eye, Tv,
-  Binoculars,
+  Binoculars, UserCheck, UserPlus, List,
 } from 'lucide-react'
 
 /* ─────────── 기본 네비 구조 ─────────── */
@@ -66,6 +66,14 @@ export const DEFAULT_SECTIONS = [
     ]
   },
   {
+    id: 'revu', label: '체험단', icon: 'UserCheck',
+    subs: [
+      { id:'campaigns',  label:'캠페인 목록',  icon:'List'    },
+      { id:'applicants', label:'신청자 선정',  icon:'UserPlus' },
+      { id:'history',    label:'선정 이력',    icon:'History'  },
+    ]
+  },
+  {
     id: 'datastudio', label: 'Data Studio', icon: 'Database',
     subs: [
       { id:'upload',  label:'CSV 업로드',  icon:'Upload'  },
@@ -93,6 +101,7 @@ export const ICONS = {
   ShoppingCart, DollarSign, CreditCard, Search, Filter,
   Mail, Phone, Home, Shield, Wrench, Cpu, Server,
   Wifi, Map, Image, Heart, Award, Rocket, Compass, Eye, Tv, Binoculars,
+  UserCheck, UserPlus, List,
 }
 
 /* 아이콘 피커용 순서 정렬 목록 */
