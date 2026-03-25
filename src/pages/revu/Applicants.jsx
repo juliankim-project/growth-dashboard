@@ -179,8 +179,21 @@ export default function Applicants({ dark, nav, setNav, user }) {
       const q = search.toLowerCase()
       list = list.filter(a => (a.nickname || '').toLowerCase().includes(q) || (a.media_name || '').toLowerCase().includes(q) || (a.instagram_handle || '').toLowerCase().includes(q))
     }
-    if (tab === 'ai') {
+    if (tab === 'ai' && sortKey === 'ai_score' && sortDir === 'desc') {
       list.sort((a, b) => (b.ai_score ?? -Infinity) - (a.ai_score ?? -Infinity))
+    } else if (tab === 'ai') {
+      // AI탭에서도 칼럼 클릭 정렬 지원
+      list.sort((a, b) => {
+        let va, vb
+        if (sortKey === '_accomFit') { va = getRaw(a).accomFit ?? -Infinity; vb = getRaw(b).accomFit ?? -Infinity }
+        else if (sortKey === '_accomPostCount') { va = getAccom(getRaw(a)).accomPostCount ?? -Infinity; vb = getAccom(getRaw(b)).accomPostCount ?? -Infinity }
+        else if (sortKey === '_accomKwCount') { va = getAccom(getRaw(a)).accomKwCount ?? -Infinity; vb = getAccom(getRaw(b)).accomKwCount ?? -Infinity }
+        else if (sortKey === '_accomPct') { va = getAccom(getRaw(a)).percentile ?? Infinity; vb = getAccom(getRaw(b)).percentile ?? Infinity }
+        else if (sortKey === 'avgReelViews') { const ra = getRaw(a); const rb = getRaw(b); va = ra.avgReelViews || ra.avg_reel_views || -Infinity; vb = rb.avgReelViews || rb.avg_reel_views || -Infinity }
+        else if (sortKey === 'maxReelViews') { const ra = getRaw(a); const rb = getRaw(b); va = ra.maxReelViews || ra.max_reel_views || -Infinity; vb = rb.maxReelViews || rb.max_reel_views || -Infinity }
+        else { va = a[sortKey] ?? getRaw(a)[sortKey] ?? -Infinity; vb = b[sortKey] ?? getRaw(b)[sortKey] ?? -Infinity }
+        return sortDir === 'desc' ? (vb > va ? 1 : vb < va ? -1 : 0) : (va > vb ? 1 : va < vb ? -1 : 0)
+      })
     } else {
       if (isInsta) {
         if (fMinFollowers) list = list.filter(a => (a.exact_followers || 0) >= Number(fMinFollowers))
@@ -201,6 +214,11 @@ export default function Applicants({ dark, nav, setNav, user }) {
       list.sort((a, b) => {
         let va, vb
         if (sortKey === '_accomFit') { va = getRaw(a).accomFit ?? -Infinity; vb = getRaw(b).accomFit ?? -Infinity }
+        else if (sortKey === '_accomPostCount') { va = getAccom(getRaw(a)).accomPostCount ?? -Infinity; vb = getAccom(getRaw(b)).accomPostCount ?? -Infinity }
+        else if (sortKey === '_accomKwCount') { va = getAccom(getRaw(a)).accomKwCount ?? -Infinity; vb = getAccom(getRaw(b)).accomKwCount ?? -Infinity }
+        else if (sortKey === '_accomPct') { va = getAccom(getRaw(a)).percentile ?? Infinity; vb = getAccom(getRaw(b)).percentile ?? Infinity }
+        else if (sortKey === 'avgReelViews') { const ra = getRaw(a); const rb = getRaw(b); va = ra.avgReelViews || ra.avg_reel_views || -Infinity; vb = rb.avgReelViews || rb.avg_reel_views || -Infinity }
+        else if (sortKey === 'maxReelViews') { const ra = getRaw(a); const rb = getRaw(b); va = ra.maxReelViews || ra.max_reel_views || -Infinity; vb = rb.maxReelViews || rb.max_reel_views || -Infinity }
         else { va = a[sortKey] ?? getRaw(a)[sortKey] ?? -Infinity; vb = b[sortKey] ?? getRaw(b)[sortKey] ?? -Infinity }
         return sortDir === 'desc' ? (vb > va ? 1 : vb < va ? -1 : 0) : (va > vb ? 1 : va < vb ? -1 : 0)
       })
@@ -236,6 +254,15 @@ export default function Applicants({ dark, nav, setNav, user }) {
     finally { setSaving(false) }
   }
 
+  /* ── 칼럼 헤더 클릭 정렬 ── */
+  const handleSort = useCallback((key) => {
+    setSortKey(prev => {
+      if (prev === key) { setSortDir(d => d === 'desc' ? 'asc' : 'desc'); return key }
+      setSortDir('desc')
+      return key
+    })
+  }, [])
+
   const hasChanges = useMemo(() => {
     if (selections.size !== existingSelections.size) return true
     for (const id of selections) if (!existingSelections.has(id)) return true
@@ -250,14 +277,14 @@ export default function Applicants({ dark, nav, setNav, user }) {
 
   /* ── 스타일 ── */
   const card = dark ? 'bg-[#232336] border-[#2D2D44]' : 'bg-white border-gray-200'
-  const text1 = dark ? 'text-gray-100' : 'text-gray-900'
-  const text2 = dark ? 'text-gray-400' : 'text-gray-500'
-  const text3 = dark ? 'text-gray-500' : 'text-gray-400'
-  const inputCls = `rounded-lg px-3 py-1.5 text-sm border outline-none transition ${dark ? 'bg-[#1C1C2E] border-[#2D2D44] text-gray-200 placeholder-gray-500 focus:border-violet-500' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400 focus:border-violet-500'}`
+  const text1 = dark ? 'text-gray-50' : 'text-gray-900'
+  const text2 = dark ? 'text-gray-300' : 'text-gray-600'
+  const text3 = dark ? 'text-gray-400' : 'text-gray-500'
+  const inputCls = `rounded-lg px-3 py-1.5 text-sm border outline-none transition ${dark ? 'bg-[#1C1C2E] border-[#2D2D44] text-gray-100 placeholder-gray-400 focus:border-violet-500' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400 focus:border-violet-500'}`
   const btnPrimary = 'bg-violet-600 hover:bg-violet-700 text-white'
   const btnGhost = dark ? 'bg-[#2D2D44] text-gray-300 hover:bg-[#363650]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   const tabActive = 'bg-violet-600 text-white'
-  const tabInactive = dark ? 'bg-[#2D2D44] text-gray-400 hover:text-gray-200' : 'bg-gray-100 text-gray-500 hover:text-gray-800'
+  const tabInactive = dark ? 'bg-[#2D2D44] text-gray-300 hover:text-gray-100' : 'bg-gray-100 text-gray-600 hover:text-gray-800'
   const sidebarBg = dark ? 'bg-[#1A1A2E]' : 'bg-gray-50'
   const sidebarItem = dark ? 'hover:bg-[#232336]' : 'hover:bg-white'
   const sidebarActive = dark ? 'bg-violet-600/10 border-l-2 border-violet-500' : 'bg-violet-50 border-l-2 border-violet-500'
@@ -393,27 +420,27 @@ export default function Applicants({ dark, nav, setNav, user }) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className={`${dark ? 'bg-[#1C1C2E]' : 'bg-gray-50'} ${text2}`}>
-                        <th className="w-10 px-2 py-2.5 text-center"><Check size={14} className="mx-auto opacity-50" /></th>
-                        <th className="w-8 px-1 py-2.5 text-center text-xs font-medium">#</th>
-                        <th className="w-16 px-2 py-2.5 text-center text-xs font-medium">AI점수</th>
-                        <th className="text-left px-3 py-2.5 text-xs font-medium min-w-[160px]">인플루언서</th>
+                      <tr className={`${dark ? 'bg-[#1C1C2E]' : 'bg-gray-50'}`}>
+                        <th className="w-10 px-2 py-2.5 text-center"><Check size={14} className={`mx-auto ${dark ? 'text-gray-400' : 'text-gray-400'} opacity-50`} /></th>
+                        <th className={`w-8 px-1 py-2.5 text-center text-xs font-semibold ${dark ? 'text-gray-300' : 'text-gray-600'}`}>#</th>
+                        <SortTh k="ai_score" label="AI점수" align="center" w="w-16" {...{sortKey, sortDir, handleSort, dark}} />
+                        <th className={`text-left px-3 py-2.5 text-xs font-semibold min-w-[160px] ${dark ? 'text-gray-300' : 'text-gray-600'}`}>인플루언서</th>
                         {isInsta ? (
                           <>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">팔로워</th>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">참여율</th>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">릴스평균</th>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">릴스최고</th>
+                            <SortTh k="exact_followers" label="팔로워" align="right" {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="engagement_rate" label="참여율" align="right" {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="avgReelViews" label="릴스평균" align="right" {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="maxReelViews" label="릴스최고" align="right" {...{sortKey, sortDir, handleSort, dark}} />
                           </>
                         ) : (
                           <>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">방문자</th>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">키워드</th>
-                            <th className="text-right px-2 py-2.5 text-xs font-medium">좋아요</th>
-                            <th className="text-center px-2 py-2.5 text-xs font-medium text-emerald-400">🏨적합</th>
-                            <th className="text-center px-2 py-2.5 text-xs font-medium text-emerald-400">숙소글</th>
-                            <th className="text-center px-2 py-2.5 text-xs font-medium text-emerald-400">숙소KW</th>
-                            <th className="text-center px-2 py-2.5 text-xs font-medium">상위%</th>
+                            <SortTh k="avg_visitors" label="방문자" align="right" {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="top_keyword_count" label="키워드" align="right" {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="avg_likes" label="좋아요" align="right" {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="_accomFit" label="🏨적합" align="center" accent {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="_accomPostCount" label="숙소글" align="center" accent {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="_accomKwCount" label="숙소KW" align="center" accent {...{sortKey, sortDir, handleSort, dark}} />
+                            <SortTh k="_accomPct" label="상위%" align="center" {...{sortKey, sortDir, handleSort, dark}} />
                           </>
                         )}
                         <th className="w-8 px-2 py-2.5"></th>
@@ -768,6 +795,29 @@ function DetailPanel({ app, raw, modal, ac, accomFit, isInsta, dark, text1, text
         </a>
       )}
     </div>
+  )
+}
+
+/* ═══ 정렬 가능 테이블 헤더 ═══ */
+function SortTh({ k, label, align = 'left', w, accent, sortKey, sortDir, handleSort, dark }) {
+  const active = sortKey === k
+  const alignCls = align === 'right' ? 'text-right justify-end' : align === 'center' ? 'text-center justify-center' : 'text-left justify-start'
+  const baseTxt = accent
+    ? (dark ? 'text-emerald-300' : 'text-emerald-600')
+    : (dark ? 'text-gray-300' : 'text-gray-600')
+  const activeTxt = dark ? 'text-violet-300' : 'text-violet-600'
+  return (
+    <th className={`px-2 py-2.5 ${w || ''} ${alignCls} select-none`}
+      onClick={() => handleSort(k)} style={{ cursor: 'pointer' }}>
+      <span className={`inline-flex items-center gap-0.5 text-xs font-semibold transition-colors ${active ? activeTxt : baseTxt} hover:${dark ? 'text-violet-300' : 'text-violet-600'}`}>
+        {label}
+        {active ? (
+          sortDir === 'desc' ? <ChevronDown size={12} /> : <ChevronUp size={12} />
+        ) : (
+          <ArrowUpDown size={10} className="opacity-30" />
+        )}
+      </span>
+    </th>
   )
 }
 
