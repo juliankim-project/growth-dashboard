@@ -1516,12 +1516,25 @@ if st.session_state.step=="crawl":
                             all_mapped.extend(mapped)
                             if not all_meta: all_meta=rmeta  # 첫 캠페인 메타 기준
                             total_ok+=1
-                            on_p(f"✅ 캠페인 {cid}: {len(mapped)}명 수집 완료")
+                            # ── AI 점수 계산 (Supabase 저장 전에 반드시 수행) ──
+                            if is_naver:
+                                for d in mapped:
+                                    ac=calc_accom(d); d["_accom"]=ac; d["accomFit"]=calc_accom_score(ac)
+                                _all_ac=[d["accomFit"] for d in mapped]
+                                for d in mapped:
+                                    d["_accom"]["percentile"]=calc_accom_percentile(d["accomFit"],_all_ac)
+                                calc_all_naver(mapped, AI_WEIGHTS)
+                            else:
+                                calc_all_insta(mapped, AI_WEIGHTS_INSTA)
+                            on_p(f"✅ 캠페인 {cid}: {len(mapped)}명 수집 + AI점수 계산 완료")
 
-                            # ── Supabase 저장 (캠페인별) ──
+                            # ── Supabase 저장 (AI 점수 포함) ──
                             try:
                                 from supabase_sync import save_crawl_to_supabase, update_ai_scores
-                                ai_map={m.get("nickname") or m.get("instagramHandle",""):m.get("aiScore",0) for m in mapped}
+                                ai_map={}
+                                for _m in mapped:
+                                    _key=_m.get("nickname") or _m.get("mediaName","")
+                                    if _key: ai_map[_key]=_m.get("aiScore",0)
                                 sb_res=save_crawl_to_supabase(res, ai_scores=ai_map)
                                 if sb_res.get("ok"):
                                     on_p(f"☁️ Supabase 저장 완료 ({sb_res['applicant_count']}명)")
