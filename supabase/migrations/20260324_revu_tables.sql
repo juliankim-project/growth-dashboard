@@ -95,17 +95,25 @@ ALTER TABLE revu_campaigns  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE revu_applicants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE revu_selections ENABLE ROW LEVEL SECURITY;
 
--- 인증된 유저는 모두 읽기/쓰기 가능 (팀 내부 도구)
-CREATE POLICY "team_full_access" ON revu_campaigns
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+-- 읽기: anon(SSO) + authenticated(이메일) 모두 허용 (내부 팀 도구)
+-- 쓰기: authenticated + service_role만 허용
+CREATE POLICY "anon_read" ON revu_campaigns
+  FOR SELECT USING (true);
+CREATE POLICY "auth_write" ON revu_campaigns
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "service_write" ON revu_campaigns
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY "team_full_access" ON revu_applicants
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "anon_read" ON revu_applicants
+  FOR SELECT USING (true);
+CREATE POLICY "auth_write" ON revu_applicants
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "service_write" ON revu_applicants
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY "team_full_access" ON revu_selections
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
-
--- service_role은 RLS 무시하므로 revu_app.py(서버 측)에서는 제한 없음
+CREATE POLICY "anon_read" ON revu_selections
+  FOR SELECT USING (true);
+CREATE POLICY "auth_write" ON revu_selections
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "service_write" ON revu_selections
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
