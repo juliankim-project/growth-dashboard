@@ -312,6 +312,7 @@ export default function Applicants({ dark, nav, setNav, user }) {
              const isI = c.platform === 'instagram'
              const appCount = c.applicant_count?.[0]?.count ?? c.total_count ?? 0
              const selCount = c.selection_count?.[0]?.count ?? 0
+             const isRecent = c.crawled_at && (Date.now() - new Date(c.crawled_at).getTime()) < 24 * 60 * 60 * 1000
              return (
                <button key={c.id} onClick={() => selectCampaign(c)}
                  className={`w-full text-left px-3 py-2.5 border-b transition ${dark ? 'border-[#2D2D44]' : 'border-gray-100'} ${isActive ? sidebarActive : sidebarItem}`}>
@@ -320,7 +321,10 @@ export default function Applicants({ dark, nav, setNav, user }) {
                      {isI ? <Instagram size={11} /> : <BookOpen size={11} />}
                    </div>
                    <div className="flex-1 min-w-0">
-                     <div className={`text-xs font-medium truncate ${isActive ? 'text-violet-300' : text1}`}>{c.campaign_title || `캠페인 ${c.campaign_id}`}</div>
+                     <div className={`text-xs font-medium truncate flex items-center gap-1 ${isActive ? 'text-violet-300' : text1}`}>
+                       <span className="truncate">{c.campaign_title || `캠페인 ${c.campaign_id}`}</span>
+                       {isRecent && <span className="shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-400 animate-pulse">UPDATE</span>}
+                     </div>
                      <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${text3}`}>
                        <span>{appCount}명</span>
                        {selCount > 0 && <span className="text-violet-400">{selCount} 선정</span>}

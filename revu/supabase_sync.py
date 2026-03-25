@@ -84,17 +84,26 @@ def save_crawl_to_supabase(crawl_json: dict, ai_scores: dict | None = None) -> d
     }
 
     try:
+        # campaign_id UNIQUE 제약이 있을 수 있으므로 upsert 사용
+        # 동일 campaign_id 재크롤링 시 기존 row를 갱신
         res = (
             sb.table("revu_campaigns")
-            .insert(campaign_row)
+            .upsert(campaign_row, on_conflict="campaign_id")
             .execute()
         )
         campaign_pk = res.data[0]["id"]
+        logger.info(f"캠페인 저장/갱신: campaign_id={campaign_id}, pk={campaign_pk}")
     except Exception as e:
         logger.error(f"캠페인 저장 실패: {e}")
-        return {"ok": False, "error": f"캠페인 INSERT 실패: {e}"}
+        return {"ok": False, "error": f"캠페인 UPSERT 실패: {e}"}
 
-    # 2) revu_applicants 일괄 삽입 ─────────────────
+    # 2) 기존 신청자 삭제 (재크롤링 시 중복 방지) ──
+    try:
+        sb.table("revu_applicants").delete().eq("campaign_pk", campaign_pk).execute()
+    except Exception as e:
+        logger.warning(f"기존 신청자 삭제 실패 (신규일 수 있음): {e}")
+
+    # 3) revu_applicants 일괄 삽입 ─────────────────
     rows = []
     for inf in influencers:
         # 신청자 식별키 (AI 점수 매핑용)

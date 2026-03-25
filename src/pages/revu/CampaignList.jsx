@@ -78,8 +78,8 @@ export default function CampaignList({ dark, nav, setNav }) {
   }
 
   const card = dark ? 'bg-[#232336] border-[#2D2D44]' : 'bg-white border-gray-200'
-  const text1 = dark ? 'text-gray-100' : 'text-gray-900'
-  const text2 = dark ? 'text-gray-400' : 'text-gray-500'
+  const text1 = dark ? 'text-gray-50' : 'text-gray-900'
+  const text2 = dark ? 'text-gray-300' : 'text-gray-600'
   const btnGhost = dark ? 'bg-[#2D2D44] text-gray-300 hover:bg-[#363650]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   const tabActive = dark ? 'bg-violet-600 text-white' : 'bg-violet-600 text-white'
   const tabInactive = dark ? 'bg-[#2D2D44] text-gray-400 hover:text-gray-200' : 'bg-gray-100 text-gray-500 hover:text-gray-800'
@@ -137,6 +137,11 @@ export default function CampaignList({ dark, nav, setNav }) {
                       <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${isInsta ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30' : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30'}`}>
                         {isInsta ? 'INSTAGRAM' : 'NAVER'}
                       </span>
+                      {c.crawled_at && (Date.now() - new Date(c.crawled_at).getTime()) < 24 * 60 * 60 * 1000 && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse">
+                          UPDATE
+                        </span>
+                      )}
                     </div>
                     <div className={`flex items-center gap-3 text-xs mt-1 ${text2}`}>
                       <span className="flex items-center gap-1"><Calendar size={12} />{fmt(c.crawled_at)}</span>
