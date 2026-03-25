@@ -165,10 +165,82 @@ def calc_accom_percentile(score, all_scores):
     return round(rank/len(all_scores)*100)
 
 # ═══════════════════════════════════════
-# 🧮 AI SCORE ENGINE  (React calcAi 1:1)
+# 🧮 AI SCORE ENGINE v2 — 상대평가 기반
 # ═══════════════════════════════════════
+# 핵심 원칙:
+# 1) 전체 신청자 풀에서 percentile로 환산 → 1등=100점
+# 2) 핵심 데이터(방문자, 좋아요, 포스팅)가 0이면 패널티
+# 3) 광고활동성은 '낮음'이 좋음 (역방향)
+AM={"낮음":90,"보통":50,"활발":15}  # 광고 낮을수록 좋음 (광고성 적은 블로그 선호)
+
+# ── 데이터 부재 패널티 ──
+# 방문자=0, 좋아요=0, 포스팅=0 → 실질 콘텐츠 없음 → 점수 큰폭 감점
+NAVER_REQUIRED_FIELDS=["avgVisitors","avgLikes","postFreq7d"]
+NAVER_PENALTY_PER_MISSING=15  # 핵심필드 하나당 -15점
+NAVER_MIN_FLOOR=5  # 최소 점수 바닥
+
+def _percentile_map(data_list, key, reverse=False):
+    """전체 모수 대비 percentile 환산 (0~100). reverse=True면 낮을수록 좋음"""
+    vals=[(i,d.get(key,0) or 0) for i,d in enumerate(data_list)]
+    vals.sort(key=lambda x:x[1], reverse=(not reverse))
+    n=len(vals)
+    pct_map={}
+    for rank,(idx,v) in enumerate(vals):
+        pct_map[idx]=(rank/(n-1))*100 if n>1 else 50
+    return pct_map
+
+def calc_all_naver(data_list, w):
+    """전체 네이버 신청자 대상 상대평가 AI 점수 일괄 계산"""
+    if not data_list: return
+    # 1) 각 지표별 percentile 맵 생성
+    pct_maps={}
+    pct_maps["blogScore"]=_percentile_map(data_list,"blogScore")
+    pct_maps["visitors"]=_percentile_map(data_list,"avgVisitors")
+    pct_maps["keywords"]=_percentile_map(data_list,"topKeywords")
+    pct_maps["likes"]=_percentile_map(data_list,"avgLikes")
+    pct_maps["postFreq"]=_percentile_map(data_list,"postFreq7d")
+    # 광고활동성: 낮음이 좋으므로 직접 변환
+    for i,d in enumerate(data_list):
+        d["_adScore"]=AM.get(d.get("adActivity","보통"),50)
+    pct_maps["adActivity"]=_percentile_map(data_list,"_adScore")
+    # 숙소적합도
+    if "accomFit" in w:
+        pct_maps["accomFit"]=_percentile_map(data_list,"accomFit")
+
+    tw=sum(w.values())
+    for i,d in enumerate(data_list):
+        raw={}
+        for k in w:
+            if k in pct_maps:
+                raw[k]=pct_maps[k].get(i,0)
+            else:
+                raw[k]=50  # fallback
+        # 가중합
+        score=sum(raw.get(k,0)*w[k]/tw for k in w)
+        # 2) 데이터 부재 패널티
+        penalty=0
+        for fk in NAVER_REQUIRED_FIELDS:
+            val=d.get(fk,0)
+            if val is None or val==0:
+                penalty+=NAVER_PENALTY_PER_MISSING
+        score=max(NAVER_MIN_FLOOR, score-penalty)
+        d["aiScore"]=round(score)
+        d["_bd"]=raw
+
+    # 3) 최종 정규화: 1등=100점, 상대 스케일링
+    scores=[d["aiScore"] for d in data_list]
+    mx=max(scores) if scores else 1
+    mn=min(scores) if scores else 0
+    rng=mx-mn if mx!=mn else 1
+    for d in data_list:
+        # 선형 스케일: 최고점 → 100, 최저점 → (최저점/최고점)*100 비율 유지
+        d["aiScore"]=round((d["aiScore"]-mn)/rng*95+5)  # 5~100 범위
+    # 재정렬 후 breakdown 보정
+    for d in data_list:
+        d["aiReason"]=gen_comment(d,d["aiScore"],d["_bd"],w)
+
+# ── 하위호환: 단건 calc (기존 UI에서 참조할 수 있음) ──
 NR={"blogScore":(1,5),"visitors":(0,3000),"keywords":(0,40),"likes":(0,800),"adActivity":(0,100),"postFreq":(0,10),"accomFit":(0,100)}
-AM={"낮음":20,"보통":50,"활발":80}
 def nv(v,k): mn,mx=NR[k]; return((max(mn,min(mx,v))-mn)/(mx-mn))*100
 def ads(r,pk="accom"):
     return 100-abs(r-50)*2
@@ -209,6 +281,47 @@ def gen_comment(inf,score,bd,w,pk="accom"):
 # ═══════════════════════════════════════
 def nv_insta(v,k):
     mn,mx=NR_INSTA[k]; return((max(mn,min(mx,v))-mn)/(mx-mn))*100
+
+# ── 인스타 데이터 부재 패널티 ──
+INSTA_REQUIRED_FIELDS=["followers","feedER","avgReelViews"]
+INSTA_PENALTY_PER_MISSING=20  # enriched 안 된 사람은 큰 감점
+INSTA_MIN_FLOOR=3
+
+def calc_all_insta(data_list, w=None):
+    """전체 인스타 신청자 대상 상대평가 AI 점수 일괄 계산"""
+    if w is None: w=AI_WEIGHTS_INSTA
+    if not data_list: return
+    # 1) 각 지표별 percentile 맵
+    pct_maps={}
+    for k in w:
+        pct_maps[k]=_percentile_map(data_list,k)
+    tw=sum(w.values())
+    for i,d in enumerate(data_list):
+        raw={}
+        for k in w:
+            raw[k]=pct_maps[k].get(i,0)
+        score=sum(raw.get(k,0)*w[k]/tw for k in w)
+        # 2) 데이터 부재 패널티: enriched 안 됐으면 핵심지표 전부 0
+        penalty=0
+        for fk in INSTA_REQUIRED_FIELDS:
+            val=d.get(fk,0)
+            if val is None or val==0:
+                penalty+=INSTA_PENALTY_PER_MISSING
+        score=max(INSTA_MIN_FLOOR, score-penalty)
+        d["aiScore"]=round(score)
+        d["_bd"]=raw
+
+    # 3) 정규화: 1등=100점
+    scores=[d["aiScore"] for d in data_list]
+    mx=max(scores) if scores else 1
+    mn=min(scores) if scores else 0
+    rng=mx-mn if mx!=mn else 1
+    for d in data_list:
+        d["aiScore"]=round((d["aiScore"]-mn)/rng*95+5)  # 5~100 범위
+    for d in data_list:
+        d["aiReason"]=gen_comment_insta(d,d["aiScore"],d["_bd"])
+
+# ── 하위호환: 단건 calc_insta ──
 def calc_insta(inf,w=None):
     if w is None: w=AI_WEIGHTS_INSTA
     raw={}
@@ -1318,9 +1431,13 @@ if st.session_state.step=="crawl":
         st.markdown(f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;"><span style="font-size:28px;">{pe}</span><div><h2 style="margin:0;font-size:20px;font-weight:800;">데이터 수집</h2><span style="padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{pbg};color:{pfg};">{pl}</span></div></div>',unsafe_allow_html=True)
 
         with st.container(border=True):
-            cid=st.text_input("📌 캠페인 ID",value="",placeholder="예: 1268816",max_chars=20)
-            if cid:
-                st.caption(f"https://report.revu.net/service/campaigns/{cid}")
+            cid_raw=st.text_area("📌 캠페인 ID (복수 입력 가능 — 쉼표/줄바꿈 구분)",value="",placeholder="예: 1268816, 1306557\n또는 한 줄에 하나씩",height=80)
+            cid_list=[x.strip() for x in re.split(r'[,\s\n]+', cid_raw) if x.strip() and x.strip().isdigit()]
+            if cid_list:
+                st.caption(f"총 {len(cid_list)}개 캠페인: {', '.join(cid_list)}")
+                for _cid in cid_list[:3]:
+                    st.caption(f"  → https://report.revu.net/service/campaigns/{_cid}")
+                if len(cid_list)>3: st.caption(f"  ... 외 {len(cid_list)-3}개")
             st.divider()
             with st.expander("🔐 REVU 로그인 정보",expanded=False):
                 uid=st.text_input("이메일",value=DEFAULT_UID)
@@ -1339,48 +1456,80 @@ if st.session_state.step=="crawl":
                     insta_id=st.text_input("인스타 ID",value="urbanstay_official",key="insta_id")
                     insta_pw=st.text_input("인스타 PW",value="djqkstmxpdl7694!",type="password",key="insta_pw")
 
-            dis=not cid.strip()
+            dis=len(cid_list)==0
             if st.button("🚀 크롤링 시작",type="primary",use_container_width=True,disabled=dis):
                 la=st.empty(); pb=st.progress(0,text="크롤링 준비 중...")
                 logs=[]
                 def on_p(msg):
                     logs.append(msg)
                     la.code("\n".join(logs[-12:]),language=None)
-                    pb.progress(min(len(logs)*3,95),text=msg)
+                    pb.progress(min(len(logs)*2,95),text=msg)
+
+                # ── 복수 캠페인 일괄 크롤링 ──
+                all_mapped=[]; all_meta={}; total_ok=0
                 with st.spinner("크롤링 진행 중..."):
-                    if is_naver:
-                        res=crawl_revu(cid,uid,upw,mmax,cmax,on_p)
-                    else:
-                        res=crawl_revu_insta(cid,uid,upw,cmax,on_p)
-                        if res.get("influencers"):
-                            on_p("📸 인스타 프로필 보강 시작 (C안)...")
-                            _iid=insta_id if 'insta_id' in dir() else ""
-                            _ipw=insta_pw if 'insta_pw' in dir() else ""
-                            _emax=enrich_max if 'enrich_max' in dir() else 10
-                            res["influencers"]=enrich_instagram(res["influencers"],_emax,_iid,_ipw,on_p)
-                if res.get("influencers"):
-                    if is_naver:
-                        mapped,rmeta=map_json(res)
-                    else:
-                        mapped,rmeta=map_json_insta(res)
-                    st.session_state.data=mapped; st.session_state.meta=rmeta
-                    st.session_state.data_source="crawl"; st.session_state.step="data"
-                    # ── Supabase 저장 ──
-                    try:
-                        from supabase_sync import save_crawl_to_supabase, update_ai_scores
-                        ai_map={m.get("nickname") or m.get("instagramHandle",""):m.get("aiScore",0) for m in mapped}
-                        sb_res=save_crawl_to_supabase(res, ai_scores=ai_map)
-                        if sb_res.get("ok"):
-                            on_p(f"☁️ Supabase 저장 완료 ({sb_res['applicant_count']}명)")
-                            st.session_state["_supabase_campaign_pk"]=sb_res["campaign_pk"]
+                    for ci,cid in enumerate(cid_list):
+                        on_p(f"━━━ [{ci+1}/{len(cid_list)}] 캠페인 {cid} 크롤링 시작 ━━━")
+                        if is_naver:
+                            res=crawl_revu(cid,uid,upw,mmax,cmax,on_p)
                         else:
-                            on_p(f"⚠️ Supabase 저장 실패: {sb_res.get('error','')}")
-                    except Exception as _sbe:
-                        on_p(f"⚠️ Supabase 연동 스킵: {_sbe}")
+                            res=crawl_revu_insta(cid,uid,upw,cmax,on_p)
+                            if res.get("influencers"):
+                                on_p("📸 인스타 프로필 보강 시작...")
+                                _iid=insta_id if 'insta_id' in dir() else ""
+                                _ipw=insta_pw if 'insta_pw' in dir() else ""
+                                _emax=enrich_max if 'enrich_max' in dir() else 10
+                                res["influencers"]=enrich_instagram(res["influencers"],_emax,_iid,_ipw,on_p)
+
+                        if res.get("influencers"):
+                            if is_naver:
+                                mapped,rmeta=map_json(res)
+                            else:
+                                mapped,rmeta=map_json_insta(res)
+                            # 각 인플루언서에 캠페인 출처 태깅
+                            for m in mapped:
+                                m["_srcCampaignId"]=cid
+                            all_mapped.extend(mapped)
+                            if not all_meta: all_meta=rmeta  # 첫 캠페인 메타 기준
+                            total_ok+=1
+                            on_p(f"✅ 캠페인 {cid}: {len(mapped)}명 수집 완료")
+
+                            # ── Supabase 저장 (캠페인별) ──
+                            try:
+                                from supabase_sync import save_crawl_to_supabase, update_ai_scores
+                                ai_map={m.get("nickname") or m.get("instagramHandle",""):m.get("aiScore",0) for m in mapped}
+                                sb_res=save_crawl_to_supabase(res, ai_scores=ai_map)
+                                if sb_res.get("ok"):
+                                    on_p(f"☁️ Supabase 저장 완료 ({sb_res['applicant_count']}명)")
+                                else:
+                                    on_p(f"⚠️ Supabase 저장 실패: {sb_res.get('error','')}")
+                            except Exception as _sbe:
+                                on_p(f"⚠️ Supabase 연동 스킵: {_sbe}")
+                        else:
+                            err_msg=res.get("meta",{}).get("error","알 수 없는 오류")
+                            on_p(f"❌ 캠페인 {cid} 실패: {err_msg}")
+
+                if all_mapped:
+                    # 복수 캠페인 메타 업데이트
+                    if len(cid_list)>1:
+                        all_meta["campaign_id"]=",".join(cid_list)
+                        all_meta["campaign_title"]=f"[{total_ok}개 캠페인 통합] {all_meta.get('campaign_title','')}"
+                        all_meta["total_count"]=len(all_mapped)
+                    # 닉네임 중복 체크 (복수 캠페인 간)
+                    seen_nicks={}
+                    for m in all_mapped:
+                        nk=m.get("nickname","")
+                        if nk in seen_nicks:
+                            m["isDuplicate"]=True
+                            seen_nicks[nk]["isDuplicate"]=True
+                        else:
+                            seen_nicks[nk]=m
+                    st.session_state.data=all_mapped; st.session_state.meta=all_meta
+                    st.session_state.data_source="crawl"; st.session_state.step="data"
+                    on_p(f"🎉 총 {len(all_mapped)}명 수집 완료 ({total_ok}/{len(cid_list)} 캠페인 성공)")
                     pb.progress(100,text="✅ 완료!"); time.sleep(1); st.rerun()
                 else:
-                    err_msg=res.get("meta",{}).get("error","알 수 없는 오류")
-                    pb.progress(100,text="❌ 실패"); st.error(f"크롤링 실패: {err_msg}")
+                    pb.progress(100,text="❌ 실패"); st.error("모든 캠페인에서 데이터를 가져오지 못했습니다.")
     st.stop()
 
 
@@ -1396,7 +1545,7 @@ ver=meta.get("version","")
 src_bdg=f'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{t["success_bg"]};color:{t["success"]};border:1px solid {t["success_border"]};">📄 실데이터{" · "+ver if ver else ""}</span>' if st.session_state.data_source else f'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{t["warning_bg"]};color:{t["warning"]};border:1px solid {t["warning_border"]};">🧪 데모</span>'
 plat_bdg=f'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{t["naver_bg"] if is_naver else t["insta_bg"]};color:{t["naver_text"] if is_naver else t["insta_text"]};">{"네이버 블로그" if is_naver else "인스타그램"}</span>'
 
-# 네이버: 숙소 적합도 + AI 스코어 계산
+# 네이버: 숙소 적합도 + AI 스코어 계산 (상대평가 v2)
 if is_naver:
     for d in data:
         ac=calc_accom(d)
@@ -1405,15 +1554,13 @@ if is_naver:
     all_accom=[d["accomFit"] for d in data]
     for d in data:
         d["_accom"]["percentile"]=calc_accom_percentile(d["accomFit"],all_accom)
-    for d in data:
-        s,bd=calc(d,w); d["aiScore"]=s; d["_bd"]=bd
-        d["aiReason"]=gen_comment(d,s,bd,w)
-# 인스타: AI 스코어 계산
+    # ★ 상대평가 일괄 계산 (전체 모수 대비 percentile → 1등=100점)
+    calc_all_naver(data, w)
+# 인스타: AI 스코어 계산 (상대평가 v2)
 else:
     w_insta=AI_WEIGHTS_INSTA
-    for d in data:
-        s,bd=calc_insta(d,w_insta); d["aiScore"]=s; d["_bd"]=bd
-        d["aiReason"]=gen_comment_insta(d,s,bd)
+    # ★ 상대평가 일괄 계산
+    calc_all_insta(data, w_insta)
 
 
 # ═══════════════════════════════════════
@@ -1986,7 +2133,8 @@ elif not is_naver:
                         ptype="🎬 릴스" if p.get("is_video") else "📷 이미지"
                         views_txt=f' · 👁️ {p.get("views",0):,}회' if p.get("views") else ""
                         pdate=p.get("date","")[:10] if p.get("date") else ""
-                        ph+=f'<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid {t["border"]};font-size:12px;"><div style="color:{t["text_primary"]};"><span style="padding:1px 6px;border-radius:4px;background:{t["insta_bg"]};color:{t["insta_text"]};font-size:10px;font-weight:600;margin-right:6px;">{ptype}</span>{pdate}</div><div style="display:flex;gap:10px;color:{t["text_secondary"]};flex-shrink:0;font-size:11px;"><span>❤️ {p.get("likes",0):,}</span><span>💬 {p.get("comments",0):,}</span>{f"<span>👁️ {p['views']:,}</span>" if p.get("views") else ""}</div></div>'
+                        _views_span=f'<span>👁️ {p["views"]:,}</span>' if p.get("views") else ""
+                        ph+=f'<div style="display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid {t["border"]};font-size:12px;"><div style="color:{t["text_primary"]};"><span style="padding:1px 6px;border-radius:4px;background:{t["insta_bg"]};color:{t["insta_text"]};font-size:10px;font-weight:600;margin-right:6px;">{ptype}</span>{pdate}</div><div style="display:flex;gap:10px;color:{t["text_secondary"]};flex-shrink:0;font-size:11px;"><span>❤️ {p.get("likes",0):,}</span><span>💬 {p.get("comments",0):,}</span>{_views_span}</div></div>'
                     ph+='</div>'
                     st.markdown(ph,unsafe_allow_html=True)
                 # 바이오 표시 (보강된 경우)
