@@ -180,9 +180,13 @@ NAVER_PENALTY_PER_MISSING=15  # 핵심필드 하나당 -15점
 NAVER_MIN_FLOOR=5  # 최소 점수 바닥
 
 def _percentile_map(data_list, key, reverse=False):
-    """전체 모수 대비 percentile 환산 (0~100). reverse=True면 낮을수록 좋음"""
+    """전체 모수 대비 percentile 환산 (0~100). reverse=True면 낮을수록 좋음
+    정렬 방향:
+      reverse=False (기본, 높을수록 좋음): 오름차순 → 최고값 = rank 마지막 = percentile 100
+      reverse=True  (낮을수록 좋음):      내림차순 → 최저값 = rank 마지막 = percentile 100
+    """
     vals=[(i,d.get(key,0) or 0) for i,d in enumerate(data_list)]
-    vals.sort(key=lambda x:x[1], reverse=(not reverse))
+    vals.sort(key=lambda x:x[1], reverse=reverse)
     n=len(vals)
     pct_map={}
     for rank,(idx,v) in enumerate(vals):
