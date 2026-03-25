@@ -68,10 +68,26 @@ def save_crawl_to_supabase(crawl_json: dict, ai_scores: dict | None = None) -> d
     if not meta.get("campaign_id"):
         return {"ok": False, "error": "meta.campaign_id 없음"}
 
-    platform = meta.get("platform", "naver")
+    # platform이 None/빈값이면 기본값 "naver" 적용
+    platform = meta.get("platform") or "naver"
     campaign_id = str(meta["campaign_id"])
 
-    # 1) revu_campaigns upsert ─────────────────────
+    # 1) 기존 캠페인 존재 여부 확인 ─────────────────
+    campaign_pk = None
+    try:
+        existing = (
+            sb.table("revu_campaigns")
+            .select("id")
+            .eq("campaign_id", campaign_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            campaign_pk = existing.data[0]["id"]
+            logger.info(f"기존 캠페인 발견: campaign_id={campaign_id}, pk={campaign_pk}")
+    except Exception as e:
+        logger.warning(f"기존 캠페인 조회 실패: {e}")
+
     campaign_row = {
         "campaign_id":    campaign_id,
         "campaign_title": meta.get("campaign_title", ""),
@@ -84,26 +100,26 @@ def save_crawl_to_supabase(crawl_json: dict, ai_scores: dict | None = None) -> d
     }
 
     try:
-        # campaign_id UNIQUE 제약이 있을 수 있으므로 upsert 사용
-        # 동일 campaign_id 재크롤링 시 기존 row를 갱신
-        res = (
-            sb.table("revu_campaigns")
-            .upsert(campaign_row, on_conflict="campaign_id")
-            .execute()
-        )
-        campaign_pk = res.data[0]["id"]
-        logger.info(f"캠페인 저장/갱신: campaign_id={campaign_id}, pk={campaign_pk}")
+        if campaign_pk:
+            # 2a) 기존 캠페인 업데이트 ─────────────────
+            sb.table("revu_campaigns").update(campaign_row).eq("id", campaign_pk).execute()
+            logger.info(f"캠페인 업데이트: campaign_id={campaign_id}, pk={campaign_pk}")
+        else:
+            # 2b) 신규 캠페인 삽입 ─────────────────
+            res = sb.table("revu_campaigns").insert(campaign_row).execute()
+            campaign_pk = res.data[0]["id"]
+            logger.info(f"캠페인 신규 삽입: campaign_id={campaign_id}, pk={campaign_pk}")
     except Exception as e:
         logger.error(f"캠페인 저장 실패: {e}")
-        return {"ok": False, "error": f"캠페인 UPSERT 실패: {e}"}
+        return {"ok": False, "error": f"캠페인 저장 실패: {e}"}
 
-    # 2) 기존 신청자 삭제 (재크롤링 시 중복 방지) ──
+    # 3) 기존 신청자 삭제 (재크롤링 시 중복 방지) ──
     try:
         sb.table("revu_applicants").delete().eq("campaign_pk", campaign_pk).execute()
     except Exception as e:
         logger.warning(f"기존 신청자 삭제 실패 (신규일 수 있음): {e}")
 
-    # 3) revu_applicants 일괄 삽입 ─────────────────
+    # 4) revu_applicants 일괄 삽입 ─────────────────
     rows = []
     for inf in influencers:
         # 신청자 식별키 (AI 점수 매핑용)

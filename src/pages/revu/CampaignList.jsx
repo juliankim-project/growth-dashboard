@@ -37,7 +37,7 @@ export default function CampaignList({ dark, nav, setNav }) {
 
   const filtered = useMemo(() => {
     if (platformFilter === 'all') return campaigns
-    return campaigns.filter(c => c.platform === platformFilter)
+    return campaigns.filter(c => platformFilter === 'instagram' ? c.platform === 'instagram' : c.platform !== 'instagram')
   }, [campaigns, platformFilter])
 
   const counts = useMemo(() => ({
