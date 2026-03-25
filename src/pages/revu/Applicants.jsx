@@ -1,39 +1,90 @@
 /**
  * 체험단 > 신청자 리스트 + 선정 UI
  * ──────────────────────────────────
- * sessionStorage 에서 선택된 캠페인 정보 읽음
- * revu_applicants 테이블 조회 → 필터/정렬 → 체크박스 선정 → revu_selections INSERT
+ * 크롤러(revu_app.py) 선정 UI 미러링
+ * - AI 추천 선정 탭: AI점수 순 + 자동 추천
+ * - 조건 선정 탭: 칼럼별 필터 + 수동 선택
+ * - 플랫폼별(네이버/인스타) 칼럼 & 필터 분기
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import {
-  ArrowLeft, Search, Check, CheckCircle, X, ChevronDown, ChevronUp,
-  Instagram, BookOpen, Star, Users as UsersIcon, ExternalLink,
-  Filter, ArrowUpDown, Save, Loader2
+  ArrowLeft, Search, Check, X, ChevronDown, ChevronUp,
+  Instagram, BookOpen, ExternalLink, Filter, ArrowUpDown,
+  Save, Loader2, Bot, SlidersHorizontal, Star, TrendingUp,
+  Eye, Users as UsersIcon, MessageCircle, FileText, Award
 } from 'lucide-react'
 
 /* ── 유틸 ── */
 const num = (v) => v == null ? '-' : Number(v).toLocaleString()
-const pct = (v) => v == null ? '-' : `${Number(v).toFixed(1)}%`
+const pct = (v) => v == null ? '-' : `${Number(v).toFixed(2)}%`
+
+/* ── 네이버 정렬 키 ── */
+const SORT_NAVER = [
+  { key: 'ai_score', label: 'AI점수' },
+  { key: 'avg_visitors', label: '방문자' },
+  { key: 'top_keyword_count', label: '상위키워드' },
+  { key: 'avg_likes', label: '평균좋아요' },
+  { key: 'blog_score', label: '블로그스코어' },
+  { key: 'neighbors', label: '이웃수' },
+  { key: 'post_freq_7d', label: '주간포스팅' },
+]
+/* ── 인스타 정렬 키 ── */
+const SORT_INSTA = [
+  { key: 'ai_score', label: 'AI점수' },
+  { key: 'exact_followers', label: '팔로워' },
+  { key: 'engagement_rate', label: '피드참여율' },
+]
+
+/* ── AI 점수 바 색상 ── */
+const scoreColor = (v) => {
+  if (v == null) return 'bg-gray-500/30'
+  if (v >= 80) return 'bg-green-500'
+  if (v >= 60) return 'bg-emerald-400'
+  if (v >= 40) return 'bg-amber-400'
+  if (v >= 20) return 'bg-orange-400'
+  return 'bg-red-400'
+}
+const scoreText = (v) => {
+  if (v == null) return 'text-gray-400'
+  if (v >= 70) return 'text-green-400'
+  if (v >= 40) return 'text-amber-400'
+  return 'text-red-400'
+}
 
 export default function Applicants({ dark, nav, setNav, user }) {
   /* ── 캠페인 컨텍스트 ── */
   const [campaign, setCampaign] = useState(null)
   const [applicants, setApplicants] = useState([])
-  const [selections, setSelections] = useState(new Set())   // applicant id set
+  const [selections, setSelections] = useState(new Set())
   const [existingSelections, setExistingSelections] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
 
-  /* ── 필터/정렬 ── */
+  /* ── 탭 (AI / 조건) ── */
+  const [tab, setTab] = useState('ai')
+
+  /* ── 공통 필터 ── */
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState('ai_score')
   const [sortDir, setSortDir] = useState('desc')
-  const [filterGender, setFilterGender] = useState('전체')
-  const [filterAge, setFilterAge] = useState('전체')
-  const [showFilters, setShowFilters] = useState(false)
   const [expanded, setExpanded] = useState(null)
+
+  /* ── 조건 필터 (네이버) ── */
+  const [fMinVisitors, setFMinVisitors] = useState('')
+  const [fMinBlogScore, setFMinBlogScore] = useState('')
+  const [fGender, setFGender] = useState('전체')
+  const [fAge, setFAge] = useState('전체')
+  const [fCategory, setFCategory] = useState('전체')
+  const [fAdActivity, setFAdActivity] = useState('전체')
+  const [fMinTopKeyword, setFMinTopKeyword] = useState('')
+  const [fMinLikes, setFMinLikes] = useState('')
+
+  /* ── 조건 필터 (인스타) ── */
+  const [fMinFollowers, setFMinFollowers] = useState('')
+  const [fMinEngagement, setFMinEngagement] = useState('')
+  const [fMinInstaLikes, setFMinInstaLikes] = useState('')
 
   /* ── 초기 로드 ── */
   useEffect(() => {
@@ -47,7 +98,6 @@ export default function Applicants({ dark, nav, setNav, user }) {
   const loadData = async (pk) => {
     setLoading(true)
     try {
-      // 신청자
       const { data: apps } = await supabase
         .from('revu_applicants')
         .select('*')
@@ -55,7 +105,6 @@ export default function Applicants({ dark, nav, setNav, user }) {
         .order('ai_score', { ascending: false, nullsFirst: false })
       setApplicants(apps || [])
 
-      // 기존 선정
       const { data: sels } = await supabase
         .from('revu_selections')
         .select('applicant_pk')
@@ -70,9 +119,31 @@ export default function Applicants({ dark, nav, setNav, user }) {
     }
   }
 
+  const isInsta = campaign?.platform === 'instagram'
+
+  /* ── raw_data 파싱 헬퍼 ── */
+  const getRaw = useCallback((app) => {
+    if (!app.raw_data) return {}
+    return typeof app.raw_data === 'string' ? JSON.parse(app.raw_data) : app.raw_data
+  }, [])
+
+  /* ── 유니크 옵션 ── */
+  const genderOpts = useMemo(() => ['전체', ...new Set(applicants.map(a => a.gender).filter(Boolean))], [applicants])
+  const ageOpts = useMemo(() => ['전체', ...new Set(applicants.map(a => a.age).filter(Boolean))], [applicants])
+  const categoryOpts = useMemo(() => {
+    const cats = new Set(applicants.map(a => a.category || getRaw(a).category).filter(Boolean))
+    return ['전체', ...cats]
+  }, [applicants, getRaw])
+  const adOpts = useMemo(() => {
+    const ads = new Set(applicants.map(a => a.ad_activity || getRaw(a).ad_activity).filter(Boolean))
+    return ['전체', ...ads]
+  }, [applicants, getRaw])
+
   /* ── 필터 & 정렬 ── */
   const filtered = useMemo(() => {
     let list = [...applicants]
+
+    // 검색
     if (search) {
       const q = search.toLowerCase()
       list = list.filter(a =>
@@ -81,20 +152,48 @@ export default function Applicants({ dark, nav, setNav, user }) {
         (a.instagram_handle || '').toLowerCase().includes(q)
       )
     }
-    if (filterGender !== '전체') list = list.filter(a => a.gender === filterGender)
-    if (filterAge !== '전체') list = list.filter(a => a.age === filterAge)
 
-    list.sort((a, b) => {
-      const va = a[sortKey] ?? -Infinity
-      const vb = b[sortKey] ?? -Infinity
-      return sortDir === 'desc' ? (vb > va ? 1 : -1) : (va > vb ? 1 : -1)
-    })
+    if (tab === 'ai') {
+      // AI 탭: AI점수 있는것만 (null 제외 없이 전체 표시)
+      list.sort((a, b) => {
+        const va = a.ai_score ?? -Infinity
+        const vb = b.ai_score ?? -Infinity
+        return vb - va
+      })
+    } else {
+      // 조건 탭: 플랫폼별 필터 적용
+      if (isInsta) {
+        if (fMinFollowers) list = list.filter(a => (a.exact_followers || 0) >= Number(fMinFollowers))
+        if (fMinEngagement) list = list.filter(a => (a.engagement_rate || 0) >= Number(fMinEngagement))
+        if (fGender !== '전체') list = list.filter(a => a.gender === fGender)
+        if (fAge !== '전체') list = list.filter(a => a.age === fAge)
+        if (fMinInstaLikes) list = list.filter(a => (a.avg_insta_likes || 0) >= Number(fMinInstaLikes))
+      } else {
+        if (fMinVisitors) list = list.filter(a => (a.avg_visitors || 0) >= Number(fMinVisitors))
+        if (fMinBlogScore) list = list.filter(a => (a.blog_score || 0) >= Number(fMinBlogScore))
+        if (fGender !== '전체') list = list.filter(a => a.gender === fGender)
+        if (fAge !== '전체') list = list.filter(a => a.age === fAge)
+        if (fCategory !== '전체') list = list.filter(a => (a.category || getRaw(a).category) === fCategory)
+        if (fAdActivity !== '전체') list = list.filter(a => (a.ad_activity || getRaw(a).ad_activity) === fAdActivity)
+        if (fMinTopKeyword) list = list.filter(a => (a.top_keyword_count || 0) >= Number(fMinTopKeyword))
+        if (fMinLikes) list = list.filter(a => (a.avg_likes || 0) >= Number(fMinLikes))
+      }
+
+      // 정렬
+      list.sort((a, b) => {
+        let va = a[sortKey] ?? -Infinity
+        let vb = b[sortKey] ?? -Infinity
+        // raw_data fallback for some fields
+        if (va === -Infinity && sortKey === 'neighbors') va = getRaw(a).neighbors ?? -Infinity
+        if (vb === -Infinity && sortKey === 'neighbors') vb = getRaw(b).neighbors ?? -Infinity
+        return sortDir === 'desc' ? (vb > va ? 1 : vb < va ? -1 : 0) : (va > vb ? 1 : va < vb ? -1 : 0)
+      })
+    }
+
     return list
-  }, [applicants, search, filterGender, filterAge, sortKey, sortDir])
-
-  /* ── 유니크 옵션 ── */
-  const genderOpts = useMemo(() => ['전체', ...new Set(applicants.map(a => a.gender).filter(Boolean))], [applicants])
-  const ageOpts = useMemo(() => ['전체', ...new Set(applicants.map(a => a.age).filter(Boolean))], [applicants])
+  }, [applicants, search, tab, sortKey, sortDir, isInsta, getRaw,
+    fMinVisitors, fMinBlogScore, fGender, fAge, fCategory, fAdActivity, fMinTopKeyword, fMinLikes,
+    fMinFollowers, fMinEngagement, fMinInstaLikes])
 
   /* ── 선정 토글 ── */
   const toggle = useCallback((id) => {
@@ -114,14 +213,10 @@ export default function Applicants({ dark, nav, setNav, user }) {
     setSaving(true)
     setSaveMsg('')
     try {
-      // 새로 추가할 항목
       const toAdd = [...selections].filter(id => !existingSelections.has(id))
-      // 제거할 항목
       const toRemove = [...existingSelections].filter(id => !selections.has(id))
-
       const email = user?.email || 'unknown'
 
-      // 추가
       if (toAdd.length > 0) {
         const rows = toAdd.map(applicant_pk => {
           const app = applicants.find(a => a.id === applicant_pk)
@@ -136,7 +231,6 @@ export default function Applicants({ dark, nav, setNav, user }) {
         if (error) throw error
       }
 
-      // 제거
       if (toRemove.length > 0) {
         const { error } = await supabase
           .from('revu_selections')
@@ -147,11 +241,11 @@ export default function Applicants({ dark, nav, setNav, user }) {
       }
 
       setExistingSelections(new Set(selections))
-      setSaveMsg(`✅ 저장 완료! +${toAdd.length} / -${toRemove.length}`)
+      setSaveMsg(`+${toAdd.length} / -${toRemove.length} 저장 완료`)
       setTimeout(() => setSaveMsg(''), 3000)
     } catch (e) {
       console.error('저장 실패:', e)
-      setSaveMsg(`❌ 저장 실패: ${e.message}`)
+      setSaveMsg(`저장 실패: ${e.message}`)
     } finally {
       setSaving(false)
     }
@@ -167,91 +261,19 @@ export default function Applicants({ dark, nav, setNav, user }) {
   const card = dark ? 'bg-[#232336] border-[#2D2D44]' : 'bg-white border-gray-200'
   const text1 = dark ? 'text-gray-100' : 'text-gray-900'
   const text2 = dark ? 'text-gray-400' : 'text-gray-500'
-  const inputCls = `w-full rounded-lg px-3 py-2 text-sm border outline-none transition ${dark ? 'bg-[#1C1C2E] border-[#2D2D44] text-gray-200 placeholder-gray-500 focus:border-violet-500' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400 focus:border-violet-500'}`
+  const text3 = dark ? 'text-gray-500' : 'text-gray-400'
+  const inputCls = `rounded-lg px-3 py-1.5 text-sm border outline-none transition ${dark ? 'bg-[#1C1C2E] border-[#2D2D44] text-gray-200 placeholder-gray-500 focus:border-violet-500' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400 focus:border-violet-500'}`
   const btnPrimary = 'bg-violet-600 hover:bg-violet-700 text-white'
   const btnGhost = dark ? 'bg-[#2D2D44] text-gray-300 hover:bg-[#363650]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-  const isInsta = campaign?.platform === 'instagram'
+  const tabActive = dark ? 'bg-violet-600 text-white' : 'bg-violet-600 text-white'
+  const tabInactive = dark ? 'bg-[#2D2D44] text-gray-400 hover:text-gray-200' : 'bg-gray-100 text-gray-500 hover:text-gray-800'
 
   if (!campaign) return <div className={`p-6 text-center ${text2}`}>캠페인을 선택해주세요</div>
 
-  /* ── 확장 상세 (raw_data JSON 파싱) ── */
-  const DetailPanel = ({ app }) => {
-    const raw = app.raw_data ? (typeof app.raw_data === 'string' ? JSON.parse(app.raw_data) : app.raw_data) : {}
-    const modal = raw.blog_modal || {}
-    const keywords = modal.top_keywords || raw.top_keywords || []
-
-    return (
-      <div className={`p-4 border-t ${dark ? 'border-[#2D2D44] bg-[#1C1C2E]' : 'border-gray-100 bg-gray-50'} text-sm`}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {isInsta ? (
-            <>
-              <Stat label="팔로워" value={num(raw.exact_followers || app.exact_followers)} />
-              <Stat label="게시물" value={num(raw.post_count || app.post_count)} />
-              <Stat label="참여율" value={pct(raw.engagement_rate || app.engagement_rate)} />
-              <Stat label="평균좋아요" value={num(raw.avg_likes || app.avg_insta_likes)} />
-              <Stat label="릴스평균조회" value={num(raw.avg_reel_views)} />
-              <Stat label="릴스최고조회" value={num(raw.max_reel_views)} />
-              <Stat label="팔로워비율" value={raw.ff_ratio != null ? `${raw.ff_ratio}:1` : '-'} />
-            </>
-          ) : (
-            <>
-              <Stat label="블로그스코어" value={app.blog_score ?? '-'} />
-              <Stat label="일평균방문자" value={num(app.avg_visitors)} />
-              <Stat label="이웃수" value={num(app.neighbors)} />
-              <Stat label="평균좋아요" value={num(app.avg_likes)} />
-              <Stat label="광고활동성" value={app.ad_activity || '-'} />
-              <Stat label="주간포스팅" value={app.post_freq_7d ?? '-'} />
-              <Stat label="상위키워드" value={app.top_keyword_count ?? '-'} />
-              <Stat label="카테고리" value={app.category || '-'} />
-            </>
-          )}
-        </div>
-        {keywords.length > 0 && (
-          <div className="mt-3">
-            <span className={`text-xs font-medium ${text2}`}>키워드:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {keywords.slice(0, 10).map((kw, i) => (
-                <span key={i} className={`px-2 py-0.5 rounded text-xs ${dark ? 'bg-[#2D2D44] text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                  {kw.keyword || kw} ({num(kw.search_volume)})
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        {(app.media_url || app.instagram_url) && (
-          <a href={app.media_url || app.instagram_url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 mt-3 text-xs text-violet-400 hover:underline">
-            <ExternalLink size={12} /> 프로필 보기
-          </a>
-        )}
-      </div>
-    )
-  }
-
-  const Stat = ({ label, value }) => (
-    <div>
-      <div className={`text-[10px] ${text2}`}>{label}</div>
-      <div className={`font-medium ${text1}`}>{value}</div>
-    </div>
-  )
-
-  /* ── 정렬 옵션 ── */
-  const sortOptions = isInsta
-    ? [
-        { key: 'ai_score', label: 'AI점수' },
-        { key: 'exact_followers', label: '팔로워' },
-        { key: 'engagement_rate', label: '참여율' },
-      ]
-    : [
-        { key: 'ai_score', label: 'AI점수' },
-        { key: 'avg_visitors', label: '방문자' },
-        { key: 'blog_score', label: '블로그스코어' },
-        { key: 'avg_likes', label: '좋아요' },
-        { key: 'top_keyword_count', label: '키워드수' },
-      ]
+  const sortOptions = isInsta ? SORT_INSTA : SORT_NAVER
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
       {/* ── 헤더 ── */}
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => setNav({ section: 'revu', sub: 'campaigns', l3sub: null })}
@@ -265,131 +287,145 @@ export default function Applicants({ dark, nav, setNav, user }) {
               {isInsta ? 'Instagram' : 'Naver'}
             </span>
             <span>전체 {applicants.length}명</span>
-            <span>|</span>
             <span className="text-violet-400 font-medium">선정 {selections.size}명</span>
+            {filtered.length !== applicants.length && (
+              <span className="text-amber-400">필터 {filtered.length}명</span>
+            )}
           </div>
         </div>
-        {/* 저장 버튼 */}
         <button onClick={handleSave} disabled={!hasChanges || saving}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${hasChanges ? btnPrimary : btnGhost} disabled:opacity-50`}>
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
           선정 저장
         </button>
       </div>
-      {saveMsg && <div className={`mb-3 text-sm px-3 py-2 rounded-lg ${saveMsg.startsWith('✅') ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{saveMsg}</div>}
 
-      {/* ── 검색 & 필터 ── */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="relative flex-1">
-          <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${text2}`} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="닉네임 / 블로그명 / 핸들 검색"
-            className={`${inputCls} pl-9`} />
+      {saveMsg && (
+        <div className={`mb-3 text-sm px-3 py-2 rounded-lg ${saveMsg.includes('완료') ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+          {saveMsg}
         </div>
-        <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition ${btnGhost}`}>
-          <Filter size={14} /> 필터
+      )}
+
+      {/* ── 탭 전환: AI 추천 / 조건 선정 ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={() => setTab('ai')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'ai' ? tabActive : tabInactive}`}>
+          <Bot size={15} /> AI 추천 선정
         </button>
-        <button onClick={selectAll} className={`px-3 py-2 rounded-lg text-sm transition ${btnGhost}`}>전체선택</button>
-        <button onClick={deselectAll} className={`px-3 py-2 rounded-lg text-sm transition ${btnGhost}`}>전체해제</button>
+        <button onClick={() => setTab('condition')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'condition' ? tabActive : tabInactive}`}>
+          <SlidersHorizontal size={15} /> 조건 선정
+        </button>
+
+        <div className="flex-1" />
+
+        {/* 검색 */}
+        <div className="relative w-64">
+          <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${text2}`} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="닉네임 / 블로그명 검색"
+            className={`${inputCls} w-full pl-9`} />
+        </div>
+
+        <button onClick={selectAll} className={`px-3 py-1.5 rounded-lg text-xs transition ${btnGhost}`}>전체선택</button>
+        <button onClick={deselectAll} className={`px-3 py-1.5 rounded-lg text-xs transition ${btnGhost}`}>전체해제</button>
       </div>
 
-      {showFilters && (
-        <div className={`flex items-center gap-3 mb-3 p-3 rounded-lg border ${card}`}>
-          <label className={`text-xs ${text2}`}>성별</label>
-          <select value={filterGender} onChange={e => setFilterGender(e.target.value)} className={`${inputCls} w-24`}>
-            {genderOpts.map(o => <option key={o}>{o}</option>)}
-          </select>
-          <label className={`text-xs ${text2}`}>연령</label>
-          <select value={filterAge} onChange={e => setFilterAge(e.target.value)} className={`${inputCls} w-24`}>
-            {ageOpts.map(o => <option key={o}>{o}</option>)}
-          </select>
-          <label className={`text-xs ${text2}`}>정렬</label>
-          <select value={sortKey} onChange={e => setSortKey(e.target.value)} className={`${inputCls} w-32`}>
-            {sortOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-          <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} className={`p-1.5 rounded transition ${btnGhost}`}>
-            <ArrowUpDown size={14} />
-          </button>
-        </div>
+      {/* ── 조건 필터 패널 ── */}
+      {tab === 'condition' && (
+        <ConditionFilters
+          dark={dark} isInsta={isInsta} inputCls={inputCls} card={card} text2={text2} btnGhost={btnGhost}
+          sortOptions={sortOptions} sortKey={sortKey} setSortKey={setSortKey} sortDir={sortDir} setSortDir={setSortDir}
+          genderOpts={genderOpts} ageOpts={ageOpts} categoryOpts={categoryOpts} adOpts={adOpts}
+          fGender={fGender} setFGender={setFGender} fAge={fAge} setFAge={setFAge}
+          fCategory={fCategory} setFCategory={setFCategory} fAdActivity={fAdActivity} setFAdActivity={setFAdActivity}
+          fMinVisitors={fMinVisitors} setFMinVisitors={setFMinVisitors}
+          fMinBlogScore={fMinBlogScore} setFMinBlogScore={setFMinBlogScore}
+          fMinTopKeyword={fMinTopKeyword} setFMinTopKeyword={setFMinTopKeyword}
+          fMinLikes={fMinLikes} setFMinLikes={setFMinLikes}
+          fMinFollowers={fMinFollowers} setFMinFollowers={setFMinFollowers}
+          fMinEngagement={fMinEngagement} setFMinEngagement={setFMinEngagement}
+          fMinInstaLikes={fMinInstaLikes} setFMinInstaLikes={setFMinInstaLikes}
+        />
       )}
 
-      {/* ── 리스트 ── */}
+      {/* ── 테이블 ── */}
       {loading ? (
         <div className={`text-center py-20 ${text2}`}>로딩 중...</div>
+      ) : filtered.length === 0 ? (
+        <div className={`text-center py-20 ${text2}`}>
+          <p className="text-lg mb-1">조건에 맞는 신청자가 없습니다</p>
+          <p className="text-sm">필터 조건을 조정해보세요</p>
+        </div>
       ) : (
-        <div className="space-y-1.5">
-          {filtered.map((app, idx) => {
-            const selected = selections.has(app.id)
-            const wasSelected = existingSelections.has(app.id)
-            const isExpanded = expanded === app.id
-            return (
-              <div key={app.id} className={`border rounded-xl overflow-hidden transition ${selected ? (dark ? 'border-violet-500/50 bg-violet-500/5' : 'border-violet-400 bg-violet-50') : card}`}>
-                <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : app.id)}>
-                  {/* 체크박스 */}
-                  <button onClick={(e) => { e.stopPropagation(); toggle(app.id) }}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border transition ${selected ? 'bg-violet-600 border-violet-600 text-white' : dark ? 'border-[#3D3D55] text-transparent hover:border-violet-400' : 'border-gray-300 text-transparent hover:border-violet-400'}`}>
-                    <Check size={14} />
-                  </button>
+        <div className={`border rounded-xl overflow-hidden ${card}`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className={`${dark ? 'bg-[#1C1C2E]' : 'bg-gray-50'} ${text2}`}>
+                  <th className="w-10 px-3 py-2.5 text-center">
+                    <Check size={14} className="mx-auto opacity-50" />
+                  </th>
+                  <th className="w-8 px-1 py-2.5 text-center text-xs font-medium">#</th>
+                  <th className="w-16 px-2 py-2.5 text-center text-xs font-medium">AI점수</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-medium min-w-[180px]">인플루언서</th>
+                  {isInsta ? (
+                    <>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">팔로워</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">참여율</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">평균좋아요</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">평균댓글</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">방문자</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">이웃수</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">키워드</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">좋아요</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium">주간글</th>
+                      <th className="text-left px-3 py-2.5 text-xs font-medium">광고</th>
+                    </>
+                  )}
+                  <th className="w-8 px-2 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((app, idx) => {
+                  const selected = selections.has(app.id)
+                  const wasSelected = existingSelections.has(app.id)
+                  const isExpanded = expanded === app.id
+                  const raw = getRaw(app)
+                  const modal = raw.blog_modal || {}
 
-                  {/* 순위 */}
-                  <span className={`text-xs font-mono w-6 text-center shrink-0 ${text2}`}>{idx + 1}</span>
-
-                  {/* 아이콘 */}
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isInsta ? 'bg-pink-500/15 text-pink-400' : 'bg-green-500/15 text-green-400'}`}>
-                    {isInsta ? <Instagram size={16} /> : <BookOpen size={16} />}
-                  </div>
-
-                  {/* 이름 */}
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-medium truncate text-sm ${text1}`}>
-                      {app.nickname || app.instagram_handle}
-                      {app.is_picked && <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-400">추천</span>}
-                      {wasSelected && <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-violet-500/20 text-violet-400">선정됨</span>}
-                    </div>
-                    <div className={`text-xs truncate ${text2}`}>
-                      {isInsta ? (app.instagram_handle || '') : (app.media_name || '')}
-                      {app.gender && ` · ${app.gender}`}{app.age && ` · ${app.age}`}
-                    </div>
-                  </div>
-
-                  {/* 주요 지표 */}
-                  <div className="flex items-center gap-4 shrink-0">
-                    {app.ai_score != null && (
-                      <div className="text-center">
-                        <div className={`text-sm font-bold ${app.ai_score >= 70 ? 'text-green-400' : app.ai_score >= 40 ? 'text-amber-400' : text2}`}>
-                          {Number(app.ai_score).toFixed(1)}
-                        </div>
-                        <div className={`text-[9px] ${text2}`}>AI점수</div>
-                      </div>
-                    )}
-                    {!isInsta && app.avg_visitors != null && (
-                      <div className="text-center">
-                        <div className={`text-sm font-medium ${text1}`}>{num(app.avg_visitors)}</div>
-                        <div className={`text-[9px] ${text2}`}>방문자</div>
-                      </div>
-                    )}
-                    {isInsta && app.exact_followers != null && (
-                      <div className="text-center">
-                        <div className={`text-sm font-medium ${text1}`}>{num(app.exact_followers)}</div>
-                        <div className={`text-[9px] ${text2}`}>팔로워</div>
-                      </div>
-                    )}
-                    <div className={`transition ${text2}`}>
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  </div>
-                </div>
-
-                {isExpanded && <DetailPanel app={app} />}
-              </div>
-            )
-          })}
+                  return (
+                    <ApplicantRow
+                      key={app.id}
+                      app={app} raw={raw} modal={modal} idx={idx}
+                      selected={selected} wasSelected={wasSelected} isExpanded={isExpanded}
+                      isInsta={isInsta} dark={dark}
+                      text1={text1} text2={text2} text3={text3}
+                      onToggle={() => toggle(app.id)}
+                      onExpand={() => setExpanded(isExpanded ? null : app.id)}
+                      getRaw={getRaw}
+                    />
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* ── 하단 고정 바 ── */}
+      {/* ── 요약 ── */}
+      <div className={`mt-3 flex items-center justify-between text-xs ${text2}`}>
+        <span>표시 {filtered.length} / 전체 {applicants.length}명</span>
+        <span>선정 {selections.size}명</span>
+      </div>
+
+      {/* ── 하단 고정 저장 바 ── */}
       {hasChanges && (
         <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl border ${dark ? 'bg-[#232336] border-violet-500/30' : 'bg-white border-violet-300'}`}>
-          <span className={`text-sm ${text1}`}>선정 {selections.size}명 (변경사항 있음)</span>
+          <span className={`text-sm ${text1}`}>선정 {selections.size}명</span>
           <button onClick={handleSave} disabled={saving}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition ${btnPrimary} disabled:opacity-50`}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -397,6 +433,367 @@ export default function Applicants({ dark, nav, setNav, user }) {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+
+/* ═══════════════════════════════════════════════
+   조건 필터 패널 (네이버 / 인스타 분기)
+═══════════════════════════════════════════════ */
+function ConditionFilters({
+  dark, isInsta, inputCls, card, text2, btnGhost,
+  sortOptions, sortKey, setSortKey, sortDir, setSortDir,
+  genderOpts, ageOpts, categoryOpts, adOpts,
+  fGender, setFGender, fAge, setFAge,
+  fCategory, setFCategory, fAdActivity, setFAdActivity,
+  fMinVisitors, setFMinVisitors, fMinBlogScore, setFMinBlogScore,
+  fMinTopKeyword, setFMinTopKeyword, fMinLikes, setFMinLikes,
+  fMinFollowers, setFMinFollowers, fMinEngagement, setFMinEngagement,
+  fMinInstaLikes, setFMinInstaLikes,
+}) {
+  const labelCls = `text-[11px] font-medium ${text2} mb-1 block`
+
+  return (
+    <div className={`p-4 rounded-xl border mb-4 ${card}`}>
+      <div className={`flex items-center gap-1.5 mb-3 text-xs font-semibold ${text2}`}>
+        <Filter size={13} /> 조건 필터
+      </div>
+
+      {isInsta ? (
+        /* ── 인스타 필터 ── */
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div>
+            <label className={labelCls}>최소 팔로워</label>
+            <input type="number" value={fMinFollowers} onChange={e => setFMinFollowers(e.target.value)}
+              placeholder="ex) 1000" className={`${inputCls} w-full`} />
+          </div>
+          <div>
+            <label className={labelCls}>최소 참여율(%)</label>
+            <input type="number" step="0.1" value={fMinEngagement} onChange={e => setFMinEngagement(e.target.value)}
+              placeholder="ex) 2.0" className={`${inputCls} w-full`} />
+          </div>
+          <div>
+            <label className={labelCls}>성별</label>
+            <select value={fGender} onChange={e => setFGender(e.target.value)} className={`${inputCls} w-full`}>
+              {genderOpts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>연령대</label>
+            <select value={fAge} onChange={e => setFAge(e.target.value)} className={`${inputCls} w-full`}>
+              {ageOpts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>최소 평균좋아요</label>
+            <input type="number" value={fMinInstaLikes} onChange={e => setFMinInstaLikes(e.target.value)}
+              placeholder="ex) 50" className={`${inputCls} w-full`} />
+          </div>
+        </div>
+      ) : (
+        /* ── 네이버 필터 ── */
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label className={labelCls}>최소 방문자수</label>
+            <input type="number" value={fMinVisitors} onChange={e => setFMinVisitors(e.target.value)}
+              placeholder="ex) 100" className={`${inputCls} w-full`} />
+          </div>
+          <div>
+            <label className={labelCls}>최소 블로그스코어</label>
+            <input type="number" step="0.1" value={fMinBlogScore} onChange={e => setFMinBlogScore(e.target.value)}
+              placeholder="ex) 2.0" className={`${inputCls} w-full`} />
+          </div>
+          <div>
+            <label className={labelCls}>성별</label>
+            <select value={fGender} onChange={e => setFGender(e.target.value)} className={`${inputCls} w-full`}>
+              {genderOpts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>연령대</label>
+            <select value={fAge} onChange={e => setFAge(e.target.value)} className={`${inputCls} w-full`}>
+              {ageOpts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>카테고리</label>
+            <select value={fCategory} onChange={e => setFCategory(e.target.value)} className={`${inputCls} w-full`}>
+              {categoryOpts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>광고활동성</label>
+            <select value={fAdActivity} onChange={e => setFAdActivity(e.target.value)} className={`${inputCls} w-full`}>
+              {adOpts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>최소 상위키워드</label>
+            <input type="number" value={fMinTopKeyword} onChange={e => setFMinTopKeyword(e.target.value)}
+              placeholder="ex) 3" className={`${inputCls} w-full`} />
+          </div>
+          <div>
+            <label className={labelCls}>최소 평균좋아요</label>
+            <input type="number" value={fMinLikes} onChange={e => setFMinLikes(e.target.value)}
+              placeholder="ex) 10" className={`${inputCls} w-full`} />
+          </div>
+        </div>
+      )}
+
+      {/* 정렬 */}
+      <div className="flex items-center gap-3 mt-3 pt-3 border-t" style={{ borderColor: dark ? '#2D2D44' : '#e5e7eb' }}>
+        <span className={`text-[11px] font-medium ${text2}`}>정렬:</span>
+        <select value={sortKey} onChange={e => setSortKey(e.target.value)} className={`${inputCls}`}>
+          {sortOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
+        <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition ${btnGhost}`}>
+          <ArrowUpDown size={12} /> {sortDir === 'desc' ? '높은순' : '낮은순'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
+/* ═══════════════════════════════════════════════
+   테이블 행 컴포넌트
+═══════════════════════════════════════════════ */
+function ApplicantRow({
+  app, raw, modal, idx, selected, wasSelected, isExpanded,
+  isInsta, dark, text1, text2, text3,
+  onToggle, onExpand, getRaw
+}) {
+  const rowBg = selected
+    ? (dark ? 'bg-violet-500/5' : 'bg-violet-50')
+    : (idx % 2 === 0 ? '' : (dark ? 'bg-[#1C1C2E]/50' : 'bg-gray-50/50'))
+
+  // 광고활동성 색상
+  const adColor = (v) => {
+    if (!v) return text2
+    if (v === '낮음') return 'text-green-400'
+    if (v === '보통') return 'text-amber-400'
+    return 'text-red-400'
+  }
+
+  return (
+    <>
+      <tr className={`${rowBg} border-t ${dark ? 'border-[#2D2D44]' : 'border-gray-100'} hover:${dark ? 'bg-[#2D2D44]/40' : 'bg-gray-50'} transition-colors cursor-pointer`}
+        onClick={onExpand}>
+        {/* 체크박스 */}
+        <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+          <button onClick={onToggle}
+            className={`w-6 h-6 rounded flex items-center justify-center border transition ${selected ? 'bg-violet-600 border-violet-600 text-white' : dark ? 'border-[#3D3D55] text-transparent hover:border-violet-400' : 'border-gray-300 text-transparent hover:border-violet-400'}`}>
+            <Check size={13} />
+          </button>
+        </td>
+
+        {/* 순위 */}
+        <td className={`px-1 py-2 text-center text-xs font-mono ${text3}`}>{idx + 1}</td>
+
+        {/* AI점수 바 */}
+        <td className="px-2 py-2">
+          <div className="flex flex-col items-center gap-0.5">
+            <span className={`text-xs font-bold ${scoreText(app.ai_score)}`}>
+              {app.ai_score != null ? Number(app.ai_score).toFixed(1) : '-'}
+            </span>
+            <div className={`w-12 h-1.5 rounded-full ${dark ? 'bg-[#2D2D44]' : 'bg-gray-200'}`}>
+              <div className={`h-full rounded-full transition-all ${scoreColor(app.ai_score)}`}
+                style={{ width: `${Math.min(100, app.ai_score || 0)}%` }} />
+            </div>
+          </div>
+        </td>
+
+        {/* 인플루언서 */}
+        <td className="px-3 py-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isInsta ? 'bg-pink-500/15 text-pink-400' : 'bg-green-500/15 text-green-400'}`}>
+              {isInsta ? <Instagram size={14} /> : <BookOpen size={14} />}
+            </div>
+            <div className="min-w-0">
+              <div className={`font-medium text-sm truncate ${text1}`}>
+                {app.nickname || app.instagram_handle}
+                {app.blog_score != null && !isInsta && (
+                  <span className={`ml-1.5 text-[10px] px-1 py-0.5 rounded ${app.blog_score >= 4 ? 'bg-green-500/20 text-green-400' : app.blog_score >= 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                    {Number(app.blog_score).toFixed(1)}
+                  </span>
+                )}
+                {app.is_picked && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-400">추천</span>}
+                {app.is_duplicate && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-red-500/20 text-red-400">중복</span>}
+                {wasSelected && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-violet-500/20 text-violet-400">선정</span>}
+              </div>
+              <div className={`text-[11px] truncate ${text3}`}>
+                {isInsta ? (app.instagram_handle || '') : (app.media_name || '')}
+                {app.gender && ` · ${app.gender}`}
+                {app.age && ` · ${app.age}`}
+              </div>
+            </div>
+          </div>
+        </td>
+
+        {isInsta ? (
+          <>
+            <td className={`px-3 py-2 text-right text-sm ${text1}`}>{num(app.exact_followers)}</td>
+            <td className="px-3 py-2 text-right">
+              <span className={`text-sm font-medium ${(app.engagement_rate || 0) >= 3 ? 'text-green-400' : (app.engagement_rate || 0) >= 1.5 ? 'text-amber-400' : text2}`}>
+                {pct(app.engagement_rate)}
+              </span>
+            </td>
+            <td className={`px-3 py-2 text-right text-sm ${text1}`}>{num(app.avg_insta_likes)}</td>
+            <td className={`px-3 py-2 text-right text-sm ${text2}`}>{num(app.avg_insta_comments)}</td>
+          </>
+        ) : (
+          <>
+            <td className={`px-3 py-2 text-right text-sm ${text1}`}>{num(app.avg_visitors)}</td>
+            <td className={`px-3 py-2 text-right text-sm ${text1}`}>
+              {num(app.neighbors || raw.neighbors)}
+            </td>
+            <td className={`px-3 py-2 text-right text-sm ${text1}`}>
+              {app.top_keyword_count != null ? app.top_keyword_count : '-'}
+            </td>
+            <td className={`px-3 py-2 text-right text-sm ${text1}`}>{num(app.avg_likes)}</td>
+            <td className={`px-3 py-2 text-right text-sm ${text2}`}>{app.post_freq_7d ?? '-'}</td>
+            <td className={`px-3 py-2 text-sm ${adColor(app.ad_activity || raw.ad_activity)}`}>
+              {app.ad_activity || raw.ad_activity || '-'}
+            </td>
+          </>
+        )}
+
+        {/* 확장 토글 */}
+        <td className={`px-2 py-2 ${text3}`}>
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </td>
+      </tr>
+
+      {/* ── 확장 상세 패널 ── */}
+      {isExpanded && (
+        <tr>
+          <td colSpan={isInsta ? 9 : 11} className="p-0">
+            <DetailPanel app={app} raw={raw} modal={modal} isInsta={isInsta} dark={dark} text1={text1} text2={text2} text3={text3} />
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+
+/* ═══════════════════════════════════════════════
+   확장 상세 패널
+   - AI 분석 코멘트
+   - 블로그 요약 (네이버) / 인스타 상세
+   - 키워드 리스트 + 최근 포스트
+═══════════════════════════════════════════════ */
+function DetailPanel({ app, raw, modal, isInsta, dark, text1, text2, text3 }) {
+  const panelBg = dark ? 'bg-[#1A1A2E]' : 'bg-gray-50'
+  const miniCard = dark ? 'bg-[#232336] border-[#2D2D44]' : 'bg-white border-gray-200'
+  const keywords = modal.top_keywords || raw.top_keywords || []
+  const recentPosts = modal.recent_posts || raw.recent_posts || []
+  const desc = raw.blog_score_description || modal.blog_score_description || ''
+
+  return (
+    <div className={`p-4 ${panelBg} border-t ${dark ? 'border-[#2D2D44]' : 'border-gray-100'}`}>
+      {/* AI 분석 코멘트 */}
+      {desc && (
+        <div className={`flex items-start gap-2 mb-4 p-3 rounded-lg border ${miniCard}`}>
+          <Bot size={16} className="text-violet-400 shrink-0 mt-0.5" />
+          <p className={`text-sm leading-relaxed ${text1}`}>{desc}</p>
+        </div>
+      )}
+
+      {/* 지표 그리드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+        {isInsta ? (
+          <>
+            <MetricCard label="팔로워" value={num(raw.exact_followers || app.exact_followers)} icon={<UsersIcon size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="게시물" value={num(raw.post_count || app.post_count)} icon={<FileText size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="피드참여율" value={pct(raw.engagement_rate || app.engagement_rate)} icon={<TrendingUp size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="평균좋아요" value={num(raw.avg_likes || app.avg_insta_likes)} icon={<Star size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="릴스평균조회" value={num(raw.avg_reel_views)} icon={<Eye size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="릴스최고조회" value={num(raw.max_reel_views)} icon={<Award size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+          </>
+        ) : (
+          <>
+            <MetricCard label="블로그스코어" value={app.blog_score ?? '-'} icon={<Star size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="일평균방문자" value={num(app.avg_visitors)} icon={<Eye size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="이웃수" value={num(app.neighbors || raw.neighbors || modal.neighbors)} icon={<UsersIcon size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="평균좋아요" value={num(app.avg_likes || modal.avg_likes)} icon={<Star size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="평균댓글" value={num(app.avg_comments || modal.avg_comments)} icon={<MessageCircle size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="주간포스팅" value={app.post_freq_7d ?? modal.post_freq_7d ?? '-'} icon={<FileText size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="상위키워드" value={app.top_keyword_count ?? modal.top_keyword_count ?? '-'} icon={<TrendingUp size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="광고활동성" value={app.ad_activity || modal.ad_activity || '-'} icon={<Filter size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard}
+              valueColor={
+                (app.ad_activity || modal.ad_activity) === '낮음' ? 'text-green-400' :
+                (app.ad_activity || modal.ad_activity) === '보통' ? 'text-amber-400' :
+                (app.ad_activity || modal.ad_activity) ? 'text-red-400' : undefined
+              }
+            />
+            <MetricCard label="카테고리" value={app.category || modal.category || '-'} icon={<BookOpen size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="개설일" value={raw.open_date || modal.open_date || '-'} icon={<FileText size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="총방문자" value={num(raw.total_visitors || modal.total_visitors)} icon={<UsersIcon size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+            <MetricCard label="스크랩" value={num(raw.scraps || modal.scraps)} icon={<Star size={13} />} dark={dark} text1={text1} text2={text2} miniCard={miniCard} />
+          </>
+        )}
+      </div>
+
+      {/* 키워드 리스트 */}
+      {keywords.length > 0 && (
+        <div className={`p-3 rounded-lg border mb-3 ${miniCard}`}>
+          <div className={`text-xs font-semibold mb-2 ${text2}`}>상위 노출 키워드 ({keywords.length}개)</div>
+          <div className="flex flex-wrap gap-1.5">
+            {keywords.slice(0, 20).map((kw, i) => (
+              <span key={i} className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${dark ? 'bg-[#2D2D44] text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                {kw.rank != null && <span className={`font-bold ${kw.rank <= 3 ? 'text-green-400' : kw.rank <= 10 ? 'text-amber-400' : text3}`}>#{kw.rank}</span>}
+                <span>{kw.keyword || kw}</span>
+                {kw.search_volume != null && <span className={text3}>({num(kw.search_volume)})</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 최근 포스트 */}
+      {recentPosts.length > 0 && (
+        <div className={`p-3 rounded-lg border ${miniCard}`}>
+          <div className={`text-xs font-semibold mb-2 ${text2}`}>최근 포스트 ({recentPosts.length}개)</div>
+          <div className="space-y-1.5">
+            {recentPosts.slice(0, 5).map((post, i) => (
+              <div key={i} className={`flex items-center gap-2 text-xs ${text1}`}>
+                <span className={text3}>{post.date}</span>
+                <span className="truncate flex-1">{post.title}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {post.is_top_exposed && <span className="px-1 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px]">상위</span>}
+                  {post.is_smart_block && <span className="px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px]">스마트</span>}
+                  <span className={text3}>{post.likes}좋</span>
+                  <span className={text3}>{post.comments}댓</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 프로필 링크 */}
+      {(app.media_url || app.instagram_url) && (
+        <a href={app.media_url || app.instagram_url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 mt-3 text-xs text-violet-400 hover:underline">
+          <ExternalLink size={12} /> 프로필 보기
+        </a>
+      )}
+    </div>
+  )
+}
+
+
+/* ── 지표 미니카드 ── */
+function MetricCard({ label, value, icon, dark, text1, text2, miniCard, valueColor }) {
+  return (
+    <div className={`p-2.5 rounded-lg border ${miniCard}`}>
+      <div className={`flex items-center gap-1 text-[10px] ${text2} mb-1`}>
+        {icon} {label}
+      </div>
+      <div className={`text-sm font-semibold ${valueColor || text1}`}>{value}</div>
     </div>
   )
 }
