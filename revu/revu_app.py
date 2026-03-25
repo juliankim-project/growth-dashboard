@@ -718,7 +718,7 @@ def crawl_revu(cid,uid,upw,mmax=0,cmax=0,cb=None):
             else: mf+=1
             time.sleep(BETWEEN_MODAL_DELAY)
         log(f"📊 모달: 성공 {mok} / 실패 {mf}")
-        out={"meta":{"campaign_id":cid,"campaign_title":ctitle,"crawled_at":datetime.now().isoformat(),"total_count":len(data),"modal_success":mok,"version":"v5"},"influencers":data}
+        out={"meta":{"campaign_id":cid,"campaign_title":ctitle,"crawled_at":datetime.now().isoformat(),"total_count":len(data),"modal_success":mok,"version":"v5","crawl_max":cmax,"modal_max":mmax},"influencers":data}
         fn=f"revu_{cid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(fn,"w",encoding="utf-8") as f: json.dump(out,f,ensure_ascii=False,indent=2)
         log(f"💾 JSON: {fn}"); log(f"✅ 완료! {len(data)}명")
@@ -932,7 +932,7 @@ def crawl_revu_insta(cid,uid,upw,cmax=0,cb=None):
         if cmax>0: data=data[:cmax]
         log(f"✅ 인스타 리스트 파싱 완료: {len(data)}명")
         out={"meta":{"campaign_id":cid,"campaign_title":ctitle,"crawled_at":datetime.now().isoformat(),
-                      "total_count":len(data),"platform":"instagram","version":"v5-insta"},"influencers":data}
+                      "total_count":len(data),"platform":"instagram","version":"v5-insta","crawl_max":cmax},"influencers":data}
         fn=f"revu_insta_{cid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(fn,"w",encoding="utf-8") as f: json.dump(out,f,ensure_ascii=False,indent=2)
         log(f"💾 JSON: {fn}"); log(f"✅ 완료! {len(data)}명")
