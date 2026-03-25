@@ -96,57 +96,63 @@ export default async function handler(req, res) {
     const rows = []
 
     for (const evt of events) {
-      // 에어브릿지 매크로 기반 필드 매핑
-      // 광고주 포스트백은 매크로로 필드를 직접 구성하므로
-      // 가능한 모든 패턴을 커버
+      // ── 실제 에어브릿지 광고주 포스트백 페이로드 구조 기반 매핑 ──
+      // 주요 객체: event, touchpoint, device, user, app,
+      //           eventDatetime, eventDetails, product, attributionResult
       const row = {
         // 이벤트 정보
-        event_name:      dig(evt, 'eventName') || dig(evt, 'event_name') || dig(evt, 'event.name'),
-        event_category:  dig(evt, 'eventCategory') || dig(evt, 'event_category') || dig(evt, 'event.category'),
-        event_action:    dig(evt, 'eventAction') || dig(evt, 'event_action') || dig(evt, 'event.action'),
-        event_label:     dig(evt, 'eventLabel') || dig(evt, 'event_label') || dig(evt, 'event.label'),
-        event_value:     first(dig(evt, 'eventValue'), dig(evt, 'event_value'), dig(evt, 'event.value')),
-        event_timestamp: first(dig(evt, 'eventTimestamp'), dig(evt, 'event_timestamp'), dig(evt, 'timestamp')),
-        event_datetime:  tsToISO(first(dig(evt, 'eventTimestamp'), dig(evt, 'event_timestamp'), dig(evt, 'timestamp'))),
+        event_name:      dig(evt, 'event.eventCategory') || dig(evt, 'eventName') || dig(evt, 'event_name'),
+        event_category:  dig(evt, 'event.eventCategory') || dig(evt, 'eventCategory'),
+        event_action:    dig(evt, 'event.eventAction') || dig(evt, 'eventAction'),
+        event_label:     dig(evt, 'event.eventLabel') || dig(evt, 'eventLabel'),
+        event_value:     first(dig(evt, 'event.eventValue'), dig(evt, 'eventValue')),
+        event_timestamp: first(dig(evt, 'eventTimestamp'), dig(evt, 'timestamp')),
+        event_datetime:  dig(evt, 'eventDatetime.eventDate')
+                           ? new Date(dig(evt, 'eventDatetime.eventDate')).toISOString()
+                           : tsToISO(first(dig(evt, 'eventTimestamp'), dig(evt, 'timestamp'))),
 
         // 디바이스 정보
-        device_gaid:     dig(evt, 'device.gaid') || dig(evt, 'deviceGaid') || dig(evt, 'gaid'),
-        device_idfa:     dig(evt, 'device.idfa') || dig(evt, 'deviceIdfa') || dig(evt, 'idfa'),
-        device_idfv:     dig(evt, 'device.idfv') || dig(evt, 'deviceIdfv'),
-        device_uuid:     dig(evt, 'device.deviceUUID') || dig(evt, 'deviceUUID') || dig(evt, 'device.uuid'),
+        device_gaid:     dig(evt, 'device.gaid') || dig(evt, 'deviceGaid'),
+        device_idfa:     dig(evt, 'device.idfa') || dig(evt, 'deviceIdfa'),
+        device_idfv:     dig(evt, 'device.ifv') || dig(evt, 'device.idfv'),
+        device_uuid:     dig(evt, 'device.airbridgeDeviceID') || dig(evt, 'device.deviceUUID'),
         device_model:    dig(evt, 'device.model') || dig(evt, 'deviceModel'),
-        device_os:       dig(evt, 'device.osName') || dig(evt, 'deviceOS') || dig(evt, 'os'),
+        device_os:       dig(evt, 'device.osName') || dig(evt, 'device.platform'),
         device_os_ver:   dig(evt, 'device.osVersion') || dig(evt, 'deviceOSVersion'),
         device_locale:   dig(evt, 'device.locale') || dig(evt, 'deviceLocale'),
         device_country:  dig(evt, 'device.country') || dig(evt, 'country'),
         device_carrier:  dig(evt, 'device.carrier') || dig(evt, 'carrier'),
-        device_ip:       dig(evt, 'device.ipAddress') || dig(evt, 'ipAddress') || dig(evt, 'ip'),
+        device_ip:       dig(evt, 'device.ipAddress') || dig(evt, 'ipAddress'),
 
         // 유저/앱 정보
-        user_id:         dig(evt, 'user.userId') || dig(evt, 'userId') || dig(evt, 'user_id'),
+        user_id:         dig(evt, 'user.userID') || dig(evt, 'user.userId') || dig(evt, 'userId'),
         user_email:      dig(evt, 'user.email') || dig(evt, 'userEmail'),
         app_name:        dig(evt, 'app.name') || dig(evt, 'appName'),
         app_package:     dig(evt, 'app.packageName') || dig(evt, 'packageName'),
         app_version:     dig(evt, 'app.version') || dig(evt, 'appVersion'),
 
-        // 어트리뷰션 결과
-        attr_channel:    dig(evt, 'attributionResult.attributedChannel') || dig(evt, 'channel') || dig(evt, 'attr_channel'),
-        attr_campaign:   dig(evt, 'attributionResult.attributedCampaign') || dig(evt, 'campaign') || dig(evt, 'attr_campaign'),
-        attr_ad_group:   dig(evt, 'attributionResult.attributedAdGroup') || dig(evt, 'adGroup') || dig(evt, 'ad_group'),
-        attr_ad_creative: dig(evt, 'attributionResult.attributedAdCreative') || dig(evt, 'adCreative') || dig(evt, 'creative'),
-        attr_keyword:    dig(evt, 'attributionResult.attributedKeyword') || dig(evt, 'keyword'),
-        attr_sub_id:     dig(evt, 'attributionResult.attributedSubId') || dig(evt, 'subId') || dig(evt, 'sub_id'),
-        attr_click_id:   dig(evt, 'attributionResult.attributedClickID') || dig(evt, 'clickId') || dig(evt, 'click_id'),
-        attr_type:       dig(evt, 'attributionResult.attributionType') || dig(evt, 'attributionType'),
-        is_organic:      dig(evt, 'isOrganic') || dig(evt, 'attributionResult.isOrganic') || false,
+        // 어트리뷰션 — touchpoint (실제 포스트백) > attributionResult (fallback)
+        attr_channel:    dig(evt, 'touchpoint.channel') || dig(evt, 'attributionResult.attributedChannel'),
+        attr_campaign:   dig(evt, 'touchpoint.campaign') || dig(evt, 'attributionResult.attributedCampaign'),
+        attr_ad_group:   dig(evt, 'touchpoint.adGroup') || dig(evt, 'attributionResult.attributedAdGroup'),
+        attr_ad_creative: dig(evt, 'touchpoint.adCreative') || dig(evt, 'attributionResult.attributedAdCreative'),
+        attr_keyword:    dig(evt, 'touchpoint.term') || dig(evt, 'attributionResult.attributedKeyword'),
+        attr_sub_id:     dig(evt, 'touchpoint.subPublisher') || dig(evt, 'attributionResult.attributedSubId'),
+        attr_click_id:   dig(evt, 'touchpoint.campaignID') || dig(evt, 'attributionResult.attributedClickID'),
+        attr_type:       dig(evt, 'touchpoint.campaignType') || dig(evt, 'attributionResult.attributionType'),
+        is_organic:      dig(evt, 'touchpoint.isViewThrough') != null
+                           ? !dig(evt, 'touchpoint.isViewThrough')
+                           : (dig(evt, 'isOrganic') || false),
 
         // 전환 상세
-        currency:        dig(evt, 'event.currency') || dig(evt, 'currency'),
-        revenue:         first(dig(evt, 'event.revenue'), dig(evt, 'revenue'), dig(evt, 'event_value')),
+        currency:        dig(evt, 'event.currency')
+                           || dig(evt, 'product.productList.products.0.currency')
+                           || dig(evt, 'currency'),
+        revenue:         first(dig(evt, 'event.eventValue'), dig(evt, 'event.eventValueOriginal'), dig(evt, 'revenue')),
         quantity:        first(dig(evt, 'event.quantity'), dig(evt, 'quantity')),
-        transaction_id:  dig(evt, 'event.transactionID') || dig(evt, 'transactionId') || dig(evt, 'transaction_id'),
+        transaction_id:  dig(evt, 'eventDetails.transactionID') || dig(evt, 'event.transactionID') || dig(evt, 'transactionId'),
 
-        // 원본 payload 전체 저장 (분석용)
+        // 원본 payload 전체 저장 (분석용 — product, customUserProperties 등 여기서 꺼내 씀)
         raw_payload:     evt,
       }
 
