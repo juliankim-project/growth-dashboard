@@ -1,33 +1,20 @@
 /**
  * 체험단 > 캠페인 목록
  * ─────────────────────────────
- * 플랫폼 필터 + 테스트 뱃지 + 삭제 기능
+ * 플랫폼 필터 + 삭제 기능
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import {
   Calendar, Instagram, BookOpen, ChevronRight, RefreshCw, LayoutGrid,
-  Trash2, AlertTriangle, FlaskConical
+  Trash2, AlertTriangle
 } from 'lucide-react'
-
-/* ── 테스트 여부 판별 ── */
-function isTestCrawl(c) {
-  // raw_meta 에서 crawl_max 확인 (크롤링 인원 제한 있으면 테스트)
-  const raw = typeof c.raw_meta === 'string' ? (() => { try { return JSON.parse(c.raw_meta) } catch { return {} } })() : (c.raw_meta || {})
-  const crawlMax = raw.crawl_max || raw.crawlMax || 0
-  const modalMax = raw.modal_max || raw.modalMax || 0
-  // crawl_max > 0 이면 테스트 (전체=0)
-  if (crawlMax > 0) return { test: true, crawlMax, modalMax }
-  // total_count가 비정상적으로 적으면 (30명 이하) 테스트 추정
-  if (c.total_count > 0 && c.total_count <= 30) return { test: true, crawlMax, modalMax, inferred: true }
-  return { test: false, crawlMax, modalMax }
-}
 
 export default function CampaignList({ dark, nav, setNav }) {
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [platformFilter, setPlatformFilter] = useState('all')
-  const [deleteTarget, setDeleteTarget] = useState(null) // 삭제 확인용
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
   const load = async () => {
@@ -69,14 +56,10 @@ export default function CampaignList({ dark, nav, setNav }) {
     setNav({ section: 'revu', sub: 'applicants', l3sub: null })
   }
 
-  /* ── 삭제 (cascade: applicants + selections 자동 삭제) ── */
   const handleDelete = useCallback(async (c) => {
     setDeleting(true)
     try {
-      const { error } = await supabase
-        .from('revu_campaigns')
-        .delete()
-        .eq('id', c.id)
+      const { error } = await supabase.from('revu_campaigns').delete().eq('id', c.id)
       if (error) throw error
       setCampaigns(prev => prev.filter(x => x.id !== c.id))
       setDeleteTarget(null)
@@ -103,7 +86,6 @@ export default function CampaignList({ dark, nav, setNav }) {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      {/* ── 헤더 ── */}
       <div className="flex items-center justify-between mb-4">
         <h1 className={`text-xl font-bold ${text1}`}>캠페인 목록</h1>
         <button onClick={load} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${btnGhost} transition`}>
@@ -111,7 +93,6 @@ export default function CampaignList({ dark, nav, setNav }) {
         </button>
       </div>
 
-      {/* ── 플랫폼 필터 탭 ── */}
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => setPlatformFilter('all')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${platformFilter === 'all' ? tabActive : tabInactive}`}>
@@ -127,7 +108,6 @@ export default function CampaignList({ dark, nav, setNav }) {
         </button>
       </div>
 
-      {/* ── 리스트 ── */}
       {loading ? (
         <div className={`text-center py-20 ${text2}`}>로딩 중...</div>
       ) : filtered.length === 0 ? (
@@ -143,47 +123,27 @@ export default function CampaignList({ dark, nav, setNav }) {
             const appCount = c.applicant_count?.[0]?.count ?? 0
             const selCount = c.selection_count?.[0]?.count ?? 0
             const isInsta = c.platform === 'instagram'
-            const testInfo = isTestCrawl(c)
 
             return (
-              <div key={c.id} className={`relative border rounded-xl overflow-hidden transition hover:shadow-md ${testInfo.test ? (dark ? 'border-amber-500/30' : 'border-amber-300') : card}`}>
-                {/* 메인 클릭 영역 */}
+              <div key={c.id} className={`relative border rounded-xl overflow-hidden transition hover:shadow-md ${card}`}>
                 <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => goToApplicants(c)}>
-                  {/* 플랫폼 아이콘 */}
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isInsta ? 'bg-pink-500/15 text-pink-400' : 'bg-green-500/15 text-green-400'}`}>
                     {isInsta ? <Instagram size={20} /> : <BookOpen size={20} />}
                   </div>
 
-                  {/* 캠페인 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`font-semibold truncate ${text1}`}>{c.campaign_title || `캠페인 ${c.campaign_id}`}</span>
-                      {/* 플랫폼 뱃지 */}
                       <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${isInsta ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30' : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30'}`}>
                         {isInsta ? 'INSTAGRAM' : 'NAVER'}
                       </span>
-                      {/* 테스트 뱃지 */}
-                      {testInfo.test && (
-                        <span className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${dark ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-700 border border-amber-300'}`}>
-                          <FlaskConical size={10} />
-                          TEST
-                          {testInfo.crawlMax > 0 && <span className="opacity-70">({testInfo.crawlMax}명)</span>}
-                        </span>
-                      )}
                     </div>
                     <div className={`flex items-center gap-3 text-xs mt-1 ${text2}`}>
                       <span className="flex items-center gap-1"><Calendar size={12} />{fmt(c.crawled_at)}</span>
                       <span>ID: {c.campaign_id}</span>
-                      {testInfo.crawlMax > 0 && (
-                        <span className={dark ? 'text-amber-400/70' : 'text-amber-600'}>
-                          크롤링 {testInfo.crawlMax}명 제한
-                          {testInfo.modalMax > 0 && ` · 모달 ${testInfo.modalMax}명`}
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  {/* 카운트 */}
                   <div className="flex items-center gap-4 shrink-0">
                     <div className="text-center">
                       <div className={`text-lg font-bold ${text1}`}>{appCount}</div>
@@ -194,11 +154,10 @@ export default function CampaignList({ dark, nav, setNav }) {
                       <div className={`text-[10px] ${text2}`}>선정</div>
                     </div>
 
-                    {/* 삭제 버튼 */}
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }}
                       className={`p-1.5 rounded-lg transition opacity-40 hover:opacity-100 ${dark ? 'hover:bg-red-500/20 hover:text-red-400' : 'hover:bg-red-50 hover:text-red-500'}`}
-                      title="캠페인 삭제"
+                      title="삭제"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -223,7 +182,7 @@ export default function CampaignList({ dark, nav, setNav }) {
               </div>
               <div>
                 <h3 className={`font-bold ${text1}`}>캠페인 삭제</h3>
-                <p className={`text-sm ${text2}`}>이 작업은 되돌릴 수 없습니다</p>
+                <p className={`text-sm ${text2}`}>되돌릴 수 없습니다</p>
               </div>
             </div>
             <div className={`p-3 rounded-lg mb-4 text-sm ${dark ? 'bg-[#232336]' : 'bg-gray-50'}`}>
@@ -231,7 +190,7 @@ export default function CampaignList({ dark, nav, setNav }) {
               <div className={`text-xs mt-1 ${text2}`}>
                 ID: {deleteTarget.campaign_id} · 신청자 {deleteTarget.applicant_count?.[0]?.count ?? 0}명 · 선정 {deleteTarget.selection_count?.[0]?.count ?? 0}명
               </div>
-              <div className={`text-xs mt-1 text-red-400`}>
+              <div className="text-xs mt-1 text-red-400">
                 신청자 데이터와 선정 이력이 모두 삭제됩니다
               </div>
             </div>

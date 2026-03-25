@@ -404,7 +404,7 @@ def ai_bar_html(score,color=None,t=None):
 # ═══════════════════════════════════════
 # 🕷️ CRAWLER
 # ═══════════════════════════════════════
-def crawl_revu(cid,uid,upw,mmax=0,cmax=0,cb=None):
+def crawl_revu(cid,uid,upw,mmax=0,cmax=0,cb=None,driver=None):
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -413,17 +413,20 @@ def crawl_revu(cid,uid,upw,mmax=0,cmax=0,cb=None):
     def log(m):
         if cb: cb(m)
         print(m)
-    driver=None
+    _own_driver = driver is None  # 외부에서 받은 driver면 quit 하지 않음
     try:
-        log("🔧 ChromeDriver 준비 중...")
-        driver=make_chrome_driver()
-        wait=WebDriverWait(driver,15)
-        log("🔐 로그인 중..."); driver.get(LOGIN_URL)
-        wait.until(EC.presence_of_element_located((By.XPATH,"//input[@placeholder='이메일']")))
-        driver.find_element(By.XPATH,"//input[@placeholder='이메일']").send_keys(uid)
-        driver.find_element(By.XPATH,"//input[@placeholder='비밀번호']").send_keys(upw)
-        driver.find_element(By.XPATH,"//button[contains(text(),'로그인')]").click()
-        time.sleep(4); log("✅ 로그인 완료")
+        if _own_driver:
+            log("🔧 ChromeDriver 준비 중...")
+            driver=make_chrome_driver()
+            wait=WebDriverWait(driver,15)
+            log("🔐 로그인 중..."); driver.get(LOGIN_URL)
+            wait.until(EC.presence_of_element_located((By.XPATH,"//input[@placeholder='이메일']")))
+            driver.find_element(By.XPATH,"//input[@placeholder='이메일']").send_keys(uid)
+            driver.find_element(By.XPATH,"//input[@placeholder='비밀번호']").send_keys(upw)
+            driver.find_element(By.XPATH,"//button[contains(text(),'로그인')]").click()
+            time.sleep(4); log("✅ 로그인 완료")
+        else:
+            wait=WebDriverWait(driver,15)
         url=f"https://report.revu.net/service/campaigns/{cid}"
         log(f"📄 캠페인 {cid} 접속 중..."); driver.get(url); time.sleep(3)
         try:
@@ -728,7 +731,7 @@ def crawl_revu(cid,uid,upw,mmax=0,cmax=0,cb=None):
         if cb: cb(f"❌ 오류: {e}")
         return {"meta":{"error":str(e)},"influencers":[]}
     finally:
-        if driver: driver.quit()
+        if _own_driver and driver: driver.quit()
 
 def parse_modal(ms):
     r={}
@@ -796,7 +799,7 @@ def close_modal(driver):
 # ═══════════════════════════════════════
 # 📸 INSTAGRAM REVU CRAWLER (A안 기본)
 # ═══════════════════════════════════════
-def crawl_revu_insta(cid,uid,upw,cmax=0,cb=None):
+def crawl_revu_insta(cid,uid,upw,cmax=0,cb=None,driver=None):
     """REVU 인스타 캠페인 크롤러 — 모달 없음, 리스트만 파싱"""
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
@@ -806,18 +809,21 @@ def crawl_revu_insta(cid,uid,upw,cmax=0,cb=None):
     def log(m):
         if cb: cb(m)
         print(m)
-    driver=None
+    _own_driver = driver is None  # 외부에서 받은 driver면 quit 하지 않음
     try:
-        log("🔧 ChromeDriver 준비 중...")
-        driver=make_chrome_driver()
-        wait=WebDriverWait(driver,15)
-        # ── 로그인 (네이버와 동일) ──
-        log("🔐 로그인 중..."); driver.get(LOGIN_URL)
-        wait.until(EC.presence_of_element_located((By.XPATH,"//input[@placeholder='이메일']")))
-        driver.find_element(By.XPATH,"//input[@placeholder='이메일']").send_keys(uid)
-        driver.find_element(By.XPATH,"//input[@placeholder='비밀번호']").send_keys(upw)
-        driver.find_element(By.XPATH,"//button[contains(text(),'로그인')]").click()
-        time.sleep(4); log("✅ 로그인 완료")
+        if _own_driver:
+            log("🔧 ChromeDriver 준비 중...")
+            driver=make_chrome_driver()
+            wait=WebDriverWait(driver,15)
+            # ── 로그인 (네이버와 동일) ──
+            log("🔐 로그인 중..."); driver.get(LOGIN_URL)
+            wait.until(EC.presence_of_element_located((By.XPATH,"//input[@placeholder='이메일']")))
+            driver.find_element(By.XPATH,"//input[@placeholder='이메일']").send_keys(uid)
+            driver.find_element(By.XPATH,"//input[@placeholder='비밀번호']").send_keys(upw)
+            driver.find_element(By.XPATH,"//button[contains(text(),'로그인')]").click()
+            time.sleep(4); log("✅ 로그인 완료")
+        else:
+            wait=WebDriverWait(driver,15)
         url=f"https://report.revu.net/service/campaigns/{cid}"
         log(f"📄 캠페인 {cid} 접속 중..."); driver.get(url); time.sleep(3)
         # ── 인플루언서 선정 탭 클릭 ──
@@ -942,7 +948,7 @@ def crawl_revu_insta(cid,uid,upw,cmax=0,cb=None):
         if cb: cb(f"❌ 오류: {e}")
         return {"meta":{"error":str(e)},"influencers":[]}
     finally:
-        if driver: driver.quit()
+        if _own_driver and driver: driver.quit()
 
 # ═══════════════════════════════════════
 # 📸 릴스 조회수 파싱 (Selenium — /reels/ 탭 직접)
@@ -1465,15 +1471,33 @@ if st.session_state.step=="crawl":
                     la.code("\n".join(logs[-12:]),language=None)
                     pb.progress(min(len(logs)*2,95),text=msg)
 
-                # ── 복수 캠페인 일괄 크롤링 ──
+                # ── 복수 캠페인 일괄 크롤링 (driver 1회 생성 → 공유) ──
                 all_mapped=[]; all_meta={}; total_ok=0
+                shared_driver=None
                 with st.spinner("크롤링 진행 중..."):
+                  try:
+                    # ── 드라이버 1회 생성 + 로그인 ──
+                    if len(cid_list)>0:
+                        from selenium.webdriver.common.by import By
+                        from selenium.webdriver.support.ui import WebDriverWait
+                        from selenium.webdriver.support import expected_conditions as EC
+                        on_p("🔧 ChromeDriver 준비 중...")
+                        shared_driver=make_chrome_driver()
+                        _wait=WebDriverWait(shared_driver,15)
+                        on_p("🔐 로그인 중...")
+                        shared_driver.get(LOGIN_URL)
+                        _wait.until(EC.presence_of_element_located((By.XPATH,"//input[@placeholder='이메일']")))
+                        shared_driver.find_element(By.XPATH,"//input[@placeholder='이메일']").send_keys(uid)
+                        shared_driver.find_element(By.XPATH,"//input[@placeholder='비밀번호']").send_keys(upw)
+                        shared_driver.find_element(By.XPATH,"//button[contains(text(),'로그인')]").click()
+                        time.sleep(4); on_p("✅ 로그인 완료")
+
                     for ci,cid in enumerate(cid_list):
                         on_p(f"━━━ [{ci+1}/{len(cid_list)}] 캠페인 {cid} 크롤링 시작 ━━━")
                         if is_naver:
-                            res=crawl_revu(cid,uid,upw,mmax,cmax,on_p)
+                            res=crawl_revu(cid,uid,upw,mmax,cmax,on_p,driver=shared_driver)
                         else:
-                            res=crawl_revu_insta(cid,uid,upw,cmax,on_p)
+                            res=crawl_revu_insta(cid,uid,upw,cmax,on_p,driver=shared_driver)
                             if res.get("influencers"):
                                 on_p("📸 인스타 프로필 보강 시작...")
                                 _iid=insta_id if 'insta_id' in dir() else ""
@@ -1508,6 +1532,12 @@ if st.session_state.step=="crawl":
                         else:
                             err_msg=res.get("meta",{}).get("error","알 수 없는 오류")
                             on_p(f"❌ 캠페인 {cid} 실패: {err_msg}")
+                  finally:
+                    # ── 공유 드라이버 종료 ──
+                    if shared_driver:
+                        try: shared_driver.quit()
+                        except: pass
+                        on_p("🔧 ChromeDriver 종료")
 
                 if all_mapped:
                     # 복수 캠페인 메타 업데이트
