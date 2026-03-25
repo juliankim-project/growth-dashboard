@@ -13,18 +13,27 @@ import Spinner from '../components/UI/Spinner'
 import ErrorBoundary from '../components/UI/ErrorBoundary'
 
 /* ── Lazy-loaded 위젯 & 에디터 (초기 번들 사이즈 축소) ── */
-const WidgetEditor = lazy(() => import('../components/editor/WidgetEditor'))
-const KPIWidget = lazy(() => import('../components/widgets/KPIWidget'))
-const LineWidget = lazy(() => import('../components/widgets/LineWidget'))
-const BarWidget = lazy(() => import('../components/widgets/BarWidget'))
-const PieWidget = lazy(() => import('../components/widgets/PieWidget'))
-const TableWidget = lazy(() => import('../components/widgets/TableWidget'))
-const FunnelWidget = lazy(() => import('../components/widgets/FunnelWidget'))
-const ComparisonWidget = lazy(() => import('../components/widgets/ComparisonWidget'))
-const RankingWidget = lazy(() => import('../components/widgets/RankingWidget'))
-const AlertWidget = lazy(() => import('../components/widgets/AlertWidget'))
-const TimelineWidget = lazy(() => import('../components/widgets/TimelineWidget'))
-const KanbanBoard = lazy(() => import('../components/pages/KanbanBoard'))
+/* 배포 후 chunk 해시 변경 시 캐시된 구버전 요청으로 404 발생 → 자동 리로드 */
+function lazyRetry(importFn) {
+  return lazy(() => importFn().catch(() => {
+    const reloaded = sessionStorage.getItem('chunk_reload')
+    if (!reloaded) { sessionStorage.setItem('chunk_reload', '1'); window.location.reload() }
+    else { sessionStorage.removeItem('chunk_reload') }
+    return importFn()
+  }))
+}
+const WidgetEditor = lazyRetry(() => import('../components/editor/WidgetEditor'))
+const KPIWidget = lazyRetry(() => import('../components/widgets/KPIWidget'))
+const LineWidget = lazyRetry(() => import('../components/widgets/LineWidget'))
+const BarWidget = lazyRetry(() => import('../components/widgets/BarWidget'))
+const PieWidget = lazyRetry(() => import('../components/widgets/PieWidget'))
+const TableWidget = lazyRetry(() => import('../components/widgets/TableWidget'))
+const FunnelWidget = lazyRetry(() => import('../components/widgets/FunnelWidget'))
+const ComparisonWidget = lazyRetry(() => import('../components/widgets/ComparisonWidget'))
+const RankingWidget = lazyRetry(() => import('../components/widgets/RankingWidget'))
+const AlertWidget = lazyRetry(() => import('../components/widgets/AlertWidget'))
+const TimelineWidget = lazyRetry(() => import('../components/widgets/TimelineWidget'))
+const KanbanBoard = lazyRetry(() => import('../components/pages/KanbanBoard'))
 
 import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'

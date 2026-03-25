@@ -9,30 +9,39 @@ import Spinner from './components/UI/Spinner'
 import ErrorBoundary from './components/UI/ErrorBoundary'
 
 /* Lazy-loaded 페이지 — 초기 번들 사이즈 축소 */
-const DataUpload = lazy(() => import('./pages/DataStudio'))
-const UnifiedColumnConfig = lazy(() => import('./pages/datastudio/UnifiedColumnConfig'))
-const DataHistory = lazy(() => import('./pages/datastudio/History'))
-const DataTemplates = lazy(() => import('./pages/datastudio/Templates'))
-const SettingsGeneral = lazy(() => import('./pages/settings/General'))
-const TabSettings = lazy(() => import('./pages/settings/TabSettings'))
-const SettingsTeam = lazy(() => import('./pages/settings/Team'))
-const CustomDashboard = lazy(() => import('./pages/CustomDashboard'))
-const ComingSoon = lazy(() => import('./pages/ComingSoon'))
-const AskQuestion = lazy(() => import('./pages/ailab/AskQuestion'))
-const QueryHistory = lazy(() => import('./pages/ailab/QueryHistory'))
-const UserSegment = lazy(() => import('./pages/useranalysis/UserSegment'))
-const CohortAnalysis = lazy(() => import('./pages/useranalysis/CohortAnalysis'))
-const LtvAnalysis = lazy(() => import('./pages/useranalysis/LtvAnalysis'))
-const UsagePattern = lazy(() => import('./pages/useranalysis/UsagePattern'))
-const BranchAnalysis = lazy(() => import('./pages/useranalysis/BranchAnalysis'))
-const ExcludeUsers = lazy(() => import('./pages/useranalysis/ExcludeUsers'))
-const CheckinPace = lazy(() => import('./pages/useranalysis/CheckinPace'))
-const SearchAdsAI = lazy(() => import('./pages/searchads/SearchAdsAI'))
-const KeywordTrendDashboard = lazy(() => import('./pages/searchads/KeywordTrendDashboard'))
-const Scheduler = lazy(() => import('./pages/searchads/Scheduler'))
-const RevuCampaignList = lazy(() => import('./pages/revu/CampaignList'))
-const RevuApplicants = lazy(() => import('./pages/revu/Applicants'))
-const RevuSelectionHistory = lazy(() => import('./pages/revu/SelectionHistory'))
+/* 배포 후 chunk 해시 변경 시 캐시된 구버전 요청으로 404 → 자동 1회 리로드 */
+function lazyRetry(importFn) {
+  return lazy(() => importFn().catch(() => {
+    const key = 'chunk_reload'
+    if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, '1'); window.location.reload() }
+    else { sessionStorage.removeItem(key) }
+    return importFn()
+  }))
+}
+const DataUpload = lazyRetry(() => import('./pages/DataStudio'))
+const UnifiedColumnConfig = lazyRetry(() => import('./pages/datastudio/UnifiedColumnConfig'))
+const DataHistory = lazyRetry(() => import('./pages/datastudio/History'))
+const DataTemplates = lazyRetry(() => import('./pages/datastudio/Templates'))
+const SettingsGeneral = lazyRetry(() => import('./pages/settings/General'))
+const TabSettings = lazyRetry(() => import('./pages/settings/TabSettings'))
+const SettingsTeam = lazyRetry(() => import('./pages/settings/Team'))
+const CustomDashboard = lazyRetry(() => import('./pages/CustomDashboard'))
+const ComingSoon = lazyRetry(() => import('./pages/ComingSoon'))
+const AskQuestion = lazyRetry(() => import('./pages/ailab/AskQuestion'))
+const QueryHistory = lazyRetry(() => import('./pages/ailab/QueryHistory'))
+const UserSegment = lazyRetry(() => import('./pages/useranalysis/UserSegment'))
+const CohortAnalysis = lazyRetry(() => import('./pages/useranalysis/CohortAnalysis'))
+const LtvAnalysis = lazyRetry(() => import('./pages/useranalysis/LtvAnalysis'))
+const UsagePattern = lazyRetry(() => import('./pages/useranalysis/UsagePattern'))
+const BranchAnalysis = lazyRetry(() => import('./pages/useranalysis/BranchAnalysis'))
+const ExcludeUsers = lazyRetry(() => import('./pages/useranalysis/ExcludeUsers'))
+const CheckinPace = lazyRetry(() => import('./pages/useranalysis/CheckinPace'))
+const SearchAdsAI = lazyRetry(() => import('./pages/searchads/SearchAdsAI'))
+const KeywordTrendDashboard = lazyRetry(() => import('./pages/searchads/KeywordTrendDashboard'))
+const Scheduler = lazyRetry(() => import('./pages/searchads/Scheduler'))
+const RevuCampaignList = lazyRetry(() => import('./pages/revu/CampaignList'))
+const RevuApplicants = lazyRetry(() => import('./pages/revu/Applicants'))
+const RevuSelectionHistory = lazyRetry(() => import('./pages/revu/SelectionHistory'))
 
 /* ──────────────────────────────────────────────
    항상 고정 UI 로 렌더할 키 목록
