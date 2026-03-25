@@ -1528,6 +1528,14 @@ if st.session_state.step=="crawl":
                                 calc_all_insta(mapped, AI_WEIGHTS_INSTA)
                             on_p(f"✅ 캠페인 {cid}: {len(mapped)}명 수집 + AI점수 계산 완료")
 
+                            # ── enriched 데이터를 원본 res에 머지 (raw_data에 숙소/AI 포함) ──
+                            _enrich_keys=["_accom","_bd","aiReason","accomFit","aiScore","_adScore"]
+                            for _mi,_m in enumerate(mapped):
+                                if _mi < len(res.get("influencers",[])):
+                                    for _ek in _enrich_keys:
+                                        if _ek in _m:
+                                            res["influencers"][_mi][_ek]=_m[_ek]
+
                             # ── Supabase 저장 (AI 점수 포함) ──
                             try:
                                 from supabase_sync import save_crawl_to_supabase, update_ai_scores
@@ -1588,22 +1596,33 @@ ver=meta.get("version","")
 src_bdg=f'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{t["success_bg"]};color:{t["success"]};border:1px solid {t["success_border"]};">📄 실데이터{" · "+ver if ver else ""}</span>' if st.session_state.data_source else f'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{t["warning_bg"]};color:{t["warning"]};border:1px solid {t["warning_border"]};">🧪 데모</span>'
 plat_bdg=f'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:{t["naver_bg"] if is_naver else t["insta_bg"]};color:{t["naver_text"] if is_naver else t["insta_text"]};">{"네이버 블로그" if is_naver else "인스타그램"}</span>'
 
-# 네이버: 숙소 적합도 + AI 스코어 계산 (상대평가 v2)
+# ★ 캠페인별 분리 AI 스코어 계산 (상대평가 v2)
+# 모수 = 해당 캠페인 신청자 풀, 캠페인 간 섞이지 않음
+def _group_by_campaign(d_list):
+    """_srcCampaignId 기준으로 그룹핑. 없으면 전체를 하나로."""
+    groups={}
+    for d in d_list:
+        ckey=d.get("_srcCampaignId","_all")
+        groups.setdefault(ckey,[]).append(d)
+    return groups
+
+campaign_groups=_group_by_campaign(data)
+
 if is_naver:
-    for d in data:
-        ac=calc_accom(d)
-        d["_accom"]=ac
-        d["accomFit"]=calc_accom_score(ac)
-    all_accom=[d["accomFit"] for d in data]
-    for d in data:
-        d["_accom"]["percentile"]=calc_accom_percentile(d["accomFit"],all_accom)
-    # ★ 상대평가 일괄 계산 (전체 모수 대비 percentile → 1등=100점)
-    calc_all_naver(data, w)
-# 인스타: AI 스코어 계산 (상대평가 v2)
+    for _cid,group in campaign_groups.items():
+        for d in group:
+            ac=calc_accom(d)
+            d["_accom"]=ac
+            d["accomFit"]=calc_accom_score(ac)
+        all_accom=[d["accomFit"] for d in group]
+        for d in group:
+            d["_accom"]["percentile"]=calc_accom_percentile(d["accomFit"],all_accom)
+        # 캠페인 내 모수로만 percentile → 1등=100점
+        calc_all_naver(group, w)
 else:
     w_insta=AI_WEIGHTS_INSTA
-    # ★ 상대평가 일괄 계산
-    calc_all_insta(data, w_insta)
+    for _cid,group in campaign_groups.items():
+        calc_all_insta(group, w_insta)
 
 
 # ═══════════════════════════════════════
