@@ -86,7 +86,9 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
 
     Promise.all(
       uniqueTables.map(t => {
+        /* dateColumn: columnConfig 우선, marketing_data는 'Event Date' 폴백 */
         const dateCol = columnConfig?.[t]?.dateColumn
+          || (t === 'marketing_data' ? 'Event Date' : null)
 
         // ★ 항상 fetchByDateRange 경유 → ensureTableData(캐시+dedup) 보장
         // dateCol이 없으면 전체 데이터 반환, 있으면 날짜 필터 적용

@@ -238,8 +238,28 @@ async function ensureTableData(tableName) {
       const cols = TABLE_ESSENTIAL_COLS[tableName] || '*'
       const rawRows = await fetchAll(tableName, cols)
 
+      /* 🔍 marketing_data 디버그: 로딩 직후 상태 */
+      if (tableName === 'marketing_data') {
+        const sample = rawRows?.[0]
+        console.log('[ensureTableData] marketing_data 네트워크 fetch:', {
+          rowCount: rawRows?.length || 0,
+          columns: sample ? Object.keys(sample).slice(0, 15) : [],
+          hasId: sample?.id != null,
+          sampleSpend: sample?.['Cost (Channel)'],
+          sampleDate: sample?.['Event Date'],
+        })
+      }
+
       // ★ 네트워크 데이터에도 dedup 적용 (페이지네이션 경계 + CSV 중복)
       const rows = deduplicateRows(rawRows)
+
+      if (tableName === 'marketing_data') {
+        console.log('[ensureTableData] marketing_data dedup 후:', {
+          before: rawRows?.length || 0,
+          after: rows?.length || 0,
+          removed: (rawRows?.length || 0) - (rows?.length || 0),
+        })
+      }
 
       // 양쪽 캐시에 저장 (버전 포함)
       _tableCache[tableName] = { data: rows, ts: Date.now(), ver: CACHE_VERSION, promise: null }

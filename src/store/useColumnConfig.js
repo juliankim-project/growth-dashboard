@@ -167,12 +167,21 @@ export function useColumnConfig() {
           })
         }
 
+        /* marketing_data: dateColumn 폴백 보장
+           — column_definitions/column_configs/table_metadata 어디에도 없으면 'Event Date' 기본값 */
+        if (baseConfig['marketing_data'] && !baseConfig['marketing_data'].dateColumn) {
+          baseConfig['marketing_data'].dateColumn = 'Event Date'
+        }
+
         /* 🔍 DEBUG */
         const prr = baseConfig['product_revenue_raw']
+        const mkt = baseConfig['marketing_data']
         console.log('[useColumnConfig] 로드 결과:', {
           tables: Object.keys(baseConfig),
           prr_exists: !!prr,
-          prr_computed: prr?.computed?.map(c => ({ id: c.id, aggType: c.aggType })),
+          mkt_exists: !!mkt,
+          mkt_cols: mkt ? Object.keys(mkt.columns || {}).length : 0,
+          mkt_dateCol: mkt?.dateColumn,
           defRows: defRes.data?.length,
           wmcRows: wmcRes.data?.length,
         })

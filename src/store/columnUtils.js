@@ -52,6 +52,31 @@ const MARKETING_STD_ALIASES = {
   'Installs (App)':        { id: 'installs',    label: '인스톨',  fmt: 'number' },
 }
 
+/* ── marketing_data 기본 columnConfig ──
+   column_definitions DB에 항목이 없을 때 폴백으로 사용
+   → 대시보드 템플릿·KPI 위젯이 빈 메트릭으로 0 표시되는 문제 방지 */
+const MARKETING_DEFAULT_CONFIG = {
+  displayName: '마케팅 데이터',
+  dateColumn: 'Event Date',
+  columns: {
+    'Event Date':              { alias: '일자',       visible: false, fmt: 'text',     agg: null },
+    'Channel':                 { alias: '채널',       visible: true,  fmt: 'text',     agg: null },
+    'Campaign':                { alias: '캠페인',     visible: true,  fmt: 'text',     agg: null },
+    'Ad Group':                { alias: '광고그룹',   visible: true,  fmt: 'text',     agg: null },
+    'Ad Creative':             { alias: '크리에이티브', visible: true,  fmt: 'text',     agg: null },
+    'Cost (Channel)':          { alias: '광고비',     visible: true,  fmt: 'currency', agg: 'sum' },
+    'Impressions (Channel)':   { alias: '노출',       visible: true,  fmt: 'number',   agg: 'sum' },
+    'Clicks (Channel)':        { alias: '클릭',       visible: true,  fmt: 'number',   agg: 'sum' },
+    'Installs (App)':          { alias: '인스톨',     visible: true,  fmt: 'number',   agg: 'sum' },
+    '구매 완료 (App+Web)':      { alias: '구매',       visible: true,  fmt: 'number',   agg: 'sum' },
+    '구매액 (App+Web)':         { alias: '매출',       visible: true,  fmt: 'currency', agg: 'sum' },
+    '상품상세페이지_조회_app_web': { alias: '상세조회', visible: true,  fmt: 'number',   agg: 'sum' },
+  },
+  dimensionColumns: ['Channel', 'Campaign', 'Ad Group', 'Ad Creative'],
+  computed: [],
+  derivedDimensions: [],
+}
+
 /* 마케팅 파생지표 — buildTableMetrics 전용 (순환 import 방지) */
 const MARKETING_DERIVED = [
   { id: 'roas',     label: 'ROAS',       field: null, fmt: 'roas',     derived: true, group: 'rate' },
@@ -89,7 +114,13 @@ function _getConfigHash(tCfg) {
 export function buildTableMetrics(tableName, columnConfig) {
   if (!tableName) return []
 
-  const tCfg = columnConfig?.[tableName]
+  let tCfg = columnConfig?.[tableName]
+
+  /* marketing_data: column_definitions DB 비어있으면 하드코딩 폴백 사용 */
+  if (tableName === 'marketing_data' && (!tCfg || !tCfg.columns || Object.keys(tCfg.columns).length === 0)) {
+    tCfg = MARKETING_DEFAULT_CONFIG
+    console.log('[buildTableMetrics] marketing_data: DB 설정 없음 → 기본 폴백 사용')
+  }
   if (!tCfg || !tCfg.columns || Object.keys(tCfg.columns).length === 0) return []
 
   /* 캐시 조회: 테이블명 + 설정 해시 */
@@ -208,7 +239,9 @@ const MARKETING_DIM_ALIASES = {
 export function buildTableGroupBy(tableName, columnConfig) {
   if (!tableName) return []
 
-  const tCfg = columnConfig?.[tableName]
+  let tCfg = columnConfig?.[tableName]
+  /* marketing_data 폴백 */
+  if (tableName === 'marketing_data' && !tCfg) tCfg = MARKETING_DEFAULT_CONFIG
   if (!tCfg) return []
 
   const dims = tCfg.dimensionColumns || []

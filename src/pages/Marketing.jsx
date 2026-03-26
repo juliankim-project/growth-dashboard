@@ -161,10 +161,17 @@ export default function Marketing({ dark, filterByDate }) {
   const { data: rawData, loading, error } = useMarketingData()
 
   /* filterByDate 적용 */
-  const data = useMemo(
-    () => (filterByDate ? filterByDate(rawData) : rawData),
-    [rawData, filterByDate]
-  )
+  const data = useMemo(() => {
+    const filtered = filterByDate ? filterByDate(rawData) : rawData
+    console.log('[Marketing] 데이터 파이프라인:', {
+      rawRows: rawData?.length || 0,
+      filteredRows: filtered?.length || 0,
+      sampleCols: rawData?.[0] ? Object.keys(rawData[0]).slice(0, 10) : [],
+      hasSpendAlias: rawData?.[0]?.spend != null,
+      hasCostOrig: rawData?.[0]?.['Cost (Channel)'] != null,
+    })
+    return filtered
+  }, [rawData, filterByDate])
 
   /* 채널 목록 */
   const channels = useMemo(() =>
