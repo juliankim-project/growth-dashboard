@@ -168,9 +168,10 @@ export function useColumnConfig() {
         }
 
         /* marketing_data: dateColumn 폴백 보장
-           — column_definitions/column_configs/table_metadata 어디에도 없으면 'Event Date' 기본값 */
+           — column_definitions/column_configs/table_metadata 어디에도 없으면 'date' 기본값
+           ※ 실제 DB 컬럼명은 'date' (소문자) */
         if (baseConfig['marketing_data'] && !baseConfig['marketing_data'].dateColumn) {
-          baseConfig['marketing_data'].dateColumn = 'Event Date'
+          baseConfig['marketing_data'].dateColumn = 'date'
         }
 
         /* 🔍 DEBUG */

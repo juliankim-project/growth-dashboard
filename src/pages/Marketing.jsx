@@ -57,12 +57,13 @@ function PerfTable({ rows, groupKey, dark, onDrill }) {
     rows.forEach(r => {
       const k = r[groupKey] || '(없음)'
       if (!map[k]) map[k] = { name: k, cost: 0, impressions: 0, clicks: 0, installs: 0, conversions: 0, revenue: 0 }
-      map[k].cost        += parseFloat(r['Cost (Channel)'])        || 0
-      map[k].impressions += parseFloat(r['Impressions (Channel)']) || 0
-      map[k].clicks      += parseFloat(r['Clicks (Channel)'])      || 0
-      map[k].installs    += parseFloat(r['Installs (App)'])        || 0
-      map[k].conversions += parseFloat(r['구매 완료 (App+Web)'])    || 0
-      map[k].revenue     += parseFloat(r['구매액 (App+Web)'])       || 0
+      /* DB 컬럼: 소문자 (spend, impressions 등) + 레거시 호환 폴백 */
+      map[k].cost        += parseFloat(r.spend       ?? r['Cost (Channel)'])        || 0
+      map[k].impressions += parseFloat(r.impressions ?? r['Impressions (Channel)']) || 0
+      map[k].clicks      += parseFloat(r.clicks      ?? r['Clicks (Channel)'])      || 0
+      map[k].installs    += parseFloat(r.installs    ?? r['Installs (App)'])        || 0
+      map[k].conversions += parseFloat(r.purchases   ?? r['구매 완료 (App+Web)'])    || 0
+      map[k].revenue     += parseFloat(r.revenue     ?? r['구매액 (App+Web)'])       || 0
     })
     return Object.values(map).map(r => ({
       ...r,
@@ -187,32 +188,32 @@ export default function Marketing({ dark, filterByDate }) {
     if (channels.length && !selChannel) setSelChannel(channels[0])
   }, [channels])
 
-  /* 필터링 */
-  const chanData = useMemo(() => data.filter(r => (r['channel'] ?? r['Channel']) === selChannel), [data, selChannel])
+  /* 필터링 — DB 컬럼: 소문자 (channel, campaign, ad_group) */
+  const chanData = useMemo(() => data.filter(r => (r.channel ?? r['Channel']) === selChannel), [data, selChannel])
   const campData = useMemo(() =>
-    selCampaign ? chanData.filter(r => r['Campaign'] === selCampaign) : chanData
+    selCampaign ? chanData.filter(r => (r.campaign ?? r['Campaign']) === selCampaign) : chanData
   , [chanData, selCampaign])
   const agData   = useMemo(() =>
-    selAdgroup ? campData.filter(r => r['Ad Group'] === selAdgroup) : campData
+    selAdgroup ? campData.filter(r => (r.ad_group ?? r['Ad Group']) === selAdgroup) : campData
   , [campData, selAdgroup])
 
-  /* 채널 KPI */
+  /* 채널 KPI — 소문자 컬럼 우선 + 레거시 폴백 */
   const chanKpi = useMemo(() => ({
-    cost:    sum(chanData, 'Cost (Channel)'),
-    install: sum(chanData, 'Installs (App)'),
-    conv:    sum(chanData, '구매 완료 (App+Web)'),
-    revenue: sum(chanData, '구매액 (App+Web)'),
+    cost:    sum(chanData, 'spend')    || sum(chanData, 'Cost (Channel)'),
+    install: sum(chanData, 'installs') || sum(chanData, 'Installs (App)'),
+    conv:    sum(chanData, 'purchases') || sum(chanData, '구매 완료 (App+Web)'),
+    revenue: sum(chanData, 'revenue')  || sum(chanData, '구매액 (App+Web)'),
   }), [chanData])
 
-  /* 일별 트렌드 (선택 채널, filterByDate 적용됐으므로 slice 불필요) */
+  /* 일별 트렌드 (선택 채널) — 날짜 컬럼: date (소문자) */
   const trendData = useMemo(() => {
     const byDate = {}
     chanData.forEach(r => {
-      const d = r['Event Date']?.slice(0, 10)
+      const d = (r.date ?? r['Event Date'])?.slice?.(0, 10) || String(r.date || '').slice(0, 10)
       if (!d) return
       if (!byDate[d]) byDate[d] = { label: d.slice(5), cost: 0, installs: 0 }
-      byDate[d].cost     += parseFloat(r['Cost (Channel)']) || 0
-      byDate[d].installs += parseFloat(r['Installs (App)']) || 0
+      byDate[d].cost     += parseFloat(r.spend     ?? r['Cost (Channel)']) || 0
+      byDate[d].installs += parseFloat(r.installs  ?? r['Installs (App)']) || 0
     })
     return Object.values(byDate).sort((a, b) => a.label.localeCompare(b.label))
   }, [chanData])
