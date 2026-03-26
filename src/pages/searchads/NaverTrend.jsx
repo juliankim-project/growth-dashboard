@@ -11,7 +11,7 @@ import {
 import Spinner from '../../components/UI/Spinner'
 import { extractKeywordsFromProducts, classifyKeywords } from '../../utils/keywordExtractor'
 import { useKeywordTrendHistory } from '../../hooks/useKeywordTrendHistory'
-import { fetchAll } from '../../lib/supabase'
+import { fetchByDateRange } from '../../lib/supabase'
 
 /* ── 색상 팔레트 ── */
 const COLORS = ['#579DFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4']
@@ -176,7 +176,7 @@ export default function NaverTrend({ dark }) {
     let cancelled = false
     setLoadingProducts(true)
 
-    fetchAll('product_revenue_raw', 'area,branch_name,brand_name,room_type_name')
+    fetchByDateRange('product_revenue_raw', null, null, null)
       .then(data => {
         if (!cancelled) {
           setProductData(data)

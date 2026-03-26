@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { fetchAll, fetchByDateRange, supabase } from '../lib/supabase'
+import { fetchByDateRange, supabase } from '../lib/supabase'
 import { getNeededColumns } from '../store/columnUtils'
 import { getPreviousPeriod } from '../store/useDateRange'
 
@@ -24,7 +24,8 @@ export function useTableData(tableName = 'marketing_data') {
     setData([])
     setError(null)
 
-    fetchAll(tableName)
+    // ★ fetchByDateRange(null) → ensureTableData 경유 (캐시+dedup 보장)
+    fetchByDateRange(tableName, null, null, null)
       .then(rows => { if (!cancelled) { setData(rows); setLoading(false) } })
       .catch(err => { if (!cancelled) { setError(err.message); setLoading(false) } })
 
@@ -87,10 +88,14 @@ export function useMultiTableData(tableNames = [], dateRange = null, columnConfi
       uniqueTables.map(t => {
         const dateCol = columnConfig?.[t]?.dateColumn
 
-        // supabase.js의 ensureTableData가 전체 캐시 → 날짜 필터는 클라이언트
-        const fetcher = (dateCol && expandedStart && dateRange?.end)
-          ? fetchByDateRange(t, dateCol, expandedStart, dateRange.end)
-          : fetchAll(t)
+        // ★ 항상 fetchByDateRange 경유 → ensureTableData(캐시+dedup) 보장
+        // dateCol이 없으면 전체 데이터 반환, 있으면 날짜 필터 적용
+        const fetcher = fetchByDateRange(
+          t,
+          dateCol || null,
+          (dateCol && expandedStart) ? expandedStart : null,
+          (dateCol && dateRange?.end) ? dateRange.end : null
+        )
 
         return fetcher
           .then(rows => ({ table: t, rows, error: null }))

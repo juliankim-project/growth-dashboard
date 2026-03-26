@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchAll, supabase } from '../lib/supabase'
+import { fetchByDateRange, supabase } from '../lib/supabase'
 
 export function useMarketingData() {
   const [data,    setData]    = useState([])
@@ -17,8 +17,8 @@ export function useMarketingData() {
     let cancelled = false
     setLoading(true)
 
-    // 최적화: fetchAll이 이미 supabase.js에서 캐싱 처리 → 중복 fetch 방지
-    fetchAll('marketing_data')
+    // ★ fetchByDateRange(null) → ensureTableData 경유 (캐시+dedup 보장)
+    fetchByDateRange('marketing_data', null, null, null)
       .then(rows => {
         if (!cancelled) {
           setData(rows)
