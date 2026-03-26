@@ -21,9 +21,24 @@ const MAX_ROWS = 200_000
 const PAGE = 10_000
 const CONCURRENT = 8 // 4→8 병렬 (네트워크 I/O 최대 활용)
 
-/* DB 컬럼명 → 코드 내부 표준명 매핑 */
+/* DB 컬럼명 → 코드 내부 표준명 매핑
+   - 대시보드 템플릿(spend, revenue 등)과 실제 DB 컬럼명을 연결
+   - normalizeRows에서 원본 컬럼 유지 + 표준 alias 추가 */
 const COL_ALIASES = {
   '상품상세페이지_조회_app_web': 'view_content',
+  // 마케팅 데이터 — 표준 alias (dashboardTemplates · calcMetric 호환)
+  'Cost (Channel)':        'spend',
+  '구매액 (App+Web)':       'revenue',
+  'Impressions (Channel)': 'impressions',
+  'Clicks (Channel)':      'clicks',
+  '구매 완료 (App+Web)':    'purchases',
+  'Installs (App)':        'installs',
+  // 디멘전 소문자 alias (템플릿 groupBy 호환)
+  'Channel':     'channel',
+  'Campaign':    'campaign',
+  'Ad Group':    'ad_group',
+  'Ad Creative': 'ad_creative',
+  'Event Date':  'event_date',
 }
 
 const _normalizeCache = new WeakMap()

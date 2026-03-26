@@ -97,15 +97,20 @@ export function calcMetric(data, metricId, mList) {
     return sumField(data, m.field)
   }
 
-  /* 마케팅 파생지표 (ROAS, CTR 등) */
+  /* 마케팅 파생지표 (ROAS, CTR 등)
+     표준 alias(spend 등) 우선, 없으면 원본 컬럼명(Cost (Channel) 등) 폴백 */
   if (m.derived) {
-    const cost        = sumField(data, 'spend')
-    const rev         = sumField(data, 'revenue')
-    const impr        = sumField(data, 'impressions')
-    const clicks      = sumField(data, 'clicks')
-    const viewContent = sumField(data, 'view_content')
+    const sf = (std, orig) => {
+      const v = sumField(data, std)
+      return v !== 0 ? v : (orig ? sumField(data, orig) : 0)
+    }
+    const cost        = sf('spend',        'Cost (Channel)')
+    const rev         = sf('revenue',      '구매액 (App+Web)')
+    const impr        = sf('impressions',  'Impressions (Channel)')
+    const clicks      = sf('clicks',       'Clicks (Channel)')
+    const viewContent = sf('view_content', '상품상세페이지_조회_app_web')
     const signup      = sumField(data, 'signups')
-    const conv        = sumField(data, 'purchases')
+    const conv        = sf('purchases',    '구매 완료 (App+Web)')
     switch (metricId) {
       case 'roas':     return cost > 0        ? rev         / cost   : 0
       case 'ctr':      return impr > 0        ? (clicks     / impr)  * 100 : 0
@@ -151,14 +156,14 @@ export function fmtAxis(value, metricId, mList) {
 
 /* ─── 파생지표 계산 (그룹/일별 공통) ─── */
 function calcDerived(row, metrics, mList) {
-  /* 마케팅 파생지표 */
-  const c  = row.cost   ?? row.spend       ?? 0
-  const rv = row.revenue ?? 0
-  const im = row.impr   ?? row.impressions ?? 0
-  const cl = row.clicks  ?? 0
-  const vc = row.view_content ?? 0
-  const sg = row.signup ?? row.signups     ?? 0
-  const cv = row.conv   ?? row.purchases   ?? 0
+  /* 마케팅 파생지표 — 표준 alias + 원본 컬럼명 폴백 */
+  const c  = row.spend       ?? row.cost       ?? row['Cost (Channel)']        ?? 0
+  const rv = row.revenue     ?? row['구매액 (App+Web)']                         ?? 0
+  const im = row.impressions ?? row.impr       ?? row['Impressions (Channel)'] ?? 0
+  const cl = row.clicks      ?? row['Clicks (Channel)']                        ?? 0
+  const vc = row.view_content ?? row['상품상세페이지_조회_app_web']              ?? 0
+  const sg = row.signups     ?? row.signup                                     ?? 0
+  const cv = row.purchases   ?? row.conv       ?? row['구매 완료 (App+Web)']    ?? 0
   if (metrics.includes('roas'))     row.roas     = c  > 0  ? rv / c        : 0
   if (metrics.includes('ctr'))      row.ctr      = im > 0  ? (cl / im) * 100  : 0
   if (metrics.includes('cpc'))      row.cpc      = cl > 0  ? c  / cl      : 0

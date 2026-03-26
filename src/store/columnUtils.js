@@ -41,6 +41,17 @@ export function getTableDisplayName(tableName, columnConfig) {
    buildTableMetrics — METRICS 호환 배열 생성
    ═══════════════════════════════════════════ */
 
+/* 마케팅 표준 alias 매핑: DB 컬럼명 → 대시보드 템플릿이 참조하는 표준 ID
+   supabase.js의 COL_ALIASES와 동기화 필수 */
+const MARKETING_STD_ALIASES = {
+  'Cost (Channel)':        { id: 'spend',       label: '광고비',  fmt: 'currency' },
+  '구매액 (App+Web)':       { id: 'revenue',     label: '매출',    fmt: 'currency' },
+  'Impressions (Channel)': { id: 'impressions', label: '노출',    fmt: 'number' },
+  'Clicks (Channel)':      { id: 'clicks',      label: '클릭',    fmt: 'number' },
+  '구매 완료 (App+Web)':    { id: 'purchases',   label: '구매',    fmt: 'number' },
+  'Installs (App)':        { id: 'installs',    label: '인스톨',  fmt: 'number' },
+}
+
 /* 마케팅 파생지표 — buildTableMetrics 전용 (순환 import 방지) */
 const MARKETING_DERIVED = [
   { id: 'roas',     label: 'ROAS',       field: null, fmt: 'roas',     derived: true, group: 'rate' },
@@ -149,8 +160,25 @@ export function buildTableMetrics(tableName, columnConfig) {
     })
   })
 
-  /* 3) 마케팅 테이블 → 파생지표 (ROAS, CTR 등) 자동 포함 */
+  /* 3) 마케팅 테이블 → 표준 alias 메트릭 + 파생지표 자동 포함 */
   if (tableName === 'marketing_data') {
+    /* 3-a) 표준 alias 메트릭: 'Cost (Channel)' → 'spend' 등
+       대시보드 템플릿이 'spend', 'revenue' 등 표준 ID로 참조하므로 필수 */
+    Object.entries(MARKETING_STD_ALIASES).forEach(([origCol, aliasDef]) => {
+      if (metrics.find(m => m.id === aliasDef.id)) return  // 이미 존재하면 스킵
+      const origMetric = metrics.find(m => m.id === origCol)
+      if (origMetric) {
+        metrics.push({
+          ...origMetric,
+          id: aliasDef.id,
+          label: aliasDef.label,
+          field: aliasDef.id,   // normalizeRows가 추가한 alias 필드명 사용
+          fmt: aliasDef.fmt,
+        })
+      }
+    })
+
+    /* 3-b) 파생지표 (ROAS, CTR 등) */
     MARKETING_DERIVED.forEach(dm => {
       /* 원시 컬럼과 ID 충돌 시 원시 제거 후 파생으로 교체 */
       const existIdx = metrics.findIndex(x => x.id === dm.id)
@@ -169,6 +197,14 @@ export function buildTableMetrics(tableName, columnConfig) {
 /* ═══════════════════════════════════════════
    buildTableGroupBy — GROUP_BY 호환 배열 생성
    ═══════════════════════════════════════════ */
+/* 마케팅 디멘전 표준 alias: 대시보드 템플릿의 groupBy 호환 */
+const MARKETING_DIM_ALIASES = {
+  'Channel':     { id: 'channel',     label: '채널' },
+  'Campaign':    { id: 'campaign',    label: '캠페인' },
+  'Ad Group':    { id: 'ad_group',    label: '광고그룹' },
+  'Ad Creative': { id: 'ad_creative', label: '크리에이티브' },
+}
+
 export function buildTableGroupBy(tableName, columnConfig) {
   if (!tableName) return []
 
@@ -177,12 +213,21 @@ export function buildTableGroupBy(tableName, columnConfig) {
 
   const dims = tCfg.dimensionColumns || []
 
-  // dimensionColumns 설정됨 → 그대로 사용
+  // dimensionColumns 설정됨 → 그대로 사용 + marketing alias 추가
   if (dims.length > 0) {
-    return dims.map(col => {
+    const result = dims.map(col => {
       const cfg = tCfg.columns?.[col]
       return { id: col, label: getColumnLabel(col, cfg) }
     })
+    // 마케팅 테이블: 소문자 alias 추가 (템플릿 groupBy 호환)
+    if (tableName === 'marketing_data') {
+      Object.entries(MARKETING_DIM_ALIASES).forEach(([origCol, aliasDef]) => {
+        if (dims.includes(origCol) && !result.find(r => r.id === aliasDef.id)) {
+          result.push({ id: aliasDef.id, label: aliasDef.label })
+        }
+      })
+    }
+    return result
   }
 
   // dimensionColumns 미설정 → visible 컬럼 전체를 그룹바이 후보로
